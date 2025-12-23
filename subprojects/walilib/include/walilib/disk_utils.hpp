@@ -1,16 +1,16 @@
-#ifndef ALI_DISKUTILS_H
-#define ALI_DISKUTILS_H
+#ifndef WALI_DISKUTILS_H
+#define WALI_DISKUTILS_H
 
+#include <iostream>
 #include <map>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <wali/common.hpp>
+#include <walilib/common.hpp>
 
 
 extern const fs::path HomeMnt;
-//extern const fs::path BootMnt;
 extern const fs::path RootMnt;
 extern const fs::path EfiMnt;
 extern const fs::path FsTabPath;
@@ -42,19 +42,20 @@ struct Partition
 };
 
 
-// inline QDebug operator<<(QDebug q, const Partition& p)
-// {
-//   q << "\nPartition: " << p.dev << '\n';
-//   q << '\t' << "Parent: " << p.parent_dev << '\n';
-//   q << '\t' << "Filesystem: " << p.fs_type << '\n';
-//   q << '\t' << "Size: " << p.size << '\n';
-//   q << '\t' << "Part Type UUID: " << p.type_uuid << '\n';
-//   q << '\t' << "Part Num: " << p.part_number << '\n';
-//   q << '\t' << "EFI: " << p.is_efi << '\n';
-//   q << '\t' << "FAT32: " << p.is_fat32 << '\n';
-//   q << '\t' << "GPT: " << p.is_gpt ;
-//   return q;
-// }
+inline std::ostream& operator<<(std::ostream& q, const Partition& p)
+{
+  q << "\nPartition: " << p.dev << '\n';
+  q << '\t' << "Parent: " << p.parent_dev << '\n';
+  q << '\t' << "Filesystem: " << p.fs_type << '\n';
+  q << '\t' << "Size: " << p.size << '\n';
+  q << '\t' << "Part Type UUID: " << p.type_uuid << '\n';
+  q << '\t' << "Part Num: " << p.part_number << '\n';
+  q << '\t' << "EFI: " << p.is_efi << '\n';
+  q << '\t' << "FAT32: " << p.is_fat32 << '\n';
+  q << '\t' << "GPT: " << p.is_gpt ;
+  return q;
+}
+
 
 using Partitions = std::vector<Partition>;
 
