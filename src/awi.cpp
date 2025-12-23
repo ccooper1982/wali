@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <math.h>
 #include <Wt/WApplication.h>
 #include <Wt/WBootstrap5Theme.h>
@@ -53,9 +54,7 @@ class HelloApplication : public Wt::WApplication
 public:
     HelloApplication(const Wt::WEnvironment& env);
 
-private:
-    std::unique_ptr<IntroductionWidget> m_intro;
-    std::unique_ptr<PartitionsWidget> m_parts;
+
 };
 
 class IntroductionWidget : public Wt::WContainerWidget
@@ -77,6 +76,7 @@ public:
   }
 };
 
+
 class PartitionsWidget : public Wt::WContainerWidget
 {
 public:
@@ -94,18 +94,32 @@ public:
       {
         const auto parts = PartitionUtils::partitions();
 
-        create_table(layout, parts, "Boot Partition", [](const Partition& p){ return p.is_fat32;});
-        create_table(layout, parts, "OS Partition", [](const Partition& p){ return !p.is_fat32;});
+        create_table(layout, parts, {"fat32"}, "Boot Partition", [](const Partition& p){ return p.is_fat32;});
+        create_table(layout, parts, {"ext4", "btrfs"}, "OS Partition", [](const Partition& p){ return !p.is_fat32;});
+        create_table(layout, parts, {"ext4", "btrfs"}, "Home Partition", [](const Partition& p){ return !p.is_fat32;});
       }
     }
+
+    layout->addStretch(1);
   }
 
-  void create_table (Wt::WVBoxLayout * layout, const Partitions& parts, const std::string_view title, std::function<bool(const Partition& part)>&& filter)
+  void create_table (Wt::WVBoxLayout * layout, const Partitions& parts, const std::vector<std::string_view> filesystems,
+                    const std::string_view title, std::function<bool(const Partition& part)>&& filter)
   {
-    layout->addWidget(make_widget<Wt::WText>(std::format("<h2></h2>", title)));
+    layout->addWidget(make_widget<Wt::WText>(std::format("<h2>{}</h2>", title)));
 
     auto table_boot = layout->addWidget(make_widget<Wt::WTable>());
-    auto combo_part = layout->addWidget(make_widget<Wt::WComboBox>());
+    auto use_dev_container = layout->addWidget(make_widget<Wt::WContainerWidget>());
+
+    auto use_dev_layout = use_dev_container->setLayout(make_widget<Wt::WHBoxLayout>());
+
+    use_dev_layout->addWidget(make_widget<Wt::WText>("Device"));
+    auto combo_part = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
+    use_dev_layout->addWidget(make_widget<Wt::WText>("Filesystem"));
+    auto combo_fs = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
+    use_dev_layout->addStretch(1);
+
+    std::for_each(filesystems.cbegin(), filesystems.cend(), [combo_fs](const auto& fs) { combo_fs->addItem(fs.data()); });
 
     table_boot->setWidth(300);
     table_boot->setHeaderCount(1);
@@ -128,32 +142,28 @@ public:
     table_boot->addStyleClass("table");
     combo_part->setWidth(150);
   }
-
 };
 
 
 HelloApplication::HelloApplication(const Wt::WEnvironment& env) : Wt::WApplication(env)
 {
-  setCssTheme("polished");
-
   setTitle("wali");
 
-  auto menu_contents = std::make_unique<Wt::WStackedWidget>();
+  // setCssTheme("bootstrap");
+  useStyleSheet("wali.css");
 
-  // widgets displayed when menu items are selected
-  m_intro = make_widget<IntroductionWidget>();
-  m_parts = make_widget<PartitionsWidget>();
+  auto menu_contents = make_widget<Wt::WStackedWidget>();
+  auto hbox = root()->setLayout(make_widget<Wt::WHBoxLayout>());
 
-  auto container = make_widget<Wt::WContainerWidget>();
-  auto menu = container->addNew<Wt::WMenu>(menu_contents.get());
-  menu->setStyleClass("nav nav-pills flex-column");
-  menu->addItem("Introduction", std::move(m_intro));
-  menu->addItem("Partitions", std::move(m_parts));
-  menu->setWidth(100);
+  auto menu_container = make_widget<Wt::WContainerWidget>();
+  menu_container->setStyleClass("menu");
+
+  auto menu = menu_container->addNew<Wt::WMenu>(menu_contents.get());
+  menu->addItem("Introduction", make_widget<IntroductionWidget>());
+  menu->addItem("Partitions",   make_widget<PartitionsWidget>());
 
   // menu on left, selected menu item content on right
-  auto hbox = root()->setLayout(std::make_unique<Wt::WHBoxLayout>());
-  hbox->addWidget(std::move(container));
+  hbox->addWidget(std::move(menu_container));
   hbox->addWidget(std::move(menu_contents), 1);
 }
 

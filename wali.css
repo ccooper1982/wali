@@ -1,0 +1,25 @@
+a:link {
+    color: blue;
+}
+a:visited {
+    color: blue;
+}
+a:hover {
+    color: lightblue;
+}
+a:active {
+    color: blue;
+}
+
+body {
+    background-color: #d5d5d5;
+    font-family: sans-serif, arial;
+    font-size: 14px;
+    margin: 0px;
+}
+
+.menu {
+    background-color: steelblue;
+    margin: 0px;
+    width: 200px;
+}
