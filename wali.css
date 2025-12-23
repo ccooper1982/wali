@@ -19,7 +19,44 @@ body {
 }
 
 .menu {
-    background-color: steelblue;
+    background-color: darkgray;
     margin: 0px;
     width: 200px;
+    font-size: 18px;
+}
+
+.table_partitions {
+    table-layout: auto;
+    width: 400px;
+    margin: 20px auto;
+    border-collapse: collapse;
+    border-top: 1px solid #999999;
+    border-bottom: 1px solid #999999;
+}
+
+.table_partitions td {
+    padding: 20px;
+}
+
+.table_partitions tr:nth-child(2) {
+    width: 100px;
+}
+
+.table_partitions tr:nth-child(odd) {
+    background-color: lightslategray;
+}
+
+.table_partitions tr:nth-child(even) {
+    background-color: slategray;
+}
+
+/* this has stopped working */
+.table_partitions tr:nth-child(3) {
+    text-align: right;
+}
+
+.table_partitions th {
+    background-color: darkslategrey;
+    padding: 10px;
+    color: white;
 }
