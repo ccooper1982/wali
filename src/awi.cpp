@@ -3,6 +3,7 @@
 #include <Wt/WApplication.h>
 #include <Wt/WBootstrap5Theme.h>
 #include <Wt/WBreak.h>
+#include <Wt/WCheckBox.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WHBoxLayout.h>
@@ -23,12 +24,21 @@
 #include <Wt/WTextArea.h>
 #include <Wt/WWidget.h>
 
+#include <string_view>
 #include <wali/disk_utils.hpp>
 
 
 class IntroductionWidget;
 class PartitionsWidget;
 
+enum class MountType
+{
+  None,
+  Root,
+  Boot,
+  Home,
+  Swap
+};
 
 static std::string format_size(const int64_t size)
 {
@@ -79,6 +89,135 @@ public:
 
 class PartitionsWidget : public Wt::WContainerWidget
 {
+  struct PartitionWidget : public Wt::WContainerWidget
+  {
+    PartitionWidget (const std::string_view title, std::vector<std::string_view> filesystems) :
+      m_title(title),
+      m_filesystems(std::move(filesystems))
+    {
+      m_layout = setLayout(make_widget<Wt::WVBoxLayout>());
+    }
+
+    std::string get_device() const
+    {
+      return m_device->currentText().toUTF8();
+    }
+
+    std::string get_fs() const
+    {
+      return m_fs->currentText().toUTF8();
+    }
+
+    virtual void create_table (const Partitions& parts)
+    {
+      m_layout->addWidget(make_widget<Wt::WText>(std::format("<h2>{}</h2>", m_title)));
+
+      auto table_boot = m_layout->addWidget(make_widget<Wt::WTable>());
+      auto use_dev_container = m_layout->addWidget(make_widget<Wt::WContainerWidget>());
+
+      auto use_dev_layout = use_dev_container->setLayout(make_widget<Wt::WHBoxLayout>());
+
+      use_dev_layout->addWidget(make_widget<Wt::WText>("Device"));
+      m_device = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
+
+      use_dev_layout->addWidget(make_widget<Wt::WText>("Filesystem"));
+      m_fs = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
+
+      use_dev_layout->addStretch(1);
+
+      std::for_each(m_filesystems.cbegin(), m_filesystems.cend(), [this](const auto& fs) { m_fs->addItem(fs.data()); });
+
+      table_boot->setWidth(300);
+      table_boot->setHeaderCount(1);
+      table_boot->elementAt(0, 0)->addNew<Wt::WText>("Device");
+      table_boot->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
+      table_boot->elementAt(0, 2)->addNew<Wt::WText>("Size");
+
+      for(size_t i = 0; i < parts.size() ; ++i)
+      {
+        if (valid_for_install(parts[i]))
+        {
+          table_boot->elementAt(i+1,0)->addNew<Wt::WText>(parts[i].dev);
+          table_boot->elementAt(i+1,1)->addNew<Wt::WText>(parts[i].fs_type);
+          table_boot->elementAt(i+1,2)->addNew<Wt::WText>(format_size(parts[i].size));
+
+          m_device->addItem(parts[i].dev);
+        }
+      }
+
+      table_boot->addStyleClass("table");
+      m_device->setWidth(150);
+    }
+
+  private:
+    virtual bool valid_for_install (const Partition& part)
+    {
+      return true;
+    }
+
+    std::string_view m_title;
+    std::vector<std::string_view> m_filesystems;
+
+  protected:
+    Wt::WVBoxLayout * m_layout;
+    Wt::WComboBox * m_device, * m_fs;
+  };
+
+  struct BootPartitionWidget final : public PartitionWidget
+  {
+    BootPartitionWidget() : PartitionWidget("Boot", {"vfat32"})
+    {}
+  };
+
+  struct RootPartitionWidget final : public PartitionWidget
+  {
+    RootPartitionWidget() : PartitionWidget("Root", {"ext4", "btrfs"})
+    {}
+  };
+
+  struct HomePartitionWidget final : public PartitionWidget
+  {
+    HomePartitionWidget(std::function<void(bool)> on_mount_to_root) :
+      PartitionWidget("Home", {"ext4", "btrfs"}),
+      m_on_mount_to_root(on_mount_to_root)
+    {
+
+    }
+
+    void create_table (const Partitions& parts) override
+    {
+      PartitionWidget::create_table(parts);
+
+      auto check_home_to_root = m_layout->addWidget(make_widget<Wt::WCheckBox>("Mount /home to /"));
+      check_home_to_root->changed().connect([this, check_home_to_root]()
+      {
+        enable_dev_fs(!check_home_to_root->isChecked());
+        // m_device->setEnabled(!check_home_to_root->isChecked());
+        // m_fs->setEnabled(!check_home_to_root->isChecked());
+
+        m_on_mount_to_root(check_home_to_root->isChecked());
+      });
+
+      check_home_to_root->setCheckState(Wt::CheckState::Checked);
+      enable_dev_fs(!check_home_to_root->isChecked());
+    }
+
+    void enable_dev_fs(const bool e)
+    {
+      m_device->setEnabled(e);
+      m_fs->setEnabled(e);
+    }
+    // void enable(const bool e)
+    // {
+    //   m_device->setEnabled(e);
+    //   m_fs->setEnabled(e);
+    // }
+
+    private:
+      std::function<void(bool)> m_on_mount_to_root;
+  };
+
+
 public:
   PartitionsWidget()
   {
@@ -94,54 +233,31 @@ public:
       {
         const auto parts = PartitionUtils::partitions();
 
-        create_table(layout, parts, {"fat32"}, "Boot Partition", [](const Partition& p){ return p.is_fat32;});
-        create_table(layout, parts, {"ext4", "btrfs"}, "OS Partition", [](const Partition& p){ return !p.is_fat32;});
-        create_table(layout, parts, {"ext4", "btrfs"}, "Home Partition", [](const Partition& p){ return !p.is_fat32;});
+        auto on_home_to_root = [](const bool checked)
+        {
+          std::cout << "Checked " << checked << '\n';
+
+        };
+
+        m_boot = layout->addWidget(make_widget<BootPartitionWidget>());
+        m_boot->create_table(parts);
+
+        m_root = layout->addWidget(make_widget<RootPartitionWidget>());
+        m_root->create_table(parts);
+
+        m_home = layout->addWidget(make_widget<HomePartitionWidget>(on_home_to_root));
+        m_home->create_table(parts);
       }
     }
 
     layout->addStretch(1);
   }
 
-  void create_table (Wt::WVBoxLayout * layout, const Partitions& parts, const std::vector<std::string_view> filesystems,
-                    const std::string_view title, std::function<bool(const Partition& part)>&& filter)
-  {
-    layout->addWidget(make_widget<Wt::WText>(std::format("<h2>{}</h2>", title)));
 
-    auto table_boot = layout->addWidget(make_widget<Wt::WTable>());
-    auto use_dev_container = layout->addWidget(make_widget<Wt::WContainerWidget>());
-
-    auto use_dev_layout = use_dev_container->setLayout(make_widget<Wt::WHBoxLayout>());
-
-    use_dev_layout->addWidget(make_widget<Wt::WText>("Device"));
-    auto combo_part = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
-    use_dev_layout->addWidget(make_widget<Wt::WText>("Filesystem"));
-    auto combo_fs = use_dev_layout->addWidget(make_widget<Wt::WComboBox>());
-    use_dev_layout->addStretch(1);
-
-    std::for_each(filesystems.cbegin(), filesystems.cend(), [combo_fs](const auto& fs) { combo_fs->addItem(fs.data()); });
-
-    table_boot->setWidth(300);
-    table_boot->setHeaderCount(1);
-    table_boot->elementAt(0, 0)->addNew<Wt::WText>("Device");
-    table_boot->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
-    table_boot->elementAt(0, 2)->addNew<Wt::WText>("Size");
-
-    for(size_t i = 0; i < parts.size() ; ++i)
-    {
-      if (filter(parts[i]))
-      {
-        table_boot->elementAt(i+1,0)->addNew<Wt::WText>(parts[i].dev);
-        table_boot->elementAt(i+1,1)->addNew<Wt::WText>(parts[i].fs_type);
-        table_boot->elementAt(i+1,2)->addNew<Wt::WText>(format_size(parts[i].size));
-
-        combo_part->addItem(parts[i].dev);
-      }
-    }
-
-    table_boot->addStyleClass("table");
-    combo_part->setWidth(150);
-  }
+private:
+  BootPartitionWidget * m_boot;
+  RootPartitionWidget * m_root;
+  HomePartitionWidget * m_home;
 };
 
 
