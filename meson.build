@@ -14,7 +14,7 @@ libwali_proj = subproject('walilib')
 libwali_dep = libwali_proj.get_variable('libwali_dep')
 
 includes = include_directories(['include'])
-sources = ['src/awi.cpp']
+sources = ['src/wali.cpp']
 
 executable(
   meson.project_name(),
