@@ -1,0 +1,20 @@
+<server>
+    <application-settings location="*">
+        <web-sockets>true</web-sockets>
+        <num-threads>1</num-threads>
+        <!-- <properties>
+            <property
+                name="resourcesURL"
+            >/home/callum/projects/awi/build/wwwroot/resources/</property>
+        </properties> -->
+        <debug>true</debug>
+        <debug-level>all</debug-level>
+    </application-settings>
+
+    <session-management>
+        <shared-process>
+            <max-num-sessions>5</max-num-sessions>
+            <num-session-threads>1</num-session-threads>
+        </shared-process>
+    </session-management>
+</server>

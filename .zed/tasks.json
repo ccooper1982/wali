@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Compile",
+    "command": "meson",
+    "hide": "on_success",
+    "tags": ["build"],
+    "args": ["compile", "-C", "build"],
+  },
+  {
+    "label": "Compile && Restart",
+    "command": "meson compile -C build; sudo ./start.sh",
+    "hide": "on_success",
+    "tags": ["build"],
+    "args": ["compile", "-C", "build"],
+  },
+  {
+    "label": "Run",
+    "command": "$ZED_WORKTREE_ROOT/build/awi ",
+    "args": [
+      "--config",
+      "./wt_config.xml",
+      "--docroot",
+      "build/wwwroot",
+      "--http-address",
+      "0.0.0.0",
+      "--http-port",
+      "8080",
+    ],
+    "hide": "on_success",
+    "tags": ["run"],
+  },
+]
