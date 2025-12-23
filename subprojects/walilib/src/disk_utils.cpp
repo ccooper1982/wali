@@ -1,4 +1,4 @@
-#include <wali/disk_utils.hpp>
+#include <walilib/disk_utils.hpp>
 // #include <ali/commands.hpp>
 #include <algorithm>
 #include <string.h>
@@ -6,7 +6,6 @@
 #include <sys/mount.h>
 #include <blkid/blkid.h>
 #include <libmount/libmount.h>
-// #include <QDebug>
 #include <iostream>
 
 const fs::path HomeMnt{"/mnt/home"};
@@ -93,7 +92,7 @@ bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
             partition.parent_dev = disk;
             partition.is_gpt = is_gpt;
 
-            // TODO logging // qInfo() << partition;
+            std::cout << partition; // TODO logging
 
             m_parts.push_back(std::move(partition));
           }

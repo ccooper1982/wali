@@ -1,5 +1,8 @@
+#include <Wt/WLayout.h>
 #include <algorithm>
 #include <math.h>
+#include <string_view>
+
 #include <Wt/WApplication.h>
 #include <Wt/WBootstrap5Theme.h>
 #include <Wt/WBreak.h>
@@ -8,6 +11,7 @@
 #include <Wt/WContainerWidget.h>
 #include <Wt/WHBoxLayout.h>
 #include <Wt/WVBoxLayout.h>
+#include <Wt/WGridLayout.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WLength.h>
 #include <Wt/WLineEdit.h>
@@ -24,21 +28,8 @@
 #include <Wt/WTextArea.h>
 #include <Wt/WWidget.h>
 
-#include <string_view>
-#include <wali/disk_utils.hpp>
+#include <walilib/disk_utils.hpp>
 
-
-class IntroductionWidget;
-class PartitionsWidget;
-
-enum class MountType
-{
-  None,
-  Root,
-  Boot,
-  Home,
-  Swap
-};
 
 static std::string format_size(const int64_t size)
 {
@@ -51,21 +42,13 @@ static std::string format_size(const int64_t size)
 
   return std::format("{:.1f} {}", display_size, sizeNames[i]);
 }
- 
+
+
 template<typename T, typename ... Args>
 std::unique_ptr<T> make_wt (Args...args)
 {
   return std::make_unique<T>(args...);
 }
-
-
-class HelloApplication : public Wt::WApplication
-{
-public:
-    HelloApplication(const Wt::WEnvironment& env);
-
-
-};
 
 class IntroductionWidget : public Wt::WContainerWidget
 {
@@ -283,7 +266,6 @@ public:
       std::cout << "VALID\n";
   }
 
-
 private:
   BootPartitionWidget * m_boot;
   RootPartitionWidget * m_root;
@@ -291,27 +273,71 @@ private:
 };
 
 
-HelloApplication::HelloApplication(const Wt::WEnvironment& env) : Wt::WApplication(env)
+class NetworkWidget : public Wt::WContainerWidget
 {
-  setTitle("wali");
+  static constexpr auto text = R"(<ul><li>If using Wi-Fi, copy the iwd config to have internet connectivity in the live system</li></ul>)";
 
-  // setCssTheme("bootstrap");
-  useStyleSheet("wali.css");
+public:
+  NetworkWidget()
+  {
+    auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
 
-  auto menu_contents = make_wt<Wt::WStackedWidget>();
-  auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
+    auto form_container = layout->addWidget(make_wt<Wt::WContainerWidget>());
+    auto form_layout = form_container->setLayout(make_wt<Wt::WGridLayout>());
 
-  auto menu_container = make_wt<Wt::WContainerWidget>();
-  menu_container->setStyleClass("menu");
+    form_container->setWidth(300);
 
-  auto menu = menu_container->addNew<Wt::WMenu>(menu_contents.get());
-  menu->addItem("Introduction", make_wt<IntroductionWidget>());
-  menu->addItem("Partitions",   make_wt<PartitionsWidget>());
+    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("Hostname"), 0, 0);
+    m_hostname = form_layout->addWidget<Wt::WLineEdit>(make_wt<Wt::WLineEdit>("archlinux"), 0, 1);
+    m_hostname->setWidth(100); // TODO does nothing
 
-  // menu on left, selected menu item content on right
-  hbox->addWidget(std::move(menu_container));
-  hbox->addWidget(std::move(menu_contents), 1);
-}
+    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("NTP"), 1, 0);
+    m_ntp = form_layout->addWidget<Wt::WCheckBox>(make_wt<Wt::WCheckBox>(""), 1, 1);
+    m_ntp->setCheckState(Wt::CheckState::Checked);
+
+    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("Copy Wi-Fi Config"), 2, 0);
+    m_copy_config = form_layout->addWidget<Wt::WCheckBox>(make_wt<Wt::WCheckBox>(""), 2, 1);
+    m_copy_config->setCheckState(Wt::CheckState::Checked);
+
+    layout->addWidget<Wt::WText>(make_wt<Wt::WText>(text), 1);
+  }
+
+  bool ntp() const { return m_ntp->isChecked(); }
+  bool copy_config() const { return m_copy_config->isChecked(); }
+
+private:
+  Wt::WLineEdit * m_hostname;
+  Wt::WCheckBox * m_ntp;
+  Wt::WCheckBox * m_copy_config;
+};
+
+
+class HelloApplication : public Wt::WApplication
+{
+public:
+  HelloApplication(const Wt::WEnvironment& env) : Wt::WApplication(env)
+  {
+    setTitle("wali");
+
+    // setCssTheme("bootstrap");
+    useStyleSheet("wali.css");
+
+    auto menu_contents = make_wt<Wt::WStackedWidget>();
+    auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
+
+    auto menu_container = make_wt<Wt::WContainerWidget>();
+    menu_container->setStyleClass("menu");
+
+    auto menu = menu_container->addNew<Wt::WMenu>(menu_contents.get());
+    menu->addItem("Introduction", make_wt<IntroductionWidget>());
+    menu->addItem("Partitions",   make_wt<PartitionsWidget>());
+    menu->addItem("Network",      make_wt<NetworkWidget>());
+
+    // menu on left, selected menu item content on right
+    hbox->addWidget(std::move(menu_container));
+    hbox->addWidget(std::move(menu_contents), 1);
+  }
+};
 
 
 int main(int argc, char **argv)
