@@ -1,360 +1,64 @@
-#include <Wt/WLayout.h>
-#include <algorithm>
+#include <map>
 #include <math.h>
 #include <string_view>
-
 #include <Wt/WApplication.h>
-#include <Wt/WBootstrap5Theme.h>
-#include <Wt/WBreak.h>
-#include <Wt/WCheckBox.h>
-#include <Wt/WComboBox.h>
-#include <Wt/WContainerWidget.h>
-#include <Wt/WHBoxLayout.h>
-#include <Wt/WVBoxLayout.h>
-#include <Wt/WGridLayout.h>
-#include <Wt/WGroupBox.h>
-#include <Wt/WGlobal.h>
-#include <Wt/WLength.h>
-#include <Wt/WLineEdit.h>
 #include <Wt/WMenuItem.h>
 #include <Wt/WPopupMenu.h>
 #include <Wt/WPopupMenuItem.h>
-#include <Wt/WPushButton.h>
 #include <Wt/WMenu.h>
-#include <Wt/WMessageBox.h>
-#include <Wt/WNavigationBar.h>
 #include <Wt/WStackedWidget.h>
-#include <Wt/WTable.h>
-#include <Wt/WText.h>
 #include <Wt/WTextArea.h>
 #include <Wt/WWidget.h>
 
-#include <walilib/disk_utils.hpp>
+#include <wali/AccountsWidget.hpp>
+#include <wali/IntroductionWidget.hpp>
+#include <wali/NetworkWidget.hpp>
+#include <wali/PartitionWidget.hpp>
 
-
-static std::string format_size(const int64_t size)
+class MessageWidget : public Wt::WContainerWidget
 {
-  static const char *sizeNames[] = {"B", "KB", "MB", "GB", "TB", "PB"};
-
-  std::string result;
-
-  const uint64_t i = (uint64_t) std::floor(std::log(size) / std::log(1024));
-  const auto display_size = size / std::pow(1024, i);
-
-  return std::format("{:.1f} {}", display_size, sizeNames[i]);
-}
-
-
-template<typename T, typename ... Args>
-std::unique_ptr<T> make_wt (Args...args)
-{
-  return std::make_unique<T>(args...);
-}
-
-class IntroductionWidget : public Wt::WContainerWidget
-{
-  static constexpr auto text = R"(
-    <h1>Web Arch Linux Installer</h1>
-    <h2>No changes are applied until 'Install' is pressed in the final step.</h2>
-    <ul>
-      <li>This tool does yet not manage partitions, do so with fdisk, cfdisk, etc</li>
-      <li>Something else useful</li>
-      <li>Perhaps a third informative point</li>
-    </ul>
-    )";
-
 public:
-  IntroductionWidget()
+  enum class Level {Info, Warning, Error};
+
+  MessageWidget()
   {
-    addWidget(make_wt<Wt::WText>(text));
-  }
-};
-
-
-class PartitionsWidget : public Wt::WContainerWidget
-{
-  using DeviceChange = std::function<void(const std::string_view)>;
-
-  struct PartitionWidget : public Wt::WContainerWidget
-  {
-    PartitionWidget (const std::string_view title, std::vector<std::string_view> filesystems) :
-      m_title(title),
-      m_filesystems(std::move(filesystems))
-    {
-      m_layout = setLayout(make_wt<Wt::WVBoxLayout>());
-    }
-
-    std::string get_device() const
-    {
-      return m_device->currentText().toUTF8();
-    }
-
-    std::string get_fs() const
-    {
-      return m_fs->currentText().toUTF8();
-    }
-
-    void set_device(const std::string_view dev)
-    {
-      m_device->setValueText(dev.data());
-    }
-
-    virtual void create (const Partitions& parts, DeviceChange&& on_change)
-    {
-      m_on_device = on_change;
-
-      m_layout->addWidget(make_wt<Wt::WText>(std::format("<h2>{}</h2>", m_title)));
-
-      // holds the widgets for selecting device and filesystem
-      auto container_dev_fs = m_layout->addWidget(make_wt<Wt::WContainerWidget>());
-
-      auto layout_dev_fs = container_dev_fs->setLayout(make_wt<Wt::WHBoxLayout>());
-
-      layout_dev_fs->addWidget(make_wt<Wt::WText>("Device"));
-      m_device = layout_dev_fs->addWidget(make_wt<Wt::WComboBox>());
-      m_device->setWidth(150);
-
-      m_device->changed().connect([this]()
-      {
-        if (m_on_device)
-          m_on_device(m_device->currentText().toUTF8());
-      });
-
-      layout_dev_fs->addWidget(make_wt<Wt::WText>("Filesystem"));
-
-      m_fs = layout_dev_fs->addWidget(make_wt<Wt::WComboBox>());
-      layout_dev_fs->addStretch(1);
-
-      std::for_each(parts.cbegin(), parts.cend(), [this](const Partition& part) { m_device->addItem(part.dev); });
-      std::for_each(m_filesystems.cbegin(), m_filesystems.cend(), [this](const auto& fs) { m_fs->addItem(fs.data()); });
-    }
-
-  private:
-    virtual bool valid_for_install (const Partition& part)
-    {
-      return true;
-    }
-
-    std::string_view m_title;
-    std::vector<std::string_view> m_filesystems;
-    DeviceChange m_on_device;
-
-  protected:
-    Wt::WVBoxLayout * m_layout;
-    Wt::WComboBox * m_device, * m_fs;
-
-  };
-
-  struct BootPartitionWidget final : public PartitionWidget
-  {
-    BootPartitionWidget() : PartitionWidget("Boot", {"vfat32"})
-    {}
-  };
-
-  struct RootPartitionWidget final : public PartitionWidget
-  {
-    RootPartitionWidget() : PartitionWidget("Root", {"ext4", "btrfs"})
-    {}
-  };
-
-  struct HomePartitionWidget final : public PartitionWidget
-  {
-    HomePartitionWidget(std::function<void(bool)> on_mount_to_root) :
-      PartitionWidget("Home", {"ext4", "btrfs"}),
-      m_on_mount_to_root(on_mount_to_root)
-    {
-
-    }
-
-    void create (const Partitions& parts, DeviceChange&& on_change) override
-    {
-      PartitionWidget::create(parts, std::move(on_change));
-
-      m_home_to_root = m_layout->addWidget(make_wt<Wt::WCheckBox>("Mount /home to /"));
-      m_home_to_root->changed().connect([this]()
-      {
-        enable_dev_fs(!m_home_to_root->isChecked());
-        m_on_mount_to_root(m_home_to_root->isChecked());
-      });
-
-      m_home_to_root->setCheckState(Wt::CheckState::Checked);
-      enable_dev_fs(!m_home_to_root->isChecked());
-    }
-
-    void enable_dev_fs(const bool e)
-    {
-      m_device->setEnabled(e);
-      m_fs->setEnabled(e);
-    }
-
-    bool is_home_on_root() const
-    {
-      return m_home_to_root->isChecked();
-    }
-
-    private:
-      std::function<void(bool)> m_on_mount_to_root;
-      Wt::WCheckBox * m_home_to_root;
-  };
-
-
-public:
-  PartitionsWidget()
-  {
-    auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
-
-    if (!PartitionUtils::probe_for_install())
-      std::cout << "Probe failed\n";
-    else
-    {
-      if (!PartitionUtils::have_partitions())
-        std::cout << "No partitions found\n";
-      else
-      {
-        const auto parts = PartitionUtils::partitions();
-
-        auto table_parts = layout->addWidget(make_wt<Wt::WTable>());
-        table_parts->setHeaderCount(1);
-        table_parts->elementAt(0, 0)->addNew<Wt::WText>("Device");
-        table_parts->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
-        table_parts->elementAt(0, 2)->addNew<Wt::WText>("Size");
-        table_parts->setStyleClass("table_partitions");
-
-        for(size_t i = 0; i < parts.size() ; ++i)
-        {
-          table_parts->elementAt(i+1,0)->addNew<Wt::WText>(parts[i].dev);
-          table_parts->elementAt(i+1,1)->addNew<Wt::WText>(parts[i].fs_type);
-          table_parts->elementAt(i+1,2)->addNew<Wt::WText>(format_size(parts[i].size));
-        }
-
-        table_parts->addStyleClass("table");
-
-        m_boot = layout->addWidget(make_wt<BootPartitionWidget>());
-        m_boot->create(parts, std::bind(&PartitionsWidget::validate_selection, std::ref(*this)));
-
-        m_root = layout->addWidget(make_wt<RootPartitionWidget>());
-        m_root->create(parts, [this](const std::string_view dev)
-        {
-          if (m_home->is_home_on_root())
-            m_home->set_device(dev);
-
-          validate_selection();
-        });
-
-        m_home = layout->addWidget(make_wt<HomePartitionWidget>(std::bind_front(&PartitionsWidget::on_home_to_home, std::ref(*this))));
-        m_home->create(parts, std::bind(&PartitionsWidget::validate_selection, std::ref(*this)));
-
-        // TODO bootloader
-      }
-    }
-
-    layout->addStretch(1);
+    create();
   }
 
-  void on_home_to_home(const bool checked)
+  void clear_messages()
   {
-    if (checked)
-      m_home->set_device(m_root->get_device());
+    create();
   }
 
-  void validate_selection()
+  void add(const std::string_view msg, const Level lvl)
   {
-    const auto& boot_dev = m_boot->get_device();
-    const auto& root_dev = m_root->get_device();
-    const auto& home_dev = m_home->get_device();
+    static const std::map<const Level, const Wt::WString> LevelValueMap
+    {
+      {Level::Error,    "msg_error"},
+      {Level::Warning,  "msg_warning"},
+      {Level::Info,     "msg_info"}
+    };
 
-    if (boot_dev == root_dev || boot_dev == home_dev)
-      std::cout << "INVALID\n";
-    else
-      std::cout << "VALID\n";
+    if (LevelValueMap.contains(lvl))
+    {
+      auto txt = m_layout->addWidget(make_wt<Wt::WText>(msg.data()));
+      txt->setStyleClass(LevelValueMap.at(lvl));
+    }
   }
 
 private:
-  BootPartitionWidget * m_boot;
-  RootPartitionWidget * m_root;
-  HomePartitionWidget * m_home;
-};
-
-
-class NetworkWidget : public Wt::WContainerWidget
-{
-  static constexpr auto text = R"(<ul><li>If using Wi-Fi, copy the iwd config to have internet connectivity in the live system</li></ul>)";
-
-public:
-  NetworkWidget()
+  void create()
   {
-    auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
-
-    auto form_container = layout->addWidget(make_wt<Wt::WContainerWidget>());
-    auto form_layout = form_container->setLayout(make_wt<Wt::WGridLayout>());
-
-    form_container->setWidth(300);
-
-    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("Hostname"), 0, 0);
-    m_hostname = form_layout->addWidget<Wt::WLineEdit>(make_wt<Wt::WLineEdit>("archlinux"), 0, 1);
-    m_hostname->setWidth(100); // TODO does nothing
-
-    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("NTP"), 1, 0);
-    m_ntp = form_layout->addWidget<Wt::WCheckBox>(make_wt<Wt::WCheckBox>(""), 1, 1);
-    m_ntp->setCheckState(Wt::CheckState::Checked);
-
-    form_layout->addWidget<Wt::WText>(make_wt<Wt::WText>("Copy Wi-Fi Config"), 2, 0);
-    m_copy_config = form_layout->addWidget<Wt::WCheckBox>(make_wt<Wt::WCheckBox>(""), 2, 1);
-    m_copy_config->setCheckState(Wt::CheckState::Checked);
-
-    layout->addWidget<Wt::WText>(make_wt<Wt::WText>(text), 1);
-  }
-
-  bool ntp() const { return m_ntp->isChecked(); }
-  bool copy_config() const { return m_copy_config->isChecked(); }
-
-private:
-  Wt::WLineEdit * m_hostname;
-  Wt::WCheckBox * m_ntp;
-  Wt::WCheckBox * m_copy_config;
-};
-
-class AccountWidget : public Wt::WContainerWidget
-{
-public:
-  AccountWidget ()
-  {
-    auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
-
-    auto gb_root = layout->addWidget(make_wt<Wt::WGroupBox>("Root"));
-    auto gb_user = layout->addWidget(make_wt<Wt::WGroupBox>("User"));
-
-    auto root_layout = gb_root->setLayout(make_wt<Wt::WHBoxLayout>());
-    auto user_layout = gb_user->setLayout(make_wt<Wt::WGridLayout>());
-
-    root_layout->addWidget(make_wt<Wt::WText>("Password"));
-    m_root_password = root_layout->addWidget(make_wt<Wt::WLineEdit>("arch"));
-
-    root_layout->addStretch(1);
-
-    user_layout->addWidget(make_wt<Wt::WText>("Username"), 0, 0);
-    m_user_username = user_layout->addWidget(make_wt<Wt::WLineEdit>(), 0, 1);
-
-    user_layout->addWidget(make_wt<Wt::WText>("Password"), 1, 0);
-    m_user_password = user_layout->addWidget(make_wt<Wt::WLineEdit>(), 1, 1);
-
-    user_layout->addWidget(make_wt<Wt::WText>("Sudo"), 2, 0);
-    m_user_sudo = user_layout->addWidget(make_wt<Wt::WCheckBox>(), 2, 1);
-    m_user_sudo->setCheckState(Wt::CheckState::Checked);
-
-    // use as a stretch
-    user_layout->addWidget(make_wt<Wt::WText>(""),0,2);
-    user_layout->setColumnStretch(2, 1);
-
-    layout->addStretch(1);
+    m_layout = setLayout(make_wt<Wt::WVBoxLayout>());
+    // auto panel = make_wt<Wt::WPanel>();
+    // panel->setTitle("Messages");
+    // panel->setCentralWidget();
   }
 
 private:
-  Wt::WLineEdit * m_root_password,
-                * m_user_username,
-                * m_user_password;
-  Wt::WCheckBox * m_user_sudo;
+  Wt::WVBoxLayout * m_layout;
 };
+
 
 class HelloApplication : public Wt::WApplication
 {
@@ -363,24 +67,21 @@ public:
   {
     setTitle("wali");
 
-    // setCssTheme("bootstrap");
     useStyleSheet("wali.css");
 
-    auto menu_contents = make_wt<Wt::WStackedWidget>();
+    // menu on left, selected menu displays on right
     auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
+    auto menu_container = hbox->addWidget(make_wt<Wt::WContainerWidget>());
+    auto menu_contents = hbox->addWidget(make_wt<Wt::WStackedWidget>());
+    hbox->addStretch(1);
 
-    auto menu_container = make_wt<Wt::WContainerWidget>();
     menu_container->setStyleClass("menu");
 
-    auto menu = menu_container->addNew<Wt::WMenu>(menu_contents.get());
+    auto menu = menu_container->addNew<Wt::WMenu>(menu_contents);
     menu->addItem("Introduction", make_wt<IntroductionWidget>());
     menu->addItem("Partitions",   make_wt<PartitionsWidget>());
     menu->addItem("Network",      make_wt<NetworkWidget>());
     menu->addItem("Accounts",     make_wt<AccountWidget>());
-
-    // menu on left, selected menu item content on right
-    hbox->addWidget(std::move(menu_container));
-    hbox->addWidget(std::move(menu_contents), 1);
   }
 };
 

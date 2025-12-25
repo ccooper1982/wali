@@ -1,5 +1,5 @@
-#ifndef WALI_DISKUTILS_H
-#define WALI_DISKUTILS_H
+#ifndef WALILIB_DISKUTILS_H
+#define WALILIB_DISKUTILS_H
 
 #include <iostream>
 #include <map>

@@ -1,5 +1,5 @@
-#ifndef WALI_COMMON_H
-#define WALI_COMMON_H
+#ifndef WALILIB_COMMON_H
+#define WALILIB_COMMON_H
 
 #include <filesystem>
 

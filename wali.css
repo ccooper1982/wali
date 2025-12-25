@@ -60,3 +60,17 @@ body {
     padding: 10px;
     color: white;
 }
+
+.msg_error {
+    /*color: red;*/
+    background-color: lightyellow;
+}
+
+.msg_warning {
+    color: white;
+    background-color: darkgoldenrod;
+}
+/*
+.p msg_info {
+    color: red;
+}*/
