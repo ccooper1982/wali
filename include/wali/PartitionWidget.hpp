@@ -1,6 +1,7 @@
 #ifndef WALI_PARTITIONWIDGET_H
 #define WALI_PARTITIONWIDGET_H
 
+#include "wali/MessagesWidget.hpp"
 #include <Wt/WTable.h>
 
 #include <wali/Common.hpp>
@@ -178,7 +179,12 @@ public:
         });
 
         m_home = layout->addWidget(make_wt<HomePartitionWidget>(std::bind_front(&PartitionsWidget::on_home_to_home, std::ref(*this))));
-        m_home->create(parts, std::bind(&PartitionsWidget::validate_selection, std::ref(*this)));
+        m_home->create(parts, [this](const std::string_view dev)
+        {
+          validate_selection();
+        });
+
+        m_messages = layout->addWidget(make_wt<MessageWidget>());
 
         // TODO bootloader
       }
@@ -191,6 +197,8 @@ public:
   {
     if (checked)
       m_home->set_device(m_root->get_device());
+
+    validate_selection();
   }
 
   void validate_selection()
@@ -198,17 +206,23 @@ public:
     const auto& boot_dev = m_boot->get_device();
     const auto& root_dev = m_root->get_device();
     const auto& home_dev = m_home->get_device();
+    const bool home_on_root = m_home->is_home_on_root();
 
-    if (boot_dev == root_dev || boot_dev == home_dev)
-      std::cout << "INVALID\n";
-    else
-      std::cout << "VALID\n";
+    m_messages->clear_messages();
+
+    if (boot_dev == root_dev)
+      m_messages->add("/boot cannot mount on the root partition", MessageWidget::Level::Error);
+    if (boot_dev == home_dev)
+      m_messages->add("/boot cannot mount on the home partition", MessageWidget::Level::Error);
+    if (!home_on_root && home_dev == root_dev)
+      m_messages->add("/home is mounted on the root partition", MessageWidget::Level::Warning);
   }
 
 private:
   BootPartitionWidget * m_boot;
   RootPartitionWidget * m_root;
   HomePartitionWidget * m_home;
+  MessageWidget * m_messages;
 };
 
 #endif

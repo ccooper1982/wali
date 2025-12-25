@@ -1,6 +1,7 @@
 #ifndef WALI_MESSAGESWIDGET_H
 #define WALI_MESSAGESWIDGET_H
 
+#include <Wt/WVBoxLayout.h>
 #include <wali/Common.hpp>
 
 class MessageWidget : public WContainerWidget
@@ -27,12 +28,9 @@ public:
       {Level::Info,     "msg_info"}
     };
 
-    if (LevelValueMap.contains(lvl))
-    {
-      auto container = m_layout->addWidget(make_wt<Wt::WContainerWidget>());
-      container->setStyleClass(LevelValueMap.at(lvl));
-      container->addWidget(make_wt<Wt::WText>(msg.data()));
-    }
+    auto container = m_layout->addWidget(make_wt<Wt::WContainerWidget>());
+    container->setStyleClass(LevelValueMap.at(lvl));
+    container->addWidget(make_wt<Wt::WText>(msg.data()));
   }
 
 private:
