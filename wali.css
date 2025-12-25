@@ -61,16 +61,27 @@ body {
     color: white;
 }
 
-.msg_error {
-    /*color: red;*/
-    background-color: lightyellow;
+div.msg_error {
+    /*color: white;*/
+    background-color: white;
+    padding: 10px;
+    border-left: 10px solid #801010;
 }
 
-.msg_warning {
-    color: white;
+div.msg_warning {
+    background-color: white;
+    padding: 10px;
+    border-left: 10px solid darkgoldenrod;
+    /*color: white;
     background-color: darkgoldenrod;
+    padding: 10px;*/
 }
-/*
-.p msg_info {
-    color: red;
-}*/
+
+div.msg_info {
+    background-color: white;
+    padding: 10px;
+    border-left: 10px solid #3030aa;
+    /*color: white;
+    background-color: #808080;
+    padding: 10px;*/
+}

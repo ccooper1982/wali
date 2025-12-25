@@ -1,7 +1,7 @@
 #ifndef WALI_INTROWIDGET_H
 #define WALI_INTROWIDGET_H
 
-#include <wali/Common.hpp>
+#include <wali/MessagesWidget.hpp>
 
 class IntroductionWidget : public Wt::WContainerWidget
 {
@@ -21,8 +21,9 @@ public:
     addWidget(make_wt<Wt::WText>(text));
 
     // auto msg = addWidget(make_wt<MessageWidget>());
-    // msg->add("No changes are applied until 'Install' is pressed in the final step", MessageWidget::Level::Warning);
-    // msg->add("his tool does yet not manage partitions, do so with fdisk, cfdisk, etc", MessageWidget::Level::Warning);
+    // msg->add("Warning", MessageWidget::Level::Warning);
+    // msg->add("Error", MessageWidget::Level::Error);
+    // msg->add("Info", MessageWidget::Level::Info);
   }
 };
 

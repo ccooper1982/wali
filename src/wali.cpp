@@ -1,8 +1,10 @@
+#include <Wt/WContainerWidget.h>
 #include <map>
 #include <math.h>
 #include <string_view>
 #include <Wt/WApplication.h>
 #include <Wt/WMenuItem.h>
+#include <Wt/WPanel.h>
 #include <Wt/WPopupMenu.h>
 #include <Wt/WPopupMenuItem.h>
 #include <Wt/WMenu.h>
@@ -14,50 +16,6 @@
 #include <wali/IntroductionWidget.hpp>
 #include <wali/NetworkWidget.hpp>
 #include <wali/PartitionWidget.hpp>
-
-class MessageWidget : public Wt::WContainerWidget
-{
-public:
-  enum class Level {Info, Warning, Error};
-
-  MessageWidget()
-  {
-    create();
-  }
-
-  void clear_messages()
-  {
-    create();
-  }
-
-  void add(const std::string_view msg, const Level lvl)
-  {
-    static const std::map<const Level, const Wt::WString> LevelValueMap
-    {
-      {Level::Error,    "msg_error"},
-      {Level::Warning,  "msg_warning"},
-      {Level::Info,     "msg_info"}
-    };
-
-    if (LevelValueMap.contains(lvl))
-    {
-      auto txt = m_layout->addWidget(make_wt<Wt::WText>(msg.data()));
-      txt->setStyleClass(LevelValueMap.at(lvl));
-    }
-  }
-
-private:
-  void create()
-  {
-    m_layout = setLayout(make_wt<Wt::WVBoxLayout>());
-    // auto panel = make_wt<Wt::WPanel>();
-    // panel->setTitle("Messages");
-    // panel->setCentralWidget();
-  }
-
-private:
-  Wt::WVBoxLayout * m_layout;
-};
 
 
 class HelloApplication : public Wt::WApplication
