@@ -1,15 +1,12 @@
-#include <walilib/disk_utils.hpp>
+
 // #include <ali/commands.hpp>
-#include <algorithm>
 #include <string.h>
-#include <cstring>
-#include <sys/mount.h>
 #include <blkid/blkid.h>
 #include <libmount/libmount.h>
-#include <iostream>
+#include <sys/mount.h>
+#include <wali/DiskUtils.hpp>
 
 const fs::path HomeMnt{"/mnt/home"};
-//const fs::path BootMnt{"/mnt/boot"};
 const fs::path RootMnt{"/mnt"};
 const fs::path EfiMnt{"/mnt/efi"};
 const fs::path FsTabPath{"/mnt/etc/fstab"};

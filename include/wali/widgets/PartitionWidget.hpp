@@ -1,11 +1,11 @@
 #ifndef WALI_PARTITIONWIDGET_H
 #define WALI_PARTITIONWIDGET_H
 
-#include "wali/MessagesWidget.hpp"
+#include <wali/widgets/MessagesWidget.hpp>
 #include <Wt/WTable.h>
 
 #include <wali/Common.hpp>
-#include <walilib/disk_utils.hpp>
+#include <wali/DiskUtils.hpp>
 
 
 class PartitionsWidget : public Wt::WContainerWidget

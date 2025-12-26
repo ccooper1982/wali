@@ -14,15 +14,16 @@ plog_dep = dependency('plog') #header only, but points meson to the include dir
 wthttp_dep = meson.get_compiler('cpp').find_library('wthttp', required: true)
 wt_dep = dependency('wt', required: true)
 
-libwali_proj = subproject('walilib')
-libwali_dep = libwali_proj.get_variable('libwali_dep')
+# libmount and libmount
+blkid_dep = dependency('blkid', required: true)
+libmount_dep = dependency('mount', required: true)
 
 includes = include_directories(['include'])
-sources = ['src/wali.cpp']
+sources = ['src/wali.cpp', 'src/disk_utils.cpp']
 
 executable(
   meson.project_name(),
   sources,
   include_directories: includes,
-  dependencies: [wthttp_dep, wt_dep, plog_dep, libwali_dep],
+  dependencies: [wthttp_dep, wt_dep, plog_dep, blkid_dep, libmount_dep],
 )

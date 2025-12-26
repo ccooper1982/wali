@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <walilib/common.hpp>
+#include <wali/Common.hpp>
 
 
 extern const fs::path HomeMnt;

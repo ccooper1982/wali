@@ -1,18 +1,10 @@
 #ifndef WALI_ACCOUNTSIDGET_H
 #define WALI_ACCOUNTSIDGET_H
 
-#include "wali/MessagesWidget.hpp"
-#include <Wt/WBreak.h>
 #include <Wt/WCheckBox.h>
-#include <Wt/WContainerWidget.h>
 #include <Wt/WGlobal.h>
-#include <Wt/WGroupBox.h>
-#include <Wt/WHBoxLayout.h>
-#include <Wt/WLabel.h>
-#include <Wt/WLayout.h>
-#include <Wt/WLineEdit.h>
 #include <wali/Common.hpp>
-
+#include <wali/widgets/MessagesWidget.hpp>
 
 class AccountWidget : public Wt::WContainerWidget
 {

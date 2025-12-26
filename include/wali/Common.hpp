@@ -1,6 +1,7 @@
 #ifndef WALI_COMMON_H
 #define WALI_COMMON_H
 
+#include <filesystem>
 #include <math.h>
 #include <plog/Log.h>
 #include <Wt/WCheckBox.h>
@@ -9,10 +10,33 @@
 #include <Wt/WHBoxLayout.h>
 #include <Wt/WVBoxLayout.h>
 #include <Wt/WGridLayout.h>
+#include <Wt/WLabel.h>
 #include <Wt/WLineEdit.h>
 #include <Wt/WText.h>
 
+
 using namespace Wt;
+
+
+namespace fs = std::filesystem;
+
+static inline const fs::path InstallLogPath {"/var/log/ali/install.log"};
+
+enum class GpuVendor
+{
+  Unknown,
+  Amd,
+  Nvidia,
+  VM,
+  Intel
+};
+
+enum class CpuVendor
+{
+  None,
+  Amd,
+  Intel
+};
 
 static inline std::string format_size(const int64_t size)
 {

@@ -13,11 +13,12 @@
 #include <plog/Init.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 
-#include <wali/AccountsWidget.hpp>
-#include <wali/IntroductionWidget.hpp>
 #include <wali/LogFormat.hpp>
-#include <wali/NetworkWidget.hpp>
-#include <wali/PartitionWidget.hpp>
+#include <wali/widgets/AccountsWidget.hpp>
+#include <wali/widgets/IntroductionWidget.hpp>
+#include <wali/widgets/NetworkWidget.hpp>
+#include <wali/widgets/PartitionWidget.hpp>
+
 
 static plog::ColorConsoleAppender<WaliFormatter> consoleAppender;
 
