@@ -2,6 +2,7 @@
 #define WALI_COMMON_H
 
 #include <math.h>
+#include <plog/Log.h>
 #include <Wt/WCheckBox.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WContainerWidget.h>

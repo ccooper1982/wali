@@ -19,11 +19,6 @@ public:
   IntroductionWidget()
   {
     addWidget(make_wt<Wt::WText>(text));
-
-    // auto msg = addWidget(make_wt<MessageWidget>());
-    // msg->add("Warning", MessageWidget::Level::Warning);
-    // msg->add("Error", MessageWidget::Level::Error);
-    // msg->add("Info", MessageWidget::Level::Info);
   }
 };
 

@@ -1,21 +1,41 @@
-#include <Wt/WContainerWidget.h>
-#include <map>
 #include <math.h>
-#include <string_view>
+
 #include <Wt/WApplication.h>
+#include <Wt/WContainerWidget.h>
+#include <Wt/WMenu.h>
 #include <Wt/WMenuItem.h>
 #include <Wt/WPanel.h>
 #include <Wt/WPopupMenu.h>
 #include <Wt/WPopupMenuItem.h>
-#include <Wt/WMenu.h>
 #include <Wt/WStackedWidget.h>
 #include <Wt/WTextArea.h>
-#include <Wt/WWidget.h>
+
+#include <plog/Init.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 #include <wali/AccountsWidget.hpp>
 #include <wali/IntroductionWidget.hpp>
+#include <wali/LogFormat.hpp>
 #include <wali/NetworkWidget.hpp>
 #include <wali/PartitionWidget.hpp>
+
+static plog::ColorConsoleAppender<WaliFormatter> consoleAppender;
+
+inline void init_logger ()
+{
+  static bool init = false;
+
+  if (!init)
+  {
+    #ifdef WALI_DEBUG
+      plog::init(plog::verbose, &consoleAppender);
+    #else
+      plog::init(plog::info, &consoleAppender);
+    #endif
+  }
+
+  init = true;
+}
 
 
 class HelloApplication : public Wt::WApplication
@@ -46,6 +66,10 @@ public:
 
 int main(int argc, char **argv)
 {
+  init_logger();
+
+  PLOGI << "Starting webtoolkit";
+
   return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
   {
     return std::make_unique<HelloApplication>(env);

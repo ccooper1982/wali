@@ -1,0 +1,13 @@
+[wrap-file]
+directory = plog-1.1.10
+source_url = https://github.com/SergiusTheBest/plog/archive/1.1.10.tar.gz
+source_filename = plog-1.1.10.tar.gz
+source_hash = 55a090fc2b46ab44d0dde562a91fe5fc15445a3caedfaedda89fe3925da4705a
+patch_filename = sergiusthebest-plog_1.1.10-2_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/sergiusthebest-plog_1.1.10-2/get_patch
+patch_hash = d363cd5a188f6b9357d47011b6c03043d4845a437117e72b11f282861c56824b
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/sergiusthebest-plog_1.1.10-2/plog-1.1.10.tar.gz
+wrapdb_version = 1.1.10-2
+
+[provide]
+plog = plog_dep

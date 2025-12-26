@@ -6,9 +6,13 @@ project(
   default_options: ['cpp_std=c++23'],
 ) # TODO warning_level/werror
 
-wt_dep = dependency('wt', required: true)
+# plog logging library
+subproject('sergiusthebest-plog')
+plog_dep = dependency('plog') #header only, but points meson to the include dir
+
 # dependency() does not find wthttp lib
 wthttp_dep = meson.get_compiler('cpp').find_library('wthttp', required: true)
+wt_dep = dependency('wt', required: true)
 
 libwali_proj = subproject('walilib')
 libwali_dep = libwali_proj.get_variable('libwali_dep')
@@ -20,5 +24,5 @@ executable(
   meson.project_name(),
   sources,
   include_directories: includes,
-  dependencies: [wthttp_dep, wt_dep, libwali_dep],
+  dependencies: [wthttp_dep, wt_dep, plog_dep, libwali_dep],
 )
