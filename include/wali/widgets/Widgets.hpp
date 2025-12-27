@@ -4,8 +4,7 @@
 #include <concepts>
 #include <Wt/WMenu.h>
 #include <Wt/WWidget.h>
-#include <utility>
-#include <wali/Common.hpp>
+#include <wali/widgets/Common.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
 #include <wali/widgets/IntroductionWidget.hpp>
 #include <wali/widgets/InstallWidget.hpp>
@@ -18,33 +17,16 @@
 //    - This may be better long term if more pages/sections are added
 struct Widgets
 {
-  static void create_intro(WMenu * menu)
-  {
-    add_menu_widget<IntroductionWidget>(menu, "Introduction");
-  }
-
-  static void create_partitions(WMenu * menu)
-  {
-    add_menu_widget<PartitionsWidget>(menu, "Partitions");
-  }
-
-  static void create_network(WMenu * menu)
-  {
-    add_menu_widget<NetworkWidget>(menu, "Network");
-  }
-
-  static void create_accounts(WMenu * menu)
-  {
-    add_menu_widget<AccountWidget>(menu, "Accounts");
-  }
-
+  static void create_intro(WMenu * menu) { add_menu_widget<IntroductionWidget>(menu, "Introduction"); }
+  static void create_partitions(WMenu * menu) { add_menu_widget<PartitionsWidget>(menu, "Partitions"); }
+  static void create_network(WMenu * menu) { add_menu_widget<NetworkWidget>(menu, "Network"); }
+  static void create_accounts(WMenu * menu) { add_menu_widget<AccountWidget>(menu, "Accounts"); }
   static void create_install(WMenu * menu)
   {
     // InstallWidget requires the menu
     add_menu_widget<InstallWidget>(menu, "Install", menu);
   }
 
-  //
   IntroductionWidget * get_intro(WMenu * menu) { return get<IntroductionWidget>(menu, "Introduction"); }
   PartitionsWidget * get_partitions(WMenu * menu) { return get<PartitionsWidget>(menu, "Partitions"); }
   NetworkWidget * get_network(WMenu * menu) { return get<NetworkWidget>(menu, "Network"); }
@@ -52,6 +34,7 @@ struct Widgets
   InstallWidget * get_install(WMenu * menu) { return get<InstallWidget>(menu, "Install"); }
 
 private:
+
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
   static void add_menu_widget(WMenu * menu, const std::string_view name, Args... args)
   {

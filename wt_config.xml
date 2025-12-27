@@ -7,7 +7,7 @@
                 name="resourcesURL"
             >/home/callum/projects/awi/build/wwwroot/resources/</property>
         </properties> -->
-        <debug>true</debug>
+        <debug>false</debug>
         <debug-level>all</debug-level>
     </application-settings>
 

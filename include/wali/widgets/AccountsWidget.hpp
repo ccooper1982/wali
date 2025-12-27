@@ -4,9 +4,10 @@
 #include <Wt/WCheckBox.h>
 #include <Wt/WGlobal.h>
 #include <wali/Common.hpp>
+#include <wali/widgets/Common.hpp>
 #include <wali/widgets/MessagesWidget.hpp>
 
-class AccountWidget : public Wt::WContainerWidget
+class AccountWidget : public WContainerWidget
 {
   template<typename WidgetT>
   WidgetT* add_form_pair (WLayout * parent_layout, const std::string_view label_text)
