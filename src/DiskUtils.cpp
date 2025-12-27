@@ -4,6 +4,7 @@
 #include <blkid/blkid.h>
 #include <libmount/libmount.h>
 #include <sys/mount.h>
+#include <plog/Log.h>
 #include <wali/DiskUtils.hpp>
 
 const fs::path HomeMnt{"/mnt/home"};
@@ -53,13 +54,13 @@ struct Probe
 
 bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
 {
-  // TODO logging // qDebug() << "Enter";
+  PLOGD << __PRETTY_FUNCTION__ << " Enter";
 
   m_parts.clear();
 
   const auto tree = create_tree();
 
-  std::cout << "do_probe(): tree " << tree.size() << '\n';
+  PLOGI << "Found " << tree.size() << " devices";
 
   // for each disk, if partition table is GPT, read partition
   for(const auto& [disk, parts] : tree)
@@ -89,7 +90,7 @@ bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
             partition.parent_dev = disk;
             partition.is_gpt = is_gpt;
 
-            std::cout << partition; // TODO logging
+            PLOGI << partition;
 
             m_parts.push_back(std::move(partition));
           }
@@ -103,7 +104,6 @@ bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
     return a.dev < b.dev;
   });
 
-  // TODO logging // qDebug() << "Leave";
   return true;
 }
 
@@ -138,17 +138,11 @@ PartitionUtils::Tree PartitionUtils::create_tree()
 
 
   if (blkid_cache cache; blkid_get_cache(&cache, nullptr) != 0)
-  {
-    std::cout << "could not create blkid cache\n";
-    // TODO logging // qCritical() << "could not create blkid cache";
-  }
+    PLOGE << "Could not create blkid cache";
   else
   {
     if (blkid_probe_all(cache) != 0)
-    {
-      std::cout << "blkid cache probe failed\n";
-      // TODO logging // qCritical() << "blkid cache probe failed";
-    }
+      PLOGE << "blkid cache probe failed";
     else
     {
       // iterate block devices: this can return partitions or disks
@@ -172,7 +166,7 @@ std::tuple<PartitionStatus, Partition> PartitionUtils::probe_partition(const std
 {
   static const unsigned SectorsPerPartSize = 512;
 
-  // TODO logging // qDebug() << "Enter: " << part_dev;
+  PLOGD << "probe_partition(): " << part_dev;
 
   auto make_error = []{ return std::make_pair(PartitionStatus::Error, Partition{}); };
 
@@ -188,7 +182,7 @@ std::tuple<PartitionStatus, Partition> PartitionUtils::probe_partition(const std
   // full probe required for PART_ENTRY values
   if (const int r = blkid_do_fullprobe(pr) ; r == BLKID_PROBE_ERROR)
   {
-    // TODO logging // qCritical() << "fullprobe failed: " << strerror(r);
+    PLOGE << "Fullprobe failed: " << strerror(r);
     return make_error();
   }
   else
@@ -234,7 +228,7 @@ std::tuple<PartitionStatus, Partition> PartitionUtils::probe_partition(const std
       }
       else
       {
-        // TODO logging // qCritical() << "could not get vfat version";
+        PLOGE << "Could not get vfat version";
         status = PartitionStatus::Error;
       }
     }

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <iterator>
 #include <math.h>
 
 #include <Wt/WApplication.h>
@@ -16,9 +18,10 @@
 #include <wali/LogFormat.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
 #include <wali/widgets/IntroductionWidget.hpp>
+#include <wali/widgets/InstallWidget.hpp>
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PartitionWidget.hpp>
-
+#include <wali/widgets/Widgets.hpp>
 
 static plog::ColorConsoleAppender<WaliFormatter> consoleAppender;
 
@@ -42,7 +45,7 @@ inline void init_logger ()
 class HelloApplication : public Wt::WApplication
 {
 public:
-  HelloApplication(const Wt::WEnvironment& env) : Wt::WApplication(env)
+  HelloApplication(const Wt::WEnvironment& env) : WApplication(env)
   {
     setTitle("wali");
 
@@ -56,11 +59,14 @@ public:
 
     menu_container->setStyleClass("menu");
 
-    auto menu = menu_container->addNew<Wt::WMenu>(menu_contents);
-    menu->addItem("Introduction", make_wt<IntroductionWidget>());
-    menu->addItem("Partitions",   make_wt<PartitionsWidget>());
-    menu->addItem("Network",      make_wt<NetworkWidget>());
-    menu->addItem("Accounts",     make_wt<AccountWidget>());
+    auto menu = menu_container->addNew<WMenu>(menu_contents);
+    Widgets::create_intro(menu);
+    Widgets::create_partitions(menu);
+    Widgets::create_network(menu);
+    Widgets::create_accounts(menu);
+    Widgets::create_install(menu);
+
+    PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme() ,env.hostName());
   }
 };
 
