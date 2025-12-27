@@ -66,7 +66,7 @@ protected:
     int stat{CmdFail};
 
     // redirect stderr to stdout (pacstrap, and perhaps others, output errors to stderr)
-    if (m_fd = ::popen(std::format("{} {}", cmd, "2>&1").data(), "r"); m_fd)
+    if (m_fd = ::popen(std::format("{} 2>&1", cmd).data(), "r"); m_fd)
     {
       char buff[4096];
       int n_lines{0};
@@ -99,7 +99,7 @@ protected:
 
       if (stat != CmdSuccess)
       {
-        PLOGE << "Command {" << cmd << "} failed: " << ::strerror(stat);
+        PLOGE << "Command '" << cmd << "' failed: " << ::strerror(stat);
       }
     }
 

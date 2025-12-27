@@ -50,9 +50,11 @@ static std::pair<int, bool> check_programs_exist()
     #endif
   };
 
-  for (const auto& cmd : Programs)
+  ProgramExists command;
+  for (const auto& prog : Programs)
   {
-    // TODO
+    if (const auto [stat, exists] = command(prog); stat != CmdSuccess)
+      return {CmdFail, false};
   }
 
   return {CmdSuccess, true};
@@ -78,7 +80,6 @@ static std::tuple<bool, std::string> startup_checks()
     return fail("Not all required commands exist");
   else if (!check(PlatformSizeValid{}))
     return fail("Platform size not found or not 64bit");
-  //
   // else if (!check(check_connection))
   //   return fail("No active internet connection");
   // else if (!check(sync_system_clock))
@@ -133,7 +134,7 @@ int main(int argc, char **argv)
 
   return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
   {
-    // server already running by now, need to start manually
+    // server already running by now, need to start manually so this log entry is easier to notice
     PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme() ,env.hostName());
 
     return std::make_unique<HelloApplication>(env);
