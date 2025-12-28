@@ -51,11 +51,14 @@ class ReadCommand : public Command
 public:
   ReadCommand() = default;
 
-protected:
-
   int execute_read_line (const std::string_view cmd, OutputHandler&& handler)
   {
     return execute_read(cmd, std::move(handler), 1);
+  }
+
+  int execute(const std::string_view cmd)
+  {
+    return execute_read(cmd, nullptr, 1);
   }
 
   int execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
@@ -110,33 +113,29 @@ protected:
 
 struct PlatformSizeValid : public ReadCommand
 {
-  std::tuple<int, bool> operator()()
+  bool operator()()
   {
-    int size{0}, stat{CmdFail};
-
     static const std::filesystem::path file {"/sys/firmware/efi/fw_platform_size"};
+
+    int size{0};
 
     if (std::filesystem::exists(file) && std::filesystem::file_size(file))
     {
       std::string str;
       // should only ever be one line in this file
       std::ifstream stream{file};
-      std::getline(stream, str);
-      if (!str.empty())
-      {
+      if (std::getline(stream, str); !str.empty())
         size = std::stoi(str);
-        stat = CmdSuccess;
-      }
     }
 
-    return {stat, size == 64};
+    return size == 64;
   }
 };
 
 
 struct GetCpuVendor : public ReadCommand
 {
-  std::tuple<int, CpuVendor> operator()()
+  std::tuple<bool, CpuVendor> operator()()
   {
     CpuVendor vendor = CpuVendor::None;
 
@@ -148,7 +147,7 @@ struct GetCpuVendor : public ReadCommand
         vendor = CpuVendor::Intel;
     });
 
-    return {stat, vendor};
+    return {stat == CmdSuccess, vendor};
   }
 };
 
@@ -184,5 +183,29 @@ struct GetTimeZones : public ReadCommand
     return {stat, zones};
   }
 };
+
+
+// filesystems
+inline const constexpr char ext4[] = "ext4";
+inline const constexpr char vfat32[] = "vfat -F 32";
+
+template<const char * cmd>
+struct CreateFilesystem : public ReadCommand
+{
+  bool operator()(const std::string_view dev)
+  {
+    // const auto stat = execute_read(std::format("mkfs.{} {}", cmd, dev), [](const std::string_view m)
+    // {
+    //   PLOGI << m;
+    // });
+    // PLOGE << "stat=" << stat;
+    // return stat == CmdSuccess;
+    return execute(std::format("mkfs.{} {}", cmd, dev)) == CmdSuccess;
+  }
+};
+
+using CreateExt4Filesystem = CreateFilesystem<ext4>;
+using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
+
 
 #endif

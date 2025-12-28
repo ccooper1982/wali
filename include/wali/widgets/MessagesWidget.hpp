@@ -1,7 +1,7 @@
 #ifndef WALI_MESSAGESWIDGET_H
 #define WALI_MESSAGESWIDGET_H
 
-#include <Wt/WVBoxLayout.h>
+#include <wali/widgets/Common.hpp>
 #include <wali/Common.hpp>
 
 class MessageWidget : public WContainerWidget

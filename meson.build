@@ -19,7 +19,7 @@ blkid_dep = dependency('blkid', required: true)
 libmount_dep = dependency('mount', required: true)
 
 includes = include_directories(['include'])
-sources = ['src/Wali.cpp', 'src/DiskUtils.cpp']
+sources = ['src/Wali.cpp', 'src/DiskUtils.cpp', 'src/Install.cpp']
 
 executable(
   meson.project_name(),

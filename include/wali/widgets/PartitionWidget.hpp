@@ -7,7 +7,8 @@
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
 
-
+// TODO
+//  - Allow /home mount to existing partition (no wipe, no create filesystem)
 class PartitionsWidget : public Wt::WContainerWidget
 {
   using DeviceChange = std::function<void(const std::string_view)>;
@@ -90,14 +91,14 @@ class PartitionsWidget : public Wt::WContainerWidget
 
   struct RootPartitionWidget final : public PartitionWidget
   {
-    RootPartitionWidget() : PartitionWidget("Root", {"ext4", "btrfs"})
+    RootPartitionWidget() : PartitionWidget("Root", {"ext4"/*, "btrfs"*/})
     {}
   };
 
   struct HomePartitionWidget final : public PartitionWidget
   {
     HomePartitionWidget(std::function<void(bool)> on_mount_to_root) :
-      PartitionWidget("Home", {"ext4", "btrfs"}),
+      PartitionWidget("Home", {"ext4"/*, "btrfs"*/}),
       m_on_mount_to_root(on_mount_to_root)
     {
 
@@ -218,6 +219,20 @@ public:
       m_messages->add("/home is mounted on the root partition", MessageWidget::Level::Warning);
   }
 
+  const BootPartitionWidget * get_boot() const
+  {
+    return m_boot;
+  }
+
+  const RootPartitionWidget * get_root() const
+  {
+    return m_root;
+  }
+
+  const HomePartitionWidget * get_home() const
+  {
+    return m_home;
+  }
 private:
   BootPartitionWidget * m_boot;
   RootPartitionWidget * m_root;
