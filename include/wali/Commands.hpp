@@ -108,23 +108,6 @@ protected:
 };
 
 
-// class WriteCommand : public Command
-// {
-// public:
-//   WriteCommand(const std::string_view cmd = {})
-//   {
-
-//   }
-
-// protected:
-//   int execute_write (OutputHandler&& hnadler)
-//   {
-
-//     return 0;
-//   }
-// };
-
-
 struct PlatformSizeValid : public ReadCommand
 {
   std::tuple<int, bool> operator()()
@@ -149,6 +132,7 @@ struct PlatformSizeValid : public ReadCommand
     return {stat, size == 64};
   }
 };
+
 
 struct GetCpuVendor : public ReadCommand
 {
@@ -182,6 +166,7 @@ struct ProgramExists : public ReadCommand
     return {stat, exists};
   }
 };
+
 
 struct GetTimeZones : public ReadCommand
 {

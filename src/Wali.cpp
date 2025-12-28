@@ -76,7 +76,7 @@ static std::tuple<bool, std::string> startup_checks()
 
   if (!check(GetCpuVendor{}))
     return fail("CPU vendor not Intel/AMD, or not found");
-  else if (!check(check_programs_exist))
+  else if (!check(check_programs_exist)) // TODO show the missing command(s)
     return fail("Not all required commands exist");
   else if (!check(PlatformSizeValid{}))
     return fail("Platform size not found or not 64bit");

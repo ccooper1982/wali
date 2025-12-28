@@ -1,5 +1,5 @@
 project(
-  'awi',
+  'wali',
   'cpp',
   version: '0.1',
   meson_version: '>= 1.1', # for meson.options
