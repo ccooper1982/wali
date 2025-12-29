@@ -111,6 +111,21 @@ public:
 };
 
 
+class WriteCommand : public Command
+{
+public:
+  int execute (const std::string_view cmd, const std::string_view input)
+  {
+    if (m_fd = ::popen(cmd.data(), "w"); m_fd)
+    {
+      fputs(input.data(), m_fd);
+      return close();
+    }
+    return CmdFail;
+  }
+};
+
+
 struct PlatformSizeValid : public ReadCommand
 {
   bool operator()()
@@ -207,5 +222,29 @@ struct CreateFilesystem : public ReadCommand
 using CreateExt4Filesystem = CreateFilesystem<ext4>;
 using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
 
+
+// chroot
+struct Chroot : public ReadCommand
+{
+  bool operator()(const std::string_view cmd)
+  {
+    const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
+
+    const auto stat = execute_read(chroot_cmd, [](const std::string_view m)
+    {
+      PLOGI << m;
+    });
+
+    return stat == CmdSuccess;
+  }
+};
+
+struct ChrootWrite : public WriteCommand
+{
+  bool operator()(const std::string_view cmd, const std::string_view input)
+  {
+    return execute(std::format("arch-chroot {} {}", RootMnt.string(), cmd), input) == CmdSuccess;
+  }
+};
 
 #endif

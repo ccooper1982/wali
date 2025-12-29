@@ -3,20 +3,21 @@
 
 #include <Wt/WCheckBox.h>
 #include <Wt/WGlobal.h>
+#include <string>
 #include <wali/Common.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/MessagesWidget.hpp>
 
 class AccountWidget : public WContainerWidget
 {
-  template<typename WidgetT>
-  WidgetT* add_form_pair (WLayout * parent_layout, const std::string_view label_text)
+  template<typename WidgetT, typename ...WidgetArgs>
+  WidgetT* add_form_pair (WLayout * parent_layout, const std::string_view label_text, WidgetArgs&&... widget_args)
   {
     auto cont = make_wt<WContainerWidget>();
     auto layout = cont->setLayout(make_wt<WHBoxLayout>());
 
     auto label = layout->addWidget(make_wt<WLabel>(label_text.data()));
-    auto widget = layout->addWidget(make_wt<WidgetT>());
+    auto widget = layout->addWidget(make_wt<WidgetT>(widget_args...));
     label->setBuddy(widget);
 
     layout->addStretch(1);
@@ -39,7 +40,7 @@ public:
 
     {
       cont_layout->addWidget(make_wt<WLabel>("<h2>Root</h2>"));
-      m_root_password = add_form_pair<WLineEdit>(cont_layout, "Password");
+      m_root_password = add_form_pair<WLineEdit>(cont_layout, "Password", "arch");
 
       cont_layout->addWidget(make_wt<WLabel>("<h2>User</h2>"));
       m_user_username = add_form_pair<WLineEdit>(cont_layout, "Username");
@@ -60,6 +61,22 @@ public:
 
     layout->addStretch(1);
   }
+
+  const std::string get_root_password() const
+  {
+    return m_root_password->valueText().toUTF8();
+  }
+
+  const std::string get_user_username() const
+  {
+    return m_user_username->valueText().toUTF8();
+  }
+
+  const std::string get_user_password() const
+  {
+    return m_user_password->valueText().toUTF8();
+  }
+
 
 private:
   Wt::WLineEdit * m_root_password,

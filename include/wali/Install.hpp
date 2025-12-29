@@ -7,6 +7,7 @@
 #include <wali/Common.hpp>
 
 
+
 enum class InstallState
 {
   None,
@@ -57,6 +58,7 @@ private:
   bool create_ext4_filesystem(const std::string_view part_dev);
   void set_partition_type(const std::string_view part_dev, const std::string_view type);
   bool wipe_fs(const std::string_view dev);
+  bool fstab ();
 
   // mounting
   bool mount();
@@ -64,6 +66,15 @@ private:
 
   // pacman
   bool pacstrap();
+  bool install_packages(const std::vector<std::string>& packages);
+
+  // acounts
+  bool root_account();
+  bool set_password(const std::string_view user, const std::string_view pass);
+
+  // boot loader
+  bool boot_loader();
+
 
 private:
   void log_stage_start(const std::string_view stage)

@@ -1,3 +1,6 @@
+#include "wali/Common.hpp"
+#include <cstring>
+#include <filesystem>
 #include <sys/mount.h>
 #include <system_error>
 #include <wali/Commands.hpp>
@@ -8,11 +11,6 @@
 static const constexpr char PartTypeEfi[] = "ef00";
 static const constexpr char PartTypeRoot[] = "8304";
 static const constexpr char PartTypeHome[] = "8302";
-
-static const fs::path RootMnt{"/mnt"};
-static const fs::path EfiMnt{"/mnt/efi"};
-static const fs::path HomeMnt{"/mnt/home"};
-static const fs::path FsTabPath{"/mnt/etc/fstab"};
 
 
 void Install::install(Handlers&& handlers)
@@ -40,9 +38,15 @@ void Install::install(Handlers&& handlers)
 
   try
   {
-    const bool minimal =  exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "filesystems") &&
-                          exec_stage(std::bind(&Install::mount, std::ref(*this)), "mount") &&
-                          exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "pacstrap");
+    // TODO swap, network, time (need timezones)
+
+    // commands after fstab are done with arch-chroot
+    const bool minimal =  exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "Create Filesystems") &&
+                          exec_stage(std::bind(&Install::mount, std::ref(*this)), "Mounting") &&
+                          exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "Pacstrap") &&
+                          exec_stage(std::bind(&Install::fstab, std::ref(*this)), "Generate fstab") &&
+                          exec_stage(std::bind(&Install::root_account, std::ref(*this)), "Root Account") &&
+                          exec_stage(std::bind(&Install::boot_loader, std::ref(*this)), "Boot loader");
 
     if (minimal)
     {
@@ -62,12 +66,9 @@ bool Install::filesystems()
   const auto root = Widgets::get_partitions()->get_root();
   const auto home = Widgets::get_partitions()->get_home();
 
-  log_info(std::format("\n/boot -> {} with {}"
-                       "\n/ -> {} with {}"
-                       "\n/home -> {} with {}",
-                       boot->get_device(), boot->get_fs(),
-                       root->get_device(), root->get_fs(),
-                       home->get_device(), home->get_fs()));
+  log_info(std::format("/     -> {} with {}", root->get_device(), root->get_fs()));
+  log_info(std::format("/boot -> {} with {}", boot->get_device(), boot->get_fs()));
+  log_info(std::format("/home -> {} with {}",home->get_device(), home->get_fs()));
 
   bool boot_root_valid{false}, home_valid{true};
 
@@ -183,8 +184,11 @@ bool Install::pacstrap()
     "dmidecode",      // BIOS / hardware info, may not actually be useful for most users
     "e2fsprogs",      // useful
     "gpm",            // laptop touchpad support
-    "less"            // useful
+    "less",           // useful
+    "linux"
   };
+
+  log_info("This may take a while, depending on your connection speed");
 
   std::stringstream cmd_string;
   cmd_string << "pacstrap -K " <<  RootMnt.string();
@@ -201,4 +205,89 @@ bool Install::pacstrap()
     log_error("Pacstrap encountered an error");
 
   return stat == CmdSuccess;
+}
+
+
+// fstab
+bool Install::fstab ()
+{
+  fs::create_directory((RootMnt / FsTabPath).parent_path());
+
+  int stat{CmdFail};
+
+  ReadCommand cmd;
+  stat = cmd.execute(std::format("genfstab -U {} > {}", RootMnt.string(), FsTabPath.string()));
+  if (stat != CmdSuccess)
+    log_error(std::format("genfstab failed: {}", ::strerror(stat)));
+
+  return stat == CmdSuccess;
+}
+
+// accounts
+bool Install::root_account()
+{
+  const auto root_password = Widgets::get_account()->get_root_password();
+
+  bool set{};
+  if (root_password.empty())
+    log_error("Root password empty");
+  else
+    set = set_password("root", root_password);
+
+  return set;
+}
+
+bool Install::set_password(const std::string_view user, const std::string_view pass)
+{
+  log_info(std::format("Setting password for {}", user));
+
+  ChrootWrite cmd;
+  return cmd("chpasswd", std::format("{}:{}", user, pass));
+}
+
+// boot loader
+bool Install::boot_loader()
+{
+  const fs::path EfiConfigTargetDir{"/efi/grub"};
+  const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
+
+  // TODO systemd-boot
+  if (!install_packages({"grub", "efibootmgr", "os-prober"}))
+  {
+    log_error("Failed to install packages required for grub");
+    return false;
+  }
+
+  // install
+  const auto install_cmd = std::format("grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --bootloader-id=GRUB");
+
+  if (!Chroot{}(install_cmd))
+  {
+    log_error("grub-install failed");
+    return false;
+  }
+
+  // configure
+  fs::create_directory(EfiMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/efi/grub
+
+  const auto config_cmd = std::format("grub-mkconfig -o {}", EfiConfigTarget.string());
+  return Chroot{}(config_cmd);
+}
+
+// general
+bool Install::install_packages(const std::vector<std::string>& packages)
+{
+  if (packages.empty())
+    return true;
+
+  std::stringstream ss;
+  ss << "pacman -S --noconfirm ";
+  for (const auto& package : packages)
+    ss << package << ' ';
+
+  const auto ok = Chroot{}(ss.str());
+  if (!ok)
+    log_error("pacman failed to install to package(s)");
+
+  return ok;
 }
