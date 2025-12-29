@@ -4,6 +4,7 @@
 #include <Wt/WMenu.h>
 #include <Wt/WPushButton.h>
 #include <exception>
+#include <future>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Common.hpp>
@@ -17,8 +18,9 @@ public:
 
     m_install_btn = layout->addWidget(make_wt<WPushButton>("Install"));
     m_install_btn->setStyleClass("install");
+
+    m_install_btn->clicked().connect(m_install_btn, &Wt::WPushButton::disable);
     m_install_btn->clicked().connect(std::bind(&InstallWidget::install, std::ref(*this)));
-    m_install_btn->enterPressed().connect(std::bind(&InstallWidget::install, std::ref(*this)));
 
     layout->addStretch(1);
   }
@@ -27,9 +29,6 @@ private:
   void install ()
   {
     PLOGI << "Starting install";
-
-    // TODO should the install run in a separate thread? It did with Qt to avoid blocking
-    //      the UI thread
 
     auto on_state = [](const std::string_view name, const StageStatus state)
     {
@@ -105,10 +104,19 @@ private:
 
     try
     {
-      m_install_btn->disable();
+      // TODO
+      //  1. m_install_btn->disable() does not disable the button until install completes
+      //  2. Don't actually know if a separate thread is required
 
-      Install install;
-      install.install({.stage_change = on_state, .complete = on_complete, .log = on_log});
+      //m_install_btn->disable();
+
+      auto future = std::async(std::launch::async, [=]
+      {
+        Install install;
+        install.install({.stage_change = on_state, .complete = on_complete, .log = on_log});
+      });
+
+      future.wait();
     }
     catch (const std::exception& ex)
     {

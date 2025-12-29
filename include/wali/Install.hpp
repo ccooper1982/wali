@@ -62,6 +62,9 @@ private:
   bool mount();
   bool do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs);
 
+  // pacman
+  bool pacstrap();
+
 private:
   void log_stage_start(const std::string_view stage)
   {

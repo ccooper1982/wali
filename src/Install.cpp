@@ -41,7 +41,8 @@ void Install::install(Handlers&& handlers)
   try
   {
     const bool minimal =  exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "filesystems") &&
-                          exec_stage(std::bind(&Install::mount, std::ref(*this)), "mount") ;
+                          exec_stage(std::bind(&Install::mount, std::ref(*this)), "mount") &&
+                          exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "pacstrap");
 
     if (minimal)
     {
@@ -164,6 +165,40 @@ bool Install::do_mount(const std::string_view dev, const std::string_view path, 
 
   if (stat != CmdSuccess)
     log_error(std::format("do_mount(): {} -> {} {}", path, dev, ::strerror(errno)));
+
+  return stat == CmdSuccess;
+}
+
+
+// pacstrap
+bool Install::pacstrap()
+{
+  static const std::set<std::string> Packages =
+  {
+    "base",
+    "usb_modeswitch", // for usb devices that can switch modes (recharging/something else)
+    "usbmuxd",
+    "usbutils",
+    "reflector",      // pacman mirrors list
+    "dmidecode",      // BIOS / hardware info, may not actually be useful for most users
+    "e2fsprogs",      // useful
+    "gpm",            // laptop touchpad support
+    "less"            // useful
+  };
+
+  std::stringstream cmd_string;
+  cmd_string << "pacstrap -K " <<  RootMnt.string();
+  for (const auto& package : Packages)
+    cmd_string << ' ' << package;
+
+  ReadCommand cmd;
+  const int stat = cmd.execute_read_line(cmd_string.str(), [this](const std::string_view m)
+  {
+    log_info(m);
+  });
+
+  if (stat != CmdSuccess)
+    log_error("Pacstrap encountered an error");
 
   return stat == CmdSuccess;
 }

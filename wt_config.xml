@@ -1,7 +1,7 @@
 <server>
     <application-settings location="*">
         <web-sockets>true</web-sockets>
-        <num-threads>1</num-threads>
+        <num-threads>2</num-threads>
         <!-- <properties>
             <property
                 name="resourcesURL"
