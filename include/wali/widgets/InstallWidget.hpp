@@ -33,23 +33,23 @@ private:
 
     auto on_state = [](const std::string_view name, const StageStatus state)
     {
-      std::string msg;
-      switch (state)
-      {
-        case StageStatus::Start:
-          msg = "started";
-        break;
+      // std::string msg;
+      // switch (state)
+      // {
+      //   case StageStatus::Start:
+      //     msg = "started";
+      //   break;
 
-        case StageStatus::Ok:
-          msg = "complete";
-        break;
+      //   case StageStatus::Complete:
+      //     msg = "complete";
+      //   break;
 
-        case StageStatus::Fail:
-          msg = "failed";
-        break;
-      }
+      //   case StageStatus::Fail:
+      //     msg = "failed";
+      //   break;
+      // }
 
-      PLOGI << name << msg;
+      // PLOGI << name << msg;
 
       // TODO update UI
     };
@@ -108,7 +108,7 @@ private:
       m_install_btn->disable();
 
       Install install;
-      install.install({.state_change = on_state, .complete = on_complete, .log = on_log});
+      install.install({.stage_change = on_state, .complete = on_complete, .log = on_log});
     }
     catch (const std::exception& ex)
     {

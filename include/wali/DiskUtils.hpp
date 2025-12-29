@@ -9,13 +9,6 @@
 #include <vector>
 #include <wali/Common.hpp>
 
-
-extern const fs::path HomeMnt;
-extern const fs::path RootMnt;
-extern const fs::path EfiMnt;
-extern const fs::path FsTabPath;
-
-
 // partitions, mounting, filesystems
 enum class PartitionStatus
 {

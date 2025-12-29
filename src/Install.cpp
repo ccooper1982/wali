@@ -1,3 +1,5 @@
+#include <sys/mount.h>
+#include <system_error>
 #include <wali/Commands.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Widgets.hpp>
@@ -7,20 +9,33 @@ static const constexpr char PartTypeEfi[] = "ef00";
 static const constexpr char PartTypeRoot[] = "8304";
 static const constexpr char PartTypeHome[] = "8302";
 
+static const fs::path RootMnt{"/mnt"};
+static const fs::path EfiMnt{"/mnt/efi"};
+static const fs::path HomeMnt{"/mnt/home"};
+static const fs::path FsTabPath{"/mnt/etc/fstab"};
+
+
 void Install::install(Handlers&& handlers)
 {
-  m_state_change = handlers.state_change;
+  m_stage_change = handlers.stage_change;
   m_complete = handlers.complete;
   m_log = handlers.log;
 
-  auto exec_stage = [this](std::function<StageStatus()> f, const std::string_view stage) mutable
+  auto exec_stage = [this](std::function<bool()> f, const std::string_view stage) mutable
   {
     log_stage_start(stage);
 
-    const StageStatus status = f();
-
-    log_stage_end(stage, status);
-    return status == StageStatus::Ok;
+    bool ok{false};
+    try
+    {
+      ok = f();
+    }
+    catch (const std::exception& ex)
+    {
+      m_complete(InstallState::Fail);
+      log_stage_end(stage, StageStatus::Fail);
+    }
+    return ok;
   };
 
   try
@@ -40,7 +55,7 @@ void Install::install(Handlers&& handlers)
 }
 
 
-StageStatus Install::filesystems()
+bool Install::filesystems()
 {
   const auto boot = Widgets::get_partitions()->get_boot();
   const auto root = Widgets::get_partitions()->get_root();
@@ -72,14 +87,14 @@ StageStatus Install::filesystems()
       {
         home_valid = wipe_fs(home->get_device()) &&
                      create_ext4_filesystem(home->get_device());
-      }
 
-      if (home_valid)
-        set_partition_type(home->get_device(), PartTypeHome);
+        if (home_valid)
+          set_partition_type(home->get_device(), PartTypeHome);
+      }
     }
   }
 
-  return boot_root_valid && home_valid ? StageStatus::Ok : StageStatus::Fail;
+  return boot_root_valid && home_valid;
 }
 
 bool Install::wipe_fs(const std::string_view dev)
@@ -91,7 +106,7 @@ bool Install::wipe_fs(const std::string_view dev)
 
 bool Install::create_boot_filesystem(const std::string_view part_dev)
 {
-  log_info(std::format("Creating boot on {}", part_dev));
+  log_info(std::format("Creating vfat32 on {}", part_dev));
   return CreateVfat32Filesystem{}(part_dev);
 }
 
@@ -111,9 +126,44 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
     log_warning(std::format("Set partition type failed on {}", part_dev));
 }
 
-// utils
-
-StageStatus Install::mount()
+// mount
+bool Install::mount()
 {
-  return StageStatus::Ok;
+  const auto root = Widgets::get_partitions()->get_root();
+  const auto boot = Widgets::get_partitions()->get_boot();
+  const auto home = Widgets::get_partitions()->get_home();
+
+  bool mounted_root{}, mounted_boot{}, mounted_home{true};
+
+  mounted_root = do_mount(root->get_device(), RootMnt.string(), root->get_fs());
+
+  if (mounted_root)
+  {
+    mounted_boot = do_mount(boot->get_device(), EfiMnt.string(), boot->get_fs());
+
+    if (home->get_device() != root->get_device())
+      mounted_home = do_mount(home->get_device(), HomeMnt.string(), home->get_fs());
+  }
+
+  return mounted_root && mounted_boot && mounted_home;
+}
+
+
+bool Install::do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs)
+{
+  log_info(std::format("Mounting {} onto {}", path, dev));
+
+  std::error_code ec;
+  if (fs::create_directory(path, ec); ec)
+  {
+    log_error(std::format("do_mount(): failed creating directory: {} - {}", path, ec.message()));
+    return false;
+  }
+
+  const int stat = ::mount(dev.data(), path.data(), fs.data(), 0, nullptr) ;
+
+  if (stat != CmdSuccess)
+    log_error(std::format("do_mount(): {} -> {} {}", path, dev, ::strerror(errno)));
+
+  return stat == CmdSuccess;
 }

@@ -85,7 +85,7 @@ class PartitionsWidget : public Wt::WContainerWidget
 
   struct BootPartitionWidget final : public PartitionWidget
   {
-    BootPartitionWidget() : PartitionWidget("Boot", {"vfat32"})
+    BootPartitionWidget() : PartitionWidget("Boot", {"vfat"})
     {}
   };
 

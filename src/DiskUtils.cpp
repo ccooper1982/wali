@@ -7,11 +7,6 @@
 #include <plog/Log.h>
 #include <wali/DiskUtils.hpp>
 
-const fs::path HomeMnt{"/mnt/home"};
-const fs::path RootMnt{"/mnt"};
-const fs::path EfiMnt{"/mnt/efi"};
-const fs::path FsTabPath{"/mnt/etc/fstab"};
-
 
 Partitions PartitionUtils::m_parts;
 

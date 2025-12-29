@@ -1,7 +1,6 @@
 #ifndef WALI_INSTALL_H
 #define WALI_INSTALL_H
 
-#include <exception>
 #include <format>
 #include <functional>
 #include <string_view>
@@ -21,7 +20,7 @@ enum class InstallState
 enum class StageStatus
 {
   Start,
-  Ok,
+  Complete,
   Fail
 };
 
@@ -32,13 +31,13 @@ enum class InstallLogLevel
   Error
 };
 
-using OnStateChange = std::function<void(const std::string_view, const StageStatus)>;
+using OnStageChange = std::function<void(const std::string_view, const StageStatus)>;
 using OnInstallComplete = std::function<void(const InstallState)>;
 using OnLog = std::function<void(const std::string_view, const InstallLogLevel)>;
 
 struct Handlers
 {
-  OnStateChange state_change;
+  OnStageChange stage_change;
   OnInstallComplete complete;
   OnLog log;
 };
@@ -51,27 +50,31 @@ public:
 
 private:
   // stages
-  StageStatus filesystems();
+
+  // filesystems
+  bool filesystems();
   bool create_boot_filesystem(const std::string_view part_dev);
   bool create_ext4_filesystem(const std::string_view part_dev);
   void set_partition_type(const std::string_view part_dev, const std::string_view type);
-
-  StageStatus mount();
-
-  // other
   bool wipe_fs(const std::string_view dev);
+
+  // mounting
+  bool mount();
+  bool do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs);
 
 private:
   void log_stage_start(const std::string_view stage)
   {
     PLOGI << "Stage start: " << stage;
     //std::format("{} - Start", stage)
+    m_stage_change(stage, StageStatus::Start);
   }
 
   void log_stage_end(const std::string_view stage, const StageStatus state)
   {
     PLOGI << "Stage end: " << stage;
     //std::format("{} - {}", stage, ok ? "Success" : "Fail")
+    m_stage_change(stage, state);
   }
 
   void log_info(const std::string_view msg)
@@ -86,8 +89,14 @@ private:
     m_log(msg, InstallLogLevel::Warning);
   }
 
+  void log_error(const std::string_view msg)
+  {
+    PLOGE << msg;
+    m_log(msg, InstallLogLevel::Error);
+  }
+
 private:
-  OnStateChange m_state_change;
+  OnStageChange m_stage_change;
   OnInstallComplete m_complete;
   OnLog m_log;
 };
