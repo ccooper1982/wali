@@ -79,9 +79,12 @@ private:
       std::string bootable_msg;
       switch (state)
       {
+      case InstallState::Complete:
+        bootable_msg = "Installed system completed without errors";
+      break;
+
       case InstallState::Bootable:
       case InstallState::Partial:
-      case InstallState::Complete:
         bootable_msg = "Installed system is bootable";
       break;
 

@@ -77,6 +77,11 @@ public:
     return m_user_password->valueText().toUTF8();
   }
 
+  const bool get_user_can_sudo() const
+  {
+    return m_user_sudo->isChecked();
+  }
+
 
 private:
   Wt::WLineEdit * m_root_password,

@@ -70,7 +70,9 @@ private:
 
   // acounts
   bool root_account();
+  bool user_account();
   bool set_password(const std::string_view user, const std::string_view pass);
+  bool add_to_sudoers (const std::string_view username);
 
   // boot loader
   bool boot_loader();
@@ -111,7 +113,7 @@ private:
 
 private:
   OnStageChange m_stage_change;
-  OnInstallComplete m_complete;
+  OnInstallComplete m_install_state;
   OnLog m_log;
 };
 

@@ -110,7 +110,7 @@ public:
   }
 };
 
-
+// Opens a pipe to cmd then writes input to the process.
 class WriteCommand : public Command
 {
 public:

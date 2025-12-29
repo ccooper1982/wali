@@ -1,6 +1,8 @@
 #include "wali/Common.hpp"
 #include <cstring>
 #include <filesystem>
+#include <iterator>
+#include <string>
 #include <sys/mount.h>
 #include <system_error>
 #include <wali/Commands.hpp>
@@ -16,7 +18,7 @@ static const constexpr char PartTypeHome[] = "8302";
 void Install::install(Handlers&& handlers)
 {
   m_stage_change = handlers.stage_change;
-  m_complete = handlers.complete;
+  m_install_state = handlers.complete;
   m_log = handlers.log;
 
   auto exec_stage = [this](std::function<bool()> f, const std::string_view stage) mutable
@@ -30,33 +32,42 @@ void Install::install(Handlers&& handlers)
     }
     catch (const std::exception& ex)
     {
-      m_complete(InstallState::Fail);
+      m_install_state(InstallState::Fail);
       log_stage_end(stage, StageStatus::Fail);
     }
     return ok;
   };
 
+  bool minimal{}, extra{};
+
   try
   {
     // TODO swap, network, time (need timezones)
 
-    // commands after fstab are done with arch-chroot
-    const bool minimal =  exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "Create Filesystems") &&
-                          exec_stage(std::bind(&Install::mount, std::ref(*this)), "Mounting") &&
-                          exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "Pacstrap") &&
-                          exec_stage(std::bind(&Install::fstab, std::ref(*this)), "Generate fstab") &&
-                          exec_stage(std::bind(&Install::root_account, std::ref(*this)), "Root Account") &&
-                          exec_stage(std::bind(&Install::boot_loader, std::ref(*this)), "Boot loader");
+    minimal = exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "Create Filesystems") &&
+              exec_stage(std::bind(&Install::mount, std::ref(*this)), "Mounting") &&
+              exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "Pacstrap") &&
+              exec_stage(std::bind(&Install::fstab, std::ref(*this)), "Generate fstab") &&
+              exec_stage(std::bind(&Install::root_account, std::ref(*this)), "Root Account") &&
+              exec_stage(std::bind(&Install::boot_loader, std::ref(*this)), "Boot loader");
 
     if (minimal)
     {
-      m_complete(InstallState::Complete);
+      m_install_state(InstallState::Bootable);
+
+      // TODO user shell, additional packages
+      extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account");
     }
   }
   catch (const std::exception& ex)
   {
-    m_complete(InstallState::Fail);
+    log_error(std::format("Unknown error: {}", ex.what()));
   }
+
+  if (extra)
+    m_install_state(InstallState::Complete);
+  else
+    m_install_state(minimal ? InstallState::Partial : InstallState::Fail);
 }
 
 
@@ -177,15 +188,16 @@ bool Install::pacstrap()
   static const std::set<std::string> Packages =
   {
     "base",
+    "linux",
+    "sudo",
     "usb_modeswitch", // for usb devices that can switch modes (recharging/something else)
     "usbmuxd",
     "usbutils",
     "reflector",      // pacman mirrors list
     "dmidecode",      // BIOS / hardware info, may not actually be useful for most users
-    "e2fsprogs",      // useful
     "gpm",            // laptop touchpad support
+    "e2fsprogs",      // useful
     "less",           // useful
-    "linux"
   };
 
   log_info("This may take a while, depending on your connection speed");
@@ -237,12 +249,77 @@ bool Install::root_account()
   return set;
 }
 
+bool Install::user_account()
+{
+  const auto user = Widgets::get_account()->get_user_username();
+  const auto password = Widgets::get_account()->get_user_password();
+
+  if (user.empty())
+  {
+    log_info("No user to create");
+    return true;
+  }
+  else if (password.empty())
+  {
+    log_error("No user password set");
+    return false;
+  }
+
+  const auto user_sudo = Widgets::get_account()->get_user_can_sudo();
+  const std::string wheel_group = user_sudo ? "-G wheel" : "";
+
+  if (!Chroot{}(std::format("useradd -s /usr/bin/bash -m {} {}", wheel_group, user)))
+  {
+    log_warning("Failed to create user account");
+    return true; // not critical
+  }
+
+  if (!set_password(user, password))
+  {
+    log_warning("Failed to set user password");
+    return true; // not critical
+  }
+
+  if (user_sudo && !add_to_sudoers(user))
+  {
+    log_warning("Failed to allow user to sudo");
+    return true; // not critical
+  }
+
+  return true;
+}
+
 bool Install::set_password(const std::string_view user, const std::string_view pass)
 {
   log_info(std::format("Setting password for {}", user));
 
   ChrootWrite cmd;
   return cmd("chpasswd", std::format("{}:{}", user, pass));
+}
+
+bool Install::add_to_sudoers (const std::string_view user)
+{
+  // we can edit /etc/sudoers, but creating an entry in /etc/sudoers.d is less prone to error:
+  //   https://wiki.archlinux.org/title/Sudo#Configure_sudo_using_drop-in_files_in_/etc/sudoers.d
+  // note: user added to wheel group by user_account()
+
+  static const fs::perms SudoersFilePerms = fs::perms::owner_read | fs::perms::group_read;
+  static const fs::path SudoersDir{RootMnt / "etc/sudoers.d"};
+
+  // the directory should be empty, but sanity check
+  const auto count = std::distance(fs::directory_iterator{SudoersDir}, fs::directory_iterator{});
+  const auto sudoers_file = fs::path(SudoersDir / std::format("{:02}_{}", count, user));
+
+  {
+    std::ofstream sudoers_stream{sudoers_file};
+    sudoers_stream << std::format("{} ALL=(ALL) ALL", user);
+  }
+
+  std::error_code ec;
+  if (fs::permissions(sudoers_file, SudoersFilePerms, ec); ec)
+    log_warning(std::format("Failed to add user to sudoers: {}", ::strerror(ec.value())));
+
+  return true;
 }
 
 // boot loader
