@@ -98,6 +98,7 @@ public:
       menu_container->setStyleClass("menu");
 
       auto menu = menu_container->addNew<WMenu>(menu_contents);
+      menu->setStyleClass("menu");
       Widgets::create_menu(menu);
     }
   }

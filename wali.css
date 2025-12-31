@@ -13,18 +13,36 @@ a:active {
 
 body {
     background-color: #c5c5c5;
-    font-family: sans-serif, arial;
-    font-size: 14px;
+    font:
+        14px arial,
+        sans-serif;
     margin: 0px;
     padding: 0px;
 }
 
-.menu {
+div.menu {
     background-color: #a9a9a9;
     margin: 0px;
     padding: 0px;
     width: 200px;
     font-size: 18px;
+    text-align: left;
+    align-content: flex-start;
+}
+
+ul.menu {
+    list-style-type: square;
+    list-style-position: inside;
+    color: darkblue;
+    margin: 5px;
+    padding: 5px;
+    font:
+        16px arial,
+        sans-serif;
+}
+
+ul.menu li {
+    padding: 5px;
 }
 
 .table_partitions {
@@ -92,5 +110,30 @@ button.install {
     padding: 10px;
     font-family: sans-serif, arial;
     font-size: 14px;
+
     width: 150px;
+}
+
+select.timezones {
+    height: 30px;
+    width: 220px;
+    font:
+        14px arial,
+        sans-serif;
+}
+
+select.locales {
+    height: 30px;
+    width: 220px;
+    font:
+        14px arial,
+        sans-serif;
+}
+
+select.keymaps {
+    height: 30px;
+    width: 220px;
+    font:
+        14px arial,
+        sans-serif;
 }

@@ -184,18 +184,70 @@ struct ProgramExists : public ReadCommand
 
 struct GetTimeZones : public ReadCommand
 {
-  std::tuple<int, std::vector<std::string>> operator()()
+  std::vector<std::string> operator()()
   {
     std::vector<std::string> zones;
     zones.reserve(600); // "timedatectl list-timezones | wc -l" returns 598
 
-    const auto stat = execute_read(std::format("timedatectl list-timezones"),[&zones](const std::string_view line)
+    const auto stat = execute_read("timedatectl list-timezones", [&](const std::string_view line)
     {
       if (!line.empty())
         zones.emplace_back(line);
     });
 
-    return {stat, zones};
+    return stat == CmdSuccess ? zones : std::vector<std::string>{};
+  }
+};
+
+
+struct GetLocales : public ReadCommand
+{
+  std::vector<std::string> operator()()
+  {
+    static const fs::path LiveLocaleSupportedPath {"/usr/share/i18n/SUPPORTED"};
+
+    std::vector<std::string> locales;
+    locales.reserve(500); // "cat /usr/share/i18n/SUPPORTED | wc -l" returns 516
+
+    char buff[512] = {'\0'};
+    std::ifstream stream{LiveLocaleSupportedPath};
+
+    while (stream.getline(buff, sizeof(buff)).good())
+    {
+      auto is_utf8 = [buff]() -> std::pair<bool, std::string_view>
+      {
+        const std::string_view line{buff};
+        const auto space = line.find(' ');
+
+        if (space == std::string_view::npos || space+1 == line.size())
+          return {false, std::string_view{}};
+
+        const auto charset = line.substr(space+1);
+        return {charset == "UTF-8", line.substr(0, space)};
+      };
+
+      if (const auto[utf8, locale] = is_utf8(); utf8)
+        locales.emplace_back(locale);
+    }
+
+    return locales;
+  }
+};
+
+
+struct GetKeyMaps : public ReadCommand
+{
+  std::vector<std::string> operator()()
+  {
+    std::vector<std::string> keys;
+
+    const auto stat = execute_read("localectl list-keymaps",[&](const std::string_view line)
+    {
+      if (!line.empty())
+        keys.emplace_back(line);
+    });
+
+    return stat == CmdSuccess ? keys : std::vector<std::string>{};
   }
 };
 
@@ -255,5 +307,6 @@ struct ChrootWrite : public WriteCommand
     return execute(std::format("arch-chroot {} {}", RootMnt.string(), cmd), input) == CmdSuccess;
   }
 };
+
 
 #endif

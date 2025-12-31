@@ -9,6 +9,7 @@
 #include <wali/widgets/AccountsWidget.hpp>
 #include <wali/widgets/IntroductionWidget.hpp>
 #include <wali/widgets/InstallWidget.hpp>
+#include <wali/widgets/LocaliselWidget.hpp>
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PartitionWidget.hpp>
 
@@ -25,6 +26,7 @@ struct Widgets
     create_partitions();
     create_network();
     create_accounts();
+    create_localisation();
     create_install();
   }
 
@@ -32,6 +34,7 @@ struct Widgets
   static PartitionsWidget * get_partitions() { return get<PartitionsWidget>("Partitions"); }
   static NetworkWidget * get_network() { return get<NetworkWidget>("Network"); }
   static AccountWidget * get_account() { return get<AccountWidget>("Accounts"); }
+  static LocaliseWidget * get_localise() { return get<LocaliseWidget>("Locale"); }
   static InstallWidget * get_install() { return get<InstallWidget>("Install"); }
 
 private:
@@ -40,6 +43,7 @@ private:
   static void create_partitions() { add_menu_widget<PartitionsWidget>("Partitions"); }
   static void create_network() { add_menu_widget<NetworkWidget>("Network"); }
   static void create_accounts() { add_menu_widget<AccountWidget>("Accounts"); }
+  static void create_localisation() { add_menu_widget<LocaliseWidget>("Locale"); }
   static void create_install() { add_menu_widget<InstallWidget>("Install"); }
 
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
