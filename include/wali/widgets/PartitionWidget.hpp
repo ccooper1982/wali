@@ -8,10 +8,15 @@
 #include <Wt/WTable.h>
 
 #include <Wt/WVBoxLayout.h>
+#include <exception>
+#include <functional>
 #include <memory>
 #include <wali/widgets/MessagesWidget.hpp>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
+
+
+using Validate = std::function<void()>;
 
 
 // Draws a Device dropdown and Filesystem dropdown (optional)
@@ -19,13 +24,15 @@ struct DeviceFilesytemWidget : public WContainerWidget
 {
   DeviceFilesytemWidget() = default;
 
-  DeviceFilesytemWidget(const Partitions& parts, const StringViewVec filesystems = {})
+  DeviceFilesytemWidget(const Partitions& parts, Validate validate, const StringViewVec filesystems = {})
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
 
     layout->addWidget(make_wt<WText>("Device"));
     m_device = layout->addWidget(make_wt<WComboBox>());
     m_device->setWidth(150);
+    m_device->setNoSelectionEnabled(true);
+    m_device->changed().connect(validate);
 
     if (!filesystems.empty())
     {
@@ -57,11 +64,9 @@ private:
   WComboBox * m_fs{};
 };
 
-// TODO
-//  - Allow /home mount to existing partition (no wipe, no create filesystem)
 class PartitionsWidget : public WContainerWidget
 {
-  using DeviceChange = std::function<void(const std::string_view)>;
+  //using DeviceChange = std::function<void(const std::string_view)>;
 
   struct DeviceFilesystemProvider
   {
@@ -71,13 +76,13 @@ class PartitionsWidget : public WContainerWidget
 
   struct BootPartitionWidget : public WContainerWidget
   {
-    BootPartitionWidget(const Partitions& parts)
+    BootPartitionWidget(const Partitions& parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
       layout->addWidget(make_wt<Wt::WText>("<h2>Boot</h2>"));
 
-      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, StringViewVec{"vfat"}));
+      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"vfat"}));
     }
 
     std::string get_device() const
@@ -96,13 +101,13 @@ class PartitionsWidget : public WContainerWidget
 
   struct RootPartitionWidget : public WContainerWidget
   {
-    RootPartitionWidget(const Partitions& parts)
+    RootPartitionWidget(const Partitions& parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
       layout->addWidget(make_wt<Wt::WText>("<h2>Root</h2>"));
 
-      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, StringViewVec{"ext4"}));
+      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"ext4"}));
     }
 
     std::string get_device() const
@@ -119,9 +124,9 @@ class PartitionsWidget : public WContainerWidget
       DeviceFilesytemWidget * m_dev_fs;
   };
 
-  struct HomePartitionWidget : public WContainerWidget //final : public PartitionWidget
+  struct HomePartitionWidget : public WContainerWidget
   {
-    HomePartitionWidget(const Partitions& parts)
+    HomePartitionWidget(const Partitions& parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
@@ -130,10 +135,10 @@ class PartitionsWidget : public WContainerWidget
       m_btn_to_root = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to /"));
 
       m_btn_to_new = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to new partition"));
-      m_to_new = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, StringViewVec{"ext4"}));
+      m_devfs_to_new = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate, StringViewVec{"ext4"}));
 
       m_btn_to_existing = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to existing partition"));
-      m_to_existing = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts));
+      m_devfs_to_existing = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate));
 
       m_btn_group = std::make_shared<WButtonGroup>();
       m_btn_group->addButton(m_btn_to_root);
@@ -143,27 +148,29 @@ class PartitionsWidget : public WContainerWidget
       m_btn_to_root->checked().connect([this]()
       {
         m_target = HomeMountTarget::Root;
-        m_to_new->setDisabled(true);
-        m_to_existing->setDisabled(true);
+        m_devfs_to_new->setDisabled(true);
+        m_devfs_to_existing->setDisabled(true);
       });
 
       m_btn_to_new->checked().connect([this]()
       {
         m_target = HomeMountTarget::New;
-        m_to_new->setDisabled(false);
-        m_to_existing->setDisabled(true);
+        m_devfs_to_new->setDisabled(false);
+        m_devfs_to_existing->setDisabled(true);
       });
 
       m_btn_to_existing->checked().connect([this]()
       {
         m_target = HomeMountTarget::Existing;
-        m_to_existing->setDisabled(false);
-        m_to_new->setDisabled(true);
+        m_devfs_to_existing->setDisabled(false);
+        m_devfs_to_new->setDisabled(true);
       });
 
+      m_target = HomeMountTarget::Root;
+      m_devfs_to_new->setDisabled(true);
+      m_devfs_to_existing->setDisabled(true);
+
       m_btn_group->setSelectedButtonIndex(0);
-      m_to_new->setDisabled(true);
-      m_to_existing->setDisabled(true);
     }
 
     bool is_home_on_root() const
@@ -181,8 +188,8 @@ class PartitionsWidget : public WContainerWidget
       if (is_home_on_root())
         return ""; // caller must check
       else
-        return m_target == HomeMountTarget::Existing ? m_to_existing->get_device() :
-                                                   m_to_new->get_device();
+        return m_target == HomeMountTarget::Existing ?  m_devfs_to_existing->get_device() :
+                                                        m_devfs_to_new->get_device();
     }
 
     std::string get_fs() const
@@ -190,7 +197,7 @@ class PartitionsWidget : public WContainerWidget
       if (is_home_on_root())
         return ""; // caller must check
       else
-        return m_btn_to_existing->isChecked() ? "" : m_to_new->get_fs();
+        return m_btn_to_existing->isChecked() ? "" : m_devfs_to_new->get_fs();
     }
 
     private:
@@ -198,11 +205,10 @@ class PartitionsWidget : public WContainerWidget
                    * m_btn_to_existing,
                    * m_btn_to_new;
       std::shared_ptr<WButtonGroup> m_btn_group;
-      DeviceFilesytemWidget * m_to_existing;
-      DeviceFilesytemWidget * m_to_new;
+      DeviceFilesytemWidget * m_devfs_to_existing;
+      DeviceFilesytemWidget * m_devfs_to_new;
       HomeMountTarget m_target;
   };
-
 
 public:
   PartitionsWidget()
@@ -235,9 +241,9 @@ public:
 
         table_parts->addStyleClass("table");
 
-        m_boot = layout->addWidget(make_wt<BootPartitionWidget>(parts));
-        m_root = layout->addWidget(make_wt<RootPartitionWidget>(parts));
-        m_home = layout->addWidget(make_wt<HomePartitionWidget>(parts));
+        m_boot = layout->addWidget(make_wt<BootPartitionWidget>(parts, [this]{validate_selection();}));
+        m_root = layout->addWidget(make_wt<RootPartitionWidget>(parts, [this]{validate_selection();}));
+        m_home = layout->addWidget(make_wt<HomePartitionWidget>(parts, [this]{validate_selection();}));
 
         m_messages = layout->addWidget(make_wt<MessageWidget>());
 
@@ -248,29 +254,23 @@ public:
     layout->addStretch(1);
   }
 
-  // void on_home_to_home(const bool checked)
-  // {
-  //   if (checked)
-  //     m_home->set_device(m_root->get_device());
-
-  //   validate_selection();
-  // }
-
   void validate_selection()
   {
-    // const auto& boot_dev = m_boot->get_device();
-    // const auto& root_dev = m_root->get_device();
-    // const auto& home_dev = m_home->get_device();
-    // const bool home_on_root = m_home->is_home_on_root();
+    const auto& boot_dev = m_boot->get_device();
+    const auto& root_dev = m_root->get_device();
 
-    // m_messages->clear_messages();
+    m_messages->clear_messages();
 
-    // if (boot_dev == root_dev)
-    //   m_messages->add("/boot cannot mount on the root partition", MessageWidget::Level::Error);
-    // if (boot_dev == home_dev)
-    //   m_messages->add("/boot cannot mount on the home partition", MessageWidget::Level::Error);
-    // if (!home_on_root && home_dev == root_dev)
-    //   m_messages->add("/home is mounted on the root partition", MessageWidget::Level::Warning);
+    if (boot_dev == root_dev)
+      m_messages->add("Boot and root partitions must be separate partitions", MessageWidget::Level::Error);
+
+    const auto target = m_home->get_mount_target();
+    if (target != HomeMountTarget::Root)
+    {
+      const auto& home_dev = m_home->get_device();
+      if (home_dev == boot_dev || home_dev == root_dev)
+        m_messages->add("/home is mounted to root or boot partition", MessageWidget::Level::Error);
+    }
   }
 
   const BootPartitionWidget * get_boot() const
