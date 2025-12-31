@@ -70,8 +70,6 @@ static std::string startup_checks()
     return "";
 }
 
-
-
 class HelloApplication : public Wt::WApplication
 {
 public:
@@ -114,7 +112,7 @@ int main(int argc, char **argv)
   return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
   {
     // server already running by now, need to start manually so this log entry is easier to notice
-    PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme() ,env.hostName());
+    PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme(), env.hostName());
 
     return std::make_unique<HelloApplication>(env);
   });

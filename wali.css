@@ -24,10 +24,11 @@ div.menu {
     background-color: #a9a9a9;
     margin: 0px;
     padding: 0px;
-    width: 200px;
+    width: 150px;
     font-size: 18px;
     text-align: left;
     align-content: flex-start;
+    border-right: 5px solid steelblue;
 }
 
 ul.menu {

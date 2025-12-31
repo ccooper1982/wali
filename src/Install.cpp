@@ -1,6 +1,7 @@
 #include "wali/Common.hpp"
 #include <cstring>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <string>
 #include <sys/mount.h>
@@ -56,7 +57,8 @@ void Install::install(Handlers&& handlers)
       m_install_state(InstallState::Bootable);
 
       // TODO user shell, additional packages
-      extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account");
+      extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account") &&
+              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise");
     }
   }
   catch (const std::exception& ex)
@@ -284,13 +286,13 @@ bool Install::user_account()
   }
 
   const auto user_sudo = Widgets::get_account()->get_user_can_sudo();
-  const std::string wheel_group = user_sudo ? "-G wheel" : "";
+  const std::string_view wheel_group = user_sudo ? "-G wheel" : "";
 
   if (!Chroot{}(std::format("useradd -s /usr/bin/bash -m {} {}", wheel_group, user)))
     log_warning("Failed to create user account");
 
   if (!set_password(user, password))
-    log_warning("Failed to set user password");
+    log_warning("Failed to set user password"); // TODO should fail?
 
   if (user_sudo && !add_to_sudoers(user))
     log_warning("Failed to allow user to sudo");
@@ -331,6 +333,7 @@ bool Install::add_to_sudoers (const std::string_view user)
   return true;
 }
 
+
 // boot loader
 bool Install::boot_loader()
 {
@@ -359,6 +362,48 @@ bool Install::boot_loader()
   const auto config_cmd = std::format("grub-mkconfig -o {}", EfiConfigTarget.string());
   return Chroot{}(config_cmd);
 }
+
+
+// localise
+bool Install::localise()
+{
+  static const fs::path TimezonePath{"/usr/share/zoneinfo/"};
+  static const fs::path LocaleGen{"/etc/locale.gen"};
+  static const fs::path LocaleConf{"/etc/locale.conf"};
+
+  const auto& keymap = Widgets::get_localise()->get_keymap();
+  const auto& zone = Widgets::get_localise()->get_timezone();
+  auto locale = Widgets::get_localise()->get_locale();
+
+  // empty command so arch-choot starts a shell
+  // NOTE: appending is a bit lazy, and perhaps not obvious to future readers
+
+  // UI returns "en_GB.UTF8" , correct entry is "en_GB.UTF8 UTF-8"
+  if (!ChrootWrite{}("", std::format("echo \"{} UTF-8\" >> {}", locale, LocaleGen.string())))
+    log_warning(std::format("Failed to update {}", LocaleGen.string()));
+  else
+  {
+    if (!Chroot{}("locale-gen"))
+      log_warning("locale-gen failed");
+    else
+    {
+      // localectl wants <country>.UTF-8 , but UI returns <country>.UTF8
+      locale.insert(locale.find_last_of('8'), 1, '-');
+
+      if (!Chroot{}(std::format("localectl set-locale {}", locale)))
+        log_warning("localectl failed to set locale");
+    }
+  }
+
+  if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
+    log_warning("Failed to set locale timezone");
+
+  if (!Chroot{}(std::format("localectl set-keymap {}", keymap)))
+    log_warning("Failed to set virtual terminal keymap");
+
+  return true;
+}
+
 
 // general
 bool Install::install_packages(const std::vector<std::string>& packages)

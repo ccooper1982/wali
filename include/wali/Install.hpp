@@ -78,6 +78,8 @@ private:
   // boot loader
   bool boot_loader();
 
+  // localise
+  bool localise();
 
 private:
   void log_stage_start(const std::string_view stage)

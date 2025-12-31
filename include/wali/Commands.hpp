@@ -5,6 +5,7 @@
 #include <format>
 #include <fstream>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -126,6 +127,31 @@ public:
 };
 
 
+// chroot
+struct Chroot : public ReadCommand
+{
+  virtual bool operator()(const std::string_view cmd)
+  {
+    const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
+
+    const auto stat = execute_read(chroot_cmd, [](const std::string_view m)
+    {
+      PLOGI << m;
+    });
+
+    return stat == CmdSuccess;
+  }
+};
+
+struct ChrootWrite : public WriteCommand
+{
+  bool operator()(const std::string_view cmd, const std::string_view input)
+  {
+    return execute(std::format("arch-chroot {} {}", RootMnt.string(), cmd), input) == CmdSuccess;
+  }
+};
+
+
 struct PlatformSizeValid : public ReadCommand
 {
   bool operator()()
@@ -200,34 +226,36 @@ struct GetTimeZones : public ReadCommand
 };
 
 
-struct GetLocales : public ReadCommand
+struct GetLocales
 {
   std::vector<std::string> operator()()
   {
-    static const fs::path LiveLocaleSupportedPath {"/usr/share/i18n/SUPPORTED"};
+    static const fs::path SupportedLocalesPath {"/usr/share/i18n/SUPPORTED"};
 
     std::vector<std::string> locales;
-    locales.reserve(500); // "cat /usr/share/i18n/SUPPORTED | wc -l" returns 516
+    locales.reserve(500); // "cat /usr/share/i18n/SUPPORTED | wc -l" returns 500
 
     char buff[512] = {'\0'};
-    std::ifstream stream{LiveLocaleSupportedPath};
+    std::ifstream stream{SupportedLocalesPath};
 
     while (stream.getline(buff, sizeof(buff)).good())
     {
-      auto is_utf8 = [buff]() -> std::pair<bool, std::string_view>
+      auto is_utf8 = [buff]() -> std::optional<std::string_view>
       {
         const std::string_view line{buff};
         const auto space = line.find(' ');
 
         if (space == std::string_view::npos || space+1 == line.size())
-          return {false, std::string_view{}};
+          return {};
 
-        const auto charset = line.substr(space+1);
-        return {charset == "UTF-8", line.substr(0, space)};
+        if (const auto charset = line.substr(space+1); charset == "UTF-8")
+          return line.substr(0, space);
+        else
+          return {};
       };
 
-      if (const auto[utf8, locale] = is_utf8(); utf8)
-        locales.emplace_back(locale);
+      if (const auto locale = is_utf8(); locale)
+        locales.emplace_back(*locale);
     }
 
     return locales;
@@ -284,29 +312,6 @@ struct Mount : public ReadCommand
 };
 
 
-// chroot
-struct Chroot : public ReadCommand
-{
-  bool operator()(const std::string_view cmd)
-  {
-    const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
-
-    const auto stat = execute_read(chroot_cmd, [](const std::string_view m)
-    {
-      PLOGI << m;
-    });
-
-    return stat == CmdSuccess;
-  }
-};
-
-struct ChrootWrite : public WriteCommand
-{
-  bool operator()(const std::string_view cmd, const std::string_view input)
-  {
-    return execute(std::format("arch-chroot {} {}", RootMnt.string(), cmd), input) == CmdSuccess;
-  }
-};
 
 
 #endif
