@@ -108,8 +108,9 @@ private:
     try
     {
       // TODO
-      //  1. m_install_btn->disable() does not disable the button until install completes
-      //  2. Don't actually know if a separate thread is required
+      //  - Don't know how to do async/long running functions correctly in wt
+      //  - Check docs, install should perhaps be run on an Wt managed thread
+      //  - Calling async() then waiting immediately is pointless
 
       //m_install_btn->disable();
 

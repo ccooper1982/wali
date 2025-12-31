@@ -54,6 +54,7 @@ private:
 
   // filesystems
   bool filesystems();
+  bool create_home_filesystem();
   bool create_boot_filesystem(const std::string_view part_dev);
   bool create_ext4_filesystem(const std::string_view part_dev);
   void set_partition_type(const std::string_view part_dev, const std::string_view type);

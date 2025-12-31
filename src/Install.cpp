@@ -75,16 +75,14 @@ bool Install::filesystems()
 {
   const auto boot = Widgets::get_partitions()->get_boot();
   const auto root = Widgets::get_partitions()->get_root();
-  const auto home = Widgets::get_partitions()->get_home();
 
   log_info(std::format("/     -> {} with {}", root->get_device(), root->get_fs()));
   log_info(std::format("/boot -> {} with {}", boot->get_device(), boot->get_fs()));
-  log_info(std::format("/home -> {} with {}",home->get_device(), home->get_fs()));
 
   bool boot_root_valid{false}, home_valid{true};
 
-  const auto wiped_boot_root = wipe_fs(boot->get_device()) &&
-                               wipe_fs(root->get_device());
+  const auto wiped_boot_root = wipe_fs(root->get_device()) &&
+                               wipe_fs(boot->get_device());
 
   if (wiped_boot_root)
   {
@@ -95,15 +93,7 @@ bool Install::filesystems()
     {
       set_partition_type(boot->get_device(), PartTypeEfi);
       set_partition_type(root->get_device(), PartTypeRoot);
-
-      if (!home->is_home_on_root())
-      {
-        home_valid = wipe_fs(home->get_device()) &&
-                     create_ext4_filesystem(home->get_device());
-
-        if (home_valid)
-          set_partition_type(home->get_device(), PartTypeHome);
-      }
+      home_valid = create_home_filesystem();
     }
   }
 
@@ -115,6 +105,38 @@ bool Install::wipe_fs(const std::string_view dev)
   log_info(std::format("Wiping filesystem on {}", dev));
   ReadCommand wipe;
   return wipe.execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
+}
+
+bool Install::create_home_filesystem()
+{
+  bool home_valid{true};
+
+  const auto root = Widgets::get_partitions()->get_root();
+  const auto home = Widgets::get_partitions()->get_home();
+
+  if (home->get_mount_target() == HomeMountTarget::Existing)
+  {
+    log_info(std::format("/home -> {}", home->get_device()));
+  }
+  else if(home->is_home_on_root())
+  {
+    log_info(std::format("/home -> {} with {}", root->get_device(), root->get_fs()));
+  }
+  else
+  {
+    // new partition
+    const auto home_dev = home->get_device();
+    const auto home_fs = home->get_fs();
+
+    log_info(std::format("/home -> {} with {}", home_dev, home_fs));
+
+    home_valid = wipe_fs(home_dev) && create_ext4_filesystem(home_dev);
+
+    if (home_valid)
+      set_partition_type(home_dev, PartTypeHome);
+  }
+
+  return home_valid;
 }
 
 bool Install::create_boot_filesystem(const std::string_view part_dev)
@@ -154,7 +176,7 @@ bool Install::mount()
   {
     mounted_boot = do_mount(boot->get_device(), EfiMnt.string(), boot->get_fs());
 
-    if (home->get_device() != root->get_device())
+    if (!home->is_home_on_root())
       mounted_home = do_mount(home->get_device(), HomeMnt.string(), home->get_fs());
   }
 
@@ -173,21 +195,17 @@ bool Install::do_mount(const std::string_view dev, const std::string_view path, 
     return false;
   }
 
-  const int stat = ::mount(dev.data(), path.data(), fs.data(), 0, nullptr) ;
-
-  if (stat != CmdSuccess)
-    log_error(std::format("do_mount(): {} -> {} {}", path, dev, ::strerror(errno)));
-
-  return stat == CmdSuccess;
+  return Mount{}(dev, path);
 }
 
 
 // pacstrap
 bool Install::pacstrap()
 {
-  static const std::set<std::string> Packages =
+  static const std::vector<std::string> Packages =
   {
     "base",
+    "archlinux-keyring",
     "linux",
     "sudo",
     "usb_modeswitch", // for usb devices that can switch modes (recharging/something else)
@@ -269,22 +287,13 @@ bool Install::user_account()
   const std::string wheel_group = user_sudo ? "-G wheel" : "";
 
   if (!Chroot{}(std::format("useradd -s /usr/bin/bash -m {} {}", wheel_group, user)))
-  {
     log_warning("Failed to create user account");
-    return true; // not critical
-  }
 
   if (!set_password(user, password))
-  {
     log_warning("Failed to set user password");
-    return true; // not critical
-  }
 
   if (user_sudo && !add_to_sudoers(user))
-  {
     log_warning("Failed to allow user to sudo");
-    return true; // not critical
-  }
 
   return true;
 }

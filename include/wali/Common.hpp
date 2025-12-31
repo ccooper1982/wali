@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <math.h>
 #include <plog/Log.h>
+#include <string_view>
 
 namespace fs = std::filesystem;
 
@@ -12,6 +13,8 @@ inline static const fs::path RootMnt{"/mnt"};
 inline static const fs::path EfiMnt{"/mnt/efi"};
 inline static const fs::path HomeMnt{"/mnt/home"};
 inline static const fs::path FsTabPath{"/mnt/etc/fstab"};
+
+using StringViewVec = std::vector<std::string_view>;
 
 enum class GpuVendor
 {
@@ -27,6 +30,13 @@ enum class CpuVendor
   None,
   Amd,
   Intel
+};
+
+enum class HomeMountTarget
+{
+  Root,     // /home mounted to /
+  New,      // /home mounted to new partition (wipe, create fs)
+  Existing  // /home mounted to existing partition (don't wipe or create fs)
 };
 
 static inline std::string format_size(const int64_t size)

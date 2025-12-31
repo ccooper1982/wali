@@ -222,6 +222,15 @@ struct CreateFilesystem : public ReadCommand
 using CreateExt4Filesystem = CreateFilesystem<ext4>;
 using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
 
+// mount
+struct Mount : public ReadCommand
+{
+  bool operator()(const std::string_view dev, const std::string_view mount_point)
+  {
+    return execute(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
+  }
+};
+
 
 // chroot
 struct Chroot : public ReadCommand
