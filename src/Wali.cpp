@@ -53,6 +53,11 @@ static bool check_programs_exist()
   return true;
 }
 
+static bool sync_system_clock()
+{
+  ReadCommand cmd;
+  return cmd.execute("timedatectl") == CmdSuccess;
+}
 
 static std::string startup_checks()
 {
@@ -64,8 +69,8 @@ static std::string startup_checks()
     return "Platform size not found or not 64bit";
   // else if (!check(check_connection))
   //   return fail("No active internet connection");
-  // else if (!check(sync_system_clock))
-  //   return fail("Sync clock with timedatectl failed");
+  else if (!sync_system_clock())
+    return "Sync clock with timedatectl failed";
   else
     return "";
 }
@@ -80,6 +85,7 @@ public:
     useStyleSheet("wali.css");
 
     auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
+    hbox->setSpacing(0);
 
     if (const auto err = startup_checks(); !err.empty())
     {
@@ -94,6 +100,8 @@ public:
       hbox->addStretch(1);
 
       menu_container->setStyleClass("menu");
+      menu_contents->setStyleClass("menu_content");
+      menu_contents->setPadding(0);
 
       auto menu = menu_container->addNew<WMenu>(menu_contents);
       menu->setStyleClass("menu");

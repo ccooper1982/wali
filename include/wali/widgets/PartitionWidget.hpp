@@ -22,8 +22,6 @@ using Validate = std::function<void()>;
 // Draws a Device dropdown and Filesystem dropdown (optional)
 struct DeviceFilesytemWidget : public WContainerWidget
 {
-  DeviceFilesytemWidget() = default;
-
   DeviceFilesytemWidget(const Partitions& parts, Validate validate, const StringViewVec filesystems = {})
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
@@ -66,8 +64,6 @@ private:
 
 class PartitionsWidget : public WContainerWidget
 {
-  //using DeviceChange = std::function<void(const std::string_view)>;
-
   struct DeviceFilesystemProvider
   {
     virtual std::string get_device() const = 0;

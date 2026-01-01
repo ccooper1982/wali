@@ -50,7 +50,6 @@ public:
   void install(Handlers&& handlers);
 
 private:
-  // stages
 
   // filesystems
   bool filesystems();
@@ -81,18 +80,23 @@ private:
   // localise
   bool localise();
 
+  // network
+  bool network();
+
+  // services
+  bool enable_service(const std::string_view name);
+
 private:
+  // functions to call plog, then call a handler for the UI
   void log_stage_start(const std::string_view stage)
   {
     PLOGI << "Stage start: " << stage;
-    //std::format("{} - Start", stage)
     m_stage_change(stage, StageStatus::Start);
   }
 
   void log_stage_end(const std::string_view stage, const StageStatus state)
   {
     PLOGI << "Stage end: " << stage;
-    //std::format("{} - {}", stage, ok ? "Success" : "Fail")
     m_stage_change(stage, state);
   }
 

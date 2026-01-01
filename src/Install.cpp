@@ -24,12 +24,12 @@ void Install::install(Handlers&& handlers)
 
   auto exec_stage = [this](std::function<bool()> f, const std::string_view stage) mutable
   {
-    log_stage_start(stage);
-
     bool ok{false};
     try
     {
+      log_stage_start(stage);
       ok = f();
+      log_stage_end(stage, ok ? StageStatus::Complete : StageStatus::Fail);
     }
     catch (const std::exception& ex)
     {
@@ -58,7 +58,8 @@ void Install::install(Handlers&& handlers)
 
       // TODO user shell, additional packages
       extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account") &&
-              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise");
+              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise") &&
+              exec_stage(std::bind(&Install::network, std::ref(*this)), "Network");
     }
   }
   catch (const std::exception& ex)
@@ -304,8 +305,7 @@ bool Install::set_password(const std::string_view user, const std::string_view p
 {
   log_info(std::format("Setting password for {}", user));
 
-  ChrootWrite cmd;
-  return cmd("chpasswd", std::format("{}:{}", user, pass));
+  return ChrootWrite{}("chpasswd", std::format("{}:{}", user, pass));
 }
 
 bool Install::add_to_sudoers (const std::string_view user)
@@ -405,6 +405,36 @@ bool Install::localise()
 }
 
 
+// network
+bool Install::network()
+{
+  static const fs::path HostnamePath{"/etc/hostname"};
+  static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
+  static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
+
+  const auto& hostname = Widgets::get_network()->hostname();
+  const bool copy_conf = Widgets::get_network()->copy_config();
+  const bool ntp = Widgets::get_network()->ntp();
+
+  if (!ChrootWrite{}("", std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
+    log_warning("Failed to create /etc/hostname");
+
+  if (copy_conf)
+  {
+    const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
+                                                                        LiveIwdConfigPath.string(),
+                                                                        TargetIwdConfigPath.string());
+
+    if (ReadCommand cmd; cmd.execute(cmd_string) != CmdSuccess)
+      log_warning("Failed to copy iwd config files");
+  }
+
+  if (ntp && !enable_service("systemd-timesyncd.service"))
+    log_warning("Failed to enable timesync for ntp");
+
+  return true;
+}
+
 // general
 bool Install::install_packages(const std::vector<std::string>& packages)
 {
@@ -421,4 +451,16 @@ bool Install::install_packages(const std::vector<std::string>& packages)
     log_error("pacman failed to install to package(s)");
 
   return ok;
+}
+
+bool Install::enable_service(const std::string_view name)
+{
+  log_info(std::format("Enabling service {}", name));
+
+  const bool enabled = Chroot{}(std::format("systemctl enable {}", name));
+
+  if (!enabled)
+    log_error(std::format("Failed to enable service: {}", name));
+
+  return enabled;
 }
