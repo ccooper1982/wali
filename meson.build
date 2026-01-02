@@ -3,7 +3,7 @@ project(
   'cpp',
   version: '0.1',
   meson_version: '>= 1.1', # for meson.options
-  default_options: ['cpp_std=c++23'],
+  default_options: ['cpp_std=c++26'],
 ) # TODO warning_level/werror
 
 # plog logging library

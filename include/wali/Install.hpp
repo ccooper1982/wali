@@ -1,11 +1,12 @@
 #ifndef WALI_INSTALL_H
 #define WALI_INSTALL_H
 
-#include <format>
+#include <Wt/WObject.h>
+#include <Wt/WSignal.h>
 #include <functional>
 #include <string_view>
+#include <utility>
 #include <wali/Common.hpp>
-
 
 
 enum class InstallState
@@ -32,33 +33,34 @@ enum class InstallLogLevel
   Error
 };
 
-using OnStageChange = std::function<void(const std::string_view, const StageStatus)>;
+using OnStageChange = std::function<void(const std::string, const StageStatus)>;
 using OnInstallComplete = std::function<void(const InstallState)>;
-using OnLog = std::function<void(const std::string_view, const InstallLogLevel)>;
+using OnLog = std::function<void(const std::string, const InstallLogLevel)>;
 
 struct Handlers
 {
   OnStageChange stage_change;
-  OnInstallComplete complete;
   OnLog log;
+  OnInstallComplete complete;
 };
 
-class Install
+class Install : public Wt::WObject
 {
 public:
 
-  void install(Handlers&& handlers);
+  void install(Handlers handlers);
 
 private:
 
   // filesystems
   bool filesystems();
+  bool fstab ();
   bool create_home_filesystem();
   bool create_boot_filesystem(const std::string_view part_dev);
   bool create_ext4_filesystem(const std::string_view part_dev);
   void set_partition_type(const std::string_view part_dev, const std::string_view type);
   bool wipe_fs(const std::string_view dev);
-  bool fstab ();
+
 
   // mounting
   bool mount();
@@ -74,10 +76,10 @@ private:
   bool set_password(const std::string_view user, const std::string_view pass);
   bool add_to_sudoers (const std::string_view username);
 
-  // boot loader
+  // bootloader
   bool boot_loader();
 
-  // localise
+  // locisation
   bool localise();
 
   // network
@@ -91,31 +93,37 @@ private:
   void log_stage_start(const std::string_view stage)
   {
     PLOGI << "Stage start: " << stage;
-    m_stage_change(stage, StageStatus::Start);
+    m_stage_change(std::string{stage}, StageStatus::Start);
   }
 
   void log_stage_end(const std::string_view stage, const StageStatus state)
   {
     PLOGI << "Stage end: " << stage;
-    m_stage_change(stage, state);
+    m_stage_change(std::string{stage}, state);
   }
 
   void log_info(const std::string_view msg)
   {
     PLOGI << msg;
-    m_log(msg, InstallLogLevel::Info);
+    m_log(std::string{msg}, InstallLogLevel::Info);
   }
 
   void log_warning(const std::string_view msg)
   {
     PLOGW << msg;
-    m_log(msg, InstallLogLevel::Warning);
+    m_log(std::string{msg}, InstallLogLevel::Warning);
   }
 
   void log_error(const std::string_view msg)
   {
     PLOGE << msg;
-    m_log(msg, InstallLogLevel::Error);
+    m_log(std::string{msg}, InstallLogLevel::Error);
+  }
+
+  void on_state(const InstallState state)
+  {
+    PLOGI << "Install state: " << std::to_underlying(state);
+    m_install_state(state);
   }
 
 private:

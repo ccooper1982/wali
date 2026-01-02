@@ -7,14 +7,15 @@
                 name="resourcesURL"
             >/home/callum/projects/awi/build/wwwroot/resources/</property>
         </properties> -->
-        <debug>false</debug>
+        <debug>true</debug>
         <debug-level>all</debug-level>
     </application-settings>
 
     <session-management>
-        <shared-process>
+        <!-- <shared-process>
             <max-num-sessions>5</max-num-sessions>
-            <num-session-threads>1</num-session-threads>
+            <num-session-threads>2</num-session-threads>
         </shared-process>
+        <server-push-timeout>20</server-push-timeout> -->
     </session-management>
 </server>

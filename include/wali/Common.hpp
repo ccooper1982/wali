@@ -1,6 +1,7 @@
 #ifndef WALI_COMMON_H
 #define WALI_COMMON_H
 
+#include <concepts>
 #include <filesystem>
 #include <math.h>
 #include <plog/Log.h>
@@ -57,5 +58,16 @@ void for_each (const C& c, F&& f) requires std::ranges::range<C>
   std::for_each(std::cbegin(c), std::cend(c), std::move(f));
 }
 
+template<class C>
+std::string flatten(const C& c, const char sep = ' ')
+  requires  std::ranges::range<C> &&
+            std::convertible_to<typename C::value_type, std::string_view>
+{
+  std::stringstream ss;
+  for (const auto& package : c)
+    ss << package << sep;
+
+  return ss.str();
+}
 
 #endif

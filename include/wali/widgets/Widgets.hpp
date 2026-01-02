@@ -4,6 +4,7 @@
 #include <concepts>
 #include <string_view>
 #include <Wt/WMenu.h>
+#include <Wt/WServer.h>
 #include <Wt/WWidget.h>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
@@ -18,7 +19,7 @@
 //  - Could store values in the session variable, but seems to require a database, which is overkill
 struct Widgets
 {
-  static void create_menu (WMenu * menu)
+  static void create_menu (WMenu * menu, WServer * server)
   {
     m_menu = menu;
 
@@ -27,7 +28,7 @@ struct Widgets
     create_network();
     create_accounts();
     create_localisation();
-    create_install();
+    create_install(server);
   }
 
   static IntroductionWidget * get_intro() { return get<IntroductionWidget>("Introduction"); }
@@ -44,7 +45,7 @@ private:
   static void create_network() { add_menu_widget<NetworkWidget>("Network"); }
   static void create_accounts() { add_menu_widget<AccountWidget>("Accounts"); }
   static void create_localisation() { add_menu_widget<LocaliseWidget>("Locale"); }
-  static void create_install() { add_menu_widget<InstallWidget>("Install"); }
+  static void create_install(WServer * server) { add_menu_widget<InstallWidget>("Install", server); }
 
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
   static void add_menu_widget(const std::string_view name, Args... args)

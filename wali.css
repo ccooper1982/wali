@@ -116,11 +116,10 @@ div.msg_info {
 }
 
 button.install {
-    padding: 10px;
+    padding: 5px;
     font-family: sans-serif, arial;
     font-size: 14px;
-
-    width: 150px;
+    width: 100px;
 }
 
 select.timezones {
@@ -145,4 +144,47 @@ select.keymaps {
     font:
         14px arial,
         sans-serif;
+}
+
+textarea.stage_log {
+    width: 480px;
+    height: 100px;
+    font: 10px monospace;
+}
+
+.Wt-panel {
+    border: 3px solid #888888;
+    background: #eeeeee none repeat scroll 0%;
+    width: 600px;
+}
+
+.Wt-panel .titlebar {
+    padding: 0px 6px 3px;
+    background: #888888;
+    color: #ffffff;
+    font-size: 10pt;
+}
+
+.Wt-panel .body {
+    /* background: #FFFFFF; */
+    padding: 4px 6px 4px;
+    -webkit-backface-visibility: hidden; /* !flicker on Chrome */
+    clear: left;
+}
+
+.Wt-collapse-button {
+    display: block;
+    flex: none;
+    align-self: center;
+    width: 16px;
+    height: 16px;
+    float: left;
+    background-image: url(collapse.gif);
+    background-repeat: no-repeat;
+    background-position: right center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.Wt-collapsed .Wt-collapse-button {
+    transform: rotate(-90deg);
 }

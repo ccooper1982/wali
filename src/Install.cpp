@@ -4,6 +4,7 @@
 #include <format>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <sys/mount.h>
 #include <system_error>
 #include <wali/Commands.hpp>
@@ -16,7 +17,14 @@ static const constexpr char PartTypeRoot[] = "8304";
 static const constexpr char PartTypeHome[] = "8302";
 
 
-void Install::install(Handlers&& handlers)
+// void Install::init(Handlers&& handlers)
+// {
+//   m_stage_change = handlers.stage_change;
+//   m_install_state = handlers.complete;
+//   m_log = handlers.log;
+// }
+
+void Install::install(Handlers handlers)
 {
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
@@ -24,26 +32,30 @@ void Install::install(Handlers&& handlers)
 
   auto exec_stage = [this](std::function<bool()> f, const std::string_view stage) mutable
   {
-    bool ok{false};
+    StageStatus state(StageStatus::Complete);
+
     try
     {
       log_stage_start(stage);
-      ok = f();
-      log_stage_end(stage, ok ? StageStatus::Complete : StageStatus::Fail);
+      state = f() ? StageStatus::Complete : StageStatus::Fail;
+      log_stage_end(stage, state);
     }
     catch (const std::exception& ex)
     {
-      m_install_state(InstallState::Fail);
+      PLOGE << "exec_stage exception: " << ex.what();
       log_stage_end(stage, StageStatus::Fail);
+      m_install_state(InstallState::Fail);
     }
-    return ok;
+    return state == StageStatus::Complete;
   };
 
   bool minimal{}, extra{};
 
   try
   {
-    // TODO swap, network, time (need timezones)
+    // TODO swap
+
+    on_state(InstallState::Running);
 
     minimal = exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "Create Filesystems") &&
               exec_stage(std::bind(&Install::mount, std::ref(*this)), "Mounting") &&
@@ -54,11 +66,11 @@ void Install::install(Handlers&& handlers)
 
     if (minimal)
     {
-      m_install_state(InstallState::Bootable);
+      on_state(InstallState::Bootable);
 
       // TODO user shell, additional packages
       extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account") &&
-              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise") &&
+              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise");
               exec_stage(std::bind(&Install::network, std::ref(*this)), "Network");
     }
   }
@@ -68,9 +80,9 @@ void Install::install(Handlers&& handlers)
   }
 
   if (extra)
-    m_install_state(InstallState::Complete);
+    on_state(InstallState::Complete);
   else
-    m_install_state(minimal ? InstallState::Partial : InstallState::Fail);
+    on_state(minimal ? InstallState::Partial : InstallState::Fail);
 }
 
 
@@ -105,9 +117,8 @@ bool Install::filesystems()
 
 bool Install::wipe_fs(const std::string_view dev)
 {
-  log_info(std::format("Wiping filesystem on {}", dev));
-  ReadCommand wipe;
-  return wipe.execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
+  log_info(std::format("Wipe filesystem on {}", dev));
+  return ReadCommand::execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
 }
 
 bool Install::create_home_filesystem()
@@ -144,13 +155,13 @@ bool Install::create_home_filesystem()
 
 bool Install::create_boot_filesystem(const std::string_view part_dev)
 {
-  log_info(std::format("Creating vfat32 on {}", part_dev));
+  log_info(std::format("Create vfat32 on {}", part_dev));
   return CreateVfat32Filesystem{}(part_dev);
 }
 
 bool Install::create_ext4_filesystem(const std::string_view part_dev)
 {
-  log_info(std::format("Creating ext4 on {}", part_dev));
+  log_info(std::format("Create ext4 on {}", part_dev));
   return CreateExt4Filesystem{}(part_dev);
 }
 
@@ -159,8 +170,7 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
   const int part_num = PartitionUtils::get_partition_part_number(part_dev);
   const auto parent_dev = PartitionUtils::get_partition_parent(part_dev);
 
-  ReadCommand cmd;
-  if (cmd.execute(std::format("sgdisk -t{}:{} {}", part_num, type, parent_dev)) != CmdSuccess)
+  if (ReadCommand::execute(std::format("sgdisk -t{}:{} {}", part_num, type, parent_dev)) != CmdSuccess)
     log_warning(std::format("Set partition type failed on {}", part_dev));
 }
 
@@ -189,7 +199,7 @@ bool Install::mount()
 
 bool Install::do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs)
 {
-  log_info(std::format("Mounting {} onto {}", path, dev));
+  log_info(std::format("Mount {} onto {}", path, dev));
 
   std::error_code ec;
   if (fs::create_directory(path, ec); ec)
@@ -228,8 +238,7 @@ bool Install::pacstrap()
   for (const auto& package : Packages)
     cmd_string << ' ' << package;
 
-  ReadCommand cmd;
-  const int stat = cmd.execute_read_line(cmd_string.str(), [this](const std::string_view m)
+  const int stat = ReadCommand::execute_read(cmd_string.str(), [this](const std::string_view m)
   {
     log_info(m);
   });
@@ -246,10 +255,11 @@ bool Install::fstab ()
 {
   fs::create_directory((RootMnt / FsTabPath).parent_path());
 
-  int stat{CmdFail};
+  const auto cmd_string = std::format("genfstab -U {} > {}", RootMnt.string(), FsTabPath.string());
 
-  ReadCommand cmd;
-  stat = cmd.execute(std::format("genfstab -U {} > {}", RootMnt.string(), FsTabPath.string()));
+  log_info(cmd_string);
+
+  auto stat = ReadCommand::execute(cmd_string);;
   if (stat != CmdSuccess)
     log_error(std::format("genfstab failed: {}", ::strerror(stat)));
 
@@ -286,6 +296,8 @@ bool Install::user_account()
     return false;
   }
 
+  log_info(std::format("Create account for {}", user));
+
   const auto user_sudo = Widgets::get_account()->get_user_can_sudo();
   const std::string_view wheel_group = user_sudo ? "-G wheel" : "";
 
@@ -303,9 +315,9 @@ bool Install::user_account()
 
 bool Install::set_password(const std::string_view user, const std::string_view pass)
 {
-  log_info(std::format("Setting password for {}", user));
+  log_info(std::format("Set password for {}", user));
 
-  return ChrootWrite{}("chpasswd", std::format("{}:{}", user, pass));
+  return ChrootWrite{}(std::format("echo \"{}:{}\" | chpasswd", user, pass));
 }
 
 bool Install::add_to_sudoers (const std::string_view user)
@@ -320,6 +332,8 @@ bool Install::add_to_sudoers (const std::string_view user)
   // the directory should be empty, but sanity check
   const auto count = std::distance(fs::directory_iterator{SudoersDir}, fs::directory_iterator{});
   const auto sudoers_file = fs::path(SudoersDir / std::format("{:02}_{}", count, user));
+
+  log_info(std::format("Adding {} to sudoers", user));
 
   {
     std::ofstream sudoers_stream{sudoers_file};
@@ -340,6 +354,8 @@ bool Install::boot_loader()
   const fs::path EfiConfigTargetDir{"/efi/grub"};
   const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
 
+  log_info("Install packages for grub");
+
   // TODO systemd-boot
   if (!install_packages({"grub", "efibootmgr", "os-prober"}))
   {
@@ -348,6 +364,7 @@ bool Install::boot_loader()
   }
 
   // install
+  log_info("Run grub-install");
   const auto install_cmd = std::format("grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --bootloader-id=GRUB");
 
   if (!Chroot{}(install_cmd))
@@ -357,10 +374,10 @@ bool Install::boot_loader()
   }
 
   // configure
-  fs::create_directory(EfiMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/efi/grub
+  log_info("Configure grub");
 
-  const auto config_cmd = std::format("grub-mkconfig -o {}", EfiConfigTarget.string());
-  return Chroot{}(config_cmd);
+  fs::create_directory(EfiMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/efi/grub
+  return Chroot{}(std::format("grub-mkconfig -o {}", EfiConfigTarget.string()));
 }
 
 
@@ -378,15 +395,21 @@ bool Install::localise()
   // empty command so arch-choot starts a shell
   // NOTE: appending is a bit lazy, and perhaps not obvious to future readers
 
+  log_info("Update locale.gen");
+
   // UI returns "en_GB.UTF8" , correct entry is "en_GB.UTF8 UTF-8"
-  if (!ChrootWrite{}("", std::format("echo \"{} UTF-8\" >> {}", locale, LocaleGen.string())))
+  if (!ChrootWrite{}(std::format("echo \"{} UTF-8\" >> {}", locale, LocaleGen.string())))
     log_warning(std::format("Failed to update {}", LocaleGen.string()));
   else
   {
+    log_info("Create locales");
+
     if (!Chroot{}("locale-gen"))
       log_warning("locale-gen failed");
     else
     {
+      log_info("Setting locales");
+
       // localectl wants <country>.UTF-8 , but UI returns <country>.UTF8
       locale.insert(locale.find_last_of('8'), 1, '-');
 
@@ -395,9 +418,11 @@ bool Install::localise()
     }
   }
 
+  log_info("Set timezone");
   if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
     log_warning("Failed to set locale timezone");
 
+  log_info("Set vconsole keymap");
   if (!Chroot{}(std::format("localectl set-keymap {}", keymap)))
     log_warning("Failed to set virtual terminal keymap");
 
@@ -416,7 +441,8 @@ bool Install::network()
   const bool copy_conf = Widgets::get_network()->copy_config();
   const bool ntp = Widgets::get_network()->ntp();
 
-  if (!ChrootWrite{}("", std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
+  log_info("Set hostname");
+  if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
     log_warning("Failed to create /etc/hostname");
 
   if (copy_conf)
@@ -425,7 +451,8 @@ bool Install::network()
                                                                         LiveIwdConfigPath.string(),
                                                                         TargetIwdConfigPath.string());
 
-    if (ReadCommand cmd; cmd.execute(cmd_string) != CmdSuccess)
+    log_info("Copy iwd config");
+    if (ReadCommand::execute(cmd_string) != CmdSuccess)
       log_warning("Failed to copy iwd config files");
   }
 
@@ -442,9 +469,7 @@ bool Install::install_packages(const std::vector<std::string>& packages)
     return true;
 
   std::stringstream ss;
-  ss << "pacman -S --noconfirm ";
-  for (const auto& package : packages)
-    ss << package << ' ';
+  ss << "pacman -S --noconfirm " << flatten(packages);
 
   const auto ok = Chroot{}(ss.str());
   if (!ok)

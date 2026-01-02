@@ -50,19 +50,26 @@ protected:
 class ReadCommand : public Command
 {
 public:
-  ReadCommand() = default;
 
-  int execute_read_line (const std::string_view cmd, OutputHandler&& handler)
+  static int execute_read_line (const std::string_view cmd, OutputHandler&& handler)
   {
+    ReadCommand rc;
     return execute_read(cmd, std::move(handler), 1);
   }
 
-  int execute(const std::string_view cmd)
+  static int execute(const std::string_view cmd)
   {
     return execute_read(cmd, nullptr, 1);
   }
 
-  int execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
+  static int execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
+  {
+    ReadCommand rc;
+    return rc.do_execute_read(cmd, std::move(handler), max_lines);
+  }
+
+private:
+  int do_execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
   {
     if (cmd.empty())
       return CmdSuccess;
@@ -117,9 +124,13 @@ class WriteCommand : public Command
 public:
   int execute (const std::string_view cmd, const std::string_view input)
   {
+    if (input.empty())
+      return CmdSuccess;
+
     if (m_fd = ::popen(cmd.data(), "w"); m_fd)
     {
-      fputs(input.data(), m_fd);
+      fputs(std::format("{};", input).c_str(), m_fd);
+      // fputs("exit;", m_fd);
       return close();
     }
     return CmdFail;
@@ -145,69 +156,18 @@ struct Chroot : public ReadCommand
 
 struct ChrootWrite : public WriteCommand
 {
-  bool operator()(const std::string_view cmd, const std::string_view input)
+  // bool operator()(const std::string_view cmd, const std::string_view input)
+  bool operator()(const std::string_view input)
   {
-    return execute(std::format("arch-chroot {} {}", RootMnt.string(), cmd), input) == CmdSuccess;
+    // const std::string script = std::format("(cat<<EOF | arch-chroot {}\n{};\nexit $?;\nEOF)", RootMnt.string(), cmd);
+    // PLOGE << script;
+    // return execute(script) == CmdSuccess;
+
+    return execute(std::format("arch-chroot {}", RootMnt.string()), input) == CmdSuccess;
   }
 };
 
-
-struct PlatformSizeValid : public ReadCommand
-{
-  bool operator()()
-  {
-    static const std::filesystem::path file {"/sys/firmware/efi/fw_platform_size"};
-
-    int size{0};
-
-    if (std::filesystem::exists(file) && std::filesystem::file_size(file))
-    {
-      std::string str;
-      // should only ever be one line in this file
-      std::ifstream stream{file};
-      if (std::getline(stream, str); !str.empty())
-        size = std::stoi(str);
-    }
-
-    return size == 64;
-  }
-};
-
-
-struct GetCpuVendor : public ReadCommand
-{
-  std::tuple<bool, CpuVendor> operator()()
-  {
-    CpuVendor vendor = CpuVendor::None;
-
-    const auto stat = execute_read_line("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
-    {
-      if (line.find("AMD") != std::string::npos)
-        vendor = CpuVendor::Amd;
-      else if (line.find("Intel") != std::string::npos)
-        vendor = CpuVendor::Intel;
-    });
-
-    return {stat == CmdSuccess, vendor};
-  }
-};
-
-
-struct ProgramExists : public ReadCommand
-{
-  std::tuple<int, bool> operator()(const std::string_view program)
-  {
-    bool exists{false};
-    const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
-    {
-      exists = !line.empty() ;
-    });
-
-    return {stat, exists};
-  }
-};
-
-
+// localisation
 struct GetTimeZones : public ReadCommand
 {
   std::vector<std::string> operator()()
@@ -279,6 +239,61 @@ struct GetKeyMaps : public ReadCommand
   }
 };
 
+// general
+struct PlatformSizeValid : public ReadCommand
+{
+  bool operator()()
+  {
+    static const std::filesystem::path file {"/sys/firmware/efi/fw_platform_size"};
+
+    int size{0};
+
+    if (std::filesystem::exists(file) && std::filesystem::file_size(file))
+    {
+      std::string str;
+      // should only ever be one line in this file
+      std::ifstream stream{file};
+      if (std::getline(stream, str); !str.empty())
+        size = std::stoi(str);
+    }
+
+    return size == 64;
+  }
+};
+
+
+struct GetCpuVendor : public ReadCommand
+{
+  std::tuple<bool, CpuVendor> operator()()
+  {
+    CpuVendor vendor = CpuVendor::None;
+
+    const auto stat = execute_read_line("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
+    {
+      if (line.find("AMD") != std::string::npos)
+        vendor = CpuVendor::Amd;
+      else if (line.find("Intel") != std::string::npos)
+        vendor = CpuVendor::Intel;
+    });
+
+    return {stat == CmdSuccess, vendor};
+  }
+};
+
+
+struct ProgramExists : public ReadCommand
+{
+  std::tuple<int, bool> operator()(const std::string_view program)
+  {
+    bool exists{false};
+    const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
+    {
+      exists = !line.empty() ;
+    });
+
+    return {stat, exists};
+  }
+};
 
 // filesystems
 inline const constexpr char ext4[] = "ext4";
@@ -310,8 +325,6 @@ struct Mount : public ReadCommand
     return execute(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
   }
 };
-
-
 
 
 #endif

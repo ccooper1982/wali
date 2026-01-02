@@ -5,6 +5,7 @@
 #include <Wt/WMenu.h>
 #include <Wt/WMenuItem.h>
 #include <Wt/WDialog.h>
+#include <Wt/WServer.h>
 #include <Wt/WStackedWidget.h>
 #include <plog/Init.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
@@ -84,6 +85,8 @@ public:
 
     useStyleSheet("wali.css");
 
+    enableUpdates(true);
+
     auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
     hbox->setSpacing(0);
 
@@ -105,7 +108,7 @@ public:
 
       auto menu = menu_container->addNew<WMenu>(menu_contents);
       menu->setStyleClass("menu");
-      Widgets::create_menu(menu);
+      Widgets::create_menu(menu, env.server());
     }
   }
 };
