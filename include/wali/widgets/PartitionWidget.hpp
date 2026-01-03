@@ -22,7 +22,7 @@ using Validate = std::function<void()>;
 // Draws a Device dropdown and Filesystem dropdown (optional)
 struct DeviceFilesytemWidget : public WContainerWidget
 {
-  DeviceFilesytemWidget(const Partitions& parts, Validate validate, const StringViewVec filesystems = {})
+  DeviceFilesytemWidget(const Partitions& parts, Validate validate, const StringViewVec filesystems = {}, const bool enable_fs = true)
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
 
@@ -38,6 +38,9 @@ struct DeviceFilesytemWidget : public WContainerWidget
       m_fs = layout->addWidget(make_wt<Wt::WComboBox>());
 
       for_each(filesystems, [this](const auto& fs) { m_fs->addItem(fs.data()); });
+
+      if (!enable_fs)
+        m_fs->disable();
     }
 
     for_each(parts, [this](const Partition& part) { m_device->addItem(part.dev); });
@@ -78,7 +81,7 @@ class PartitionsWidget : public WContainerWidget
 
       layout->addWidget(make_wt<Wt::WText>("<h2>Boot</h2>"));
 
-      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"vfat"}));
+      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"vfat"}, false));
     }
 
     std::string get_device() const
