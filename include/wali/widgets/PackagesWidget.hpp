@@ -69,7 +69,7 @@ private:
 
       Http::Client * client = addChild(make_wt<Http::Client>());
       client->setMaxRedirects(10);
-      client->setMaximumResponseSize(8 * 1024);
+      client->setMaximumResponseSize(16 * 1024);
       client->done().connect(this, &PackagesWidget::on_response);
 
       // put 'any' arch to avoid missing packages, i.e. "reflector" is 'any'
@@ -95,28 +95,29 @@ private:
         PLOGE << "Package search response: Too many requests";
       else
         PLOGE << "Package search response: " << rsp.status() << " : " << err.message();
-      return;
     }
-
-    // TODO should perhaps use the root_object["version"] (currently 2)
-    Json::Value root;
-
-    if (Json::ParseError err; !Json::parse(rsp.body(), root, err))
-      PLOGE << "Response contains invalid JSON";
-    else if (root.type() != Json::Type::Object)
-      PLOGE << "Response JSON root is not an object";
-    else if (Json::Object root_object = root; !root_object.contains("results") || root_object.get("results").type() != Json::Type::Array)
-      PLOGE << "Response JSON 'results' does not exist or is not an array";
-    else if (const Json::Array results = root_object.get("results"); !results.empty())
+    else
     {
-      const Json::Object& result = results[0];
-      const auto name = result.get("pkgname");
+      // TODO should perhaps use the root_object["version"] (currently 2)
+      Json::Value root;
 
-      m_packages_confirmed.emplace(name);
-      m_packages_pending.erase(name);
+      if (Json::ParseError err; !Json::parse(rsp.body(), root, err))
+        PLOGE << "Response contains invalid JSON";
+      else if (root.type() != Json::Type::Object)
+        PLOGE << "Response JSON root is not an object";
+      else if (Json::Object root_object = root; !root_object.contains("results") || root_object.get("results").type() != Json::Type::Array)
+        PLOGE << "Response JSON 'results' does not exist or is not an array";
+      else if (const Json::Array results = root_object.get("results"); !results.empty())
+      {
+        const Json::Object& result = results[0];
+        const auto name = result.get("pkgname");
 
-      m_list_confirmed->addItem(name);
-      m_packages_install.emplace(name);
+        m_packages_confirmed.emplace(name);
+        m_packages_pending.erase(name);
+
+        m_list_confirmed->addItem(name);
+        m_packages_install.emplace(name);
+      }
     }
 
     // when we have all resposnes
