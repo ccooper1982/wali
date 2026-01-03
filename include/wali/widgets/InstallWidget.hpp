@@ -79,6 +79,12 @@ public:
 
     // status text and logs
     m_install_status = layout->addWidget(make_wt<WText>());
+    m_install_status->addStyleClass("install_status");
+    m_install_status->addStyleClass("install_status_fail");
+    m_install_status->addStyleClass("install_status_complete");
+    m_install_status->addStyleClass("install_status_partial");
+    m_install_status->setStyleClass("install_status");
+
 
     m_fs_log = layout->addWidget(make_wt<StageLog>("Create Filesystem"));
     m_mount_log = layout->addWidget(make_wt<StageLog>("Mount Partitions"));
@@ -93,11 +99,6 @@ public:
     m_log = m_fs_log;
 
     layout->addStretch(1);
-  }
-
-  ~InstallWidget()
-  {
-    PLOGW << "InstallWidget::~InstallWidget()";
   }
 
 private:
@@ -167,6 +168,7 @@ private:
       {
         m_log->end();
 
+        // TODO messy. Stage names in (Install.cpp, Widgets.hpp)
         if (name == "Create Filesystems")
           m_log = m_mount_log;
         else if (name == "Mounting")
@@ -183,6 +185,8 @@ private:
           m_log = m_localise_log;
         else if (name == "Localise")
           m_log = m_network_log;
+        else if (name == "Network")
+          m_log = m_packages_log;
         else
           m_log = nullptr;
 
@@ -209,7 +213,7 @@ private:
   void on_complete(const InstallState state, const std::string sid)
   {
     bool allow_install{false};
-    std::string_view status;
+    std::string_view status, css_class{"install_status"};
 
     switch (state)
     {
@@ -219,11 +223,13 @@ private:
 
     case InstallState::Fail:
       status = "Failed - system is not bootable";
+      css_class = "install_status_fail";
       allow_install = true;
     break;
 
     case InstallState::Complete:
       status = "Complete - ready to reboot";
+      css_class = "install_status_complete";
     break;
 
     case InstallState::Bootable:
@@ -232,6 +238,7 @@ private:
 
     case InstallState::Partial:
       status = "Partial - completed minimal, but a subsequent step failed";
+      css_class = "install_status_partial";
       allow_install = true;
     break;
 
@@ -268,6 +275,7 @@ private:
   WText * m_install_status;
   std::jthread m_install_thread;
 
+  // TODO messy
   StageLog *  m_fs_log,
            *  m_mount_log,
            *  m_pacstrap_log,
@@ -276,7 +284,8 @@ private:
            *  m_bootloader_log,
            *  m_user_account_log,
            *  m_localise_log,
-           *  m_network_log;
+           *  m_network_log,
+           *  m_packages_log;
   StageLog * m_log{}; // current log
 };
 

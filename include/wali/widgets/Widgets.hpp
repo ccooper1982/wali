@@ -12,6 +12,7 @@
 #include <wali/widgets/InstallWidget.hpp>
 #include <wali/widgets/LocaliselWidget.hpp>
 #include <wali/widgets/NetworkWidget.hpp>
+#include <wali/widgets/PackagesWidget.hpp>
 #include <wali/widgets/PartitionWidget.hpp>
 
 // TODO may a better way of doing this
@@ -23,12 +24,13 @@ struct Widgets
   {
     m_menu = menu;
 
-    create_intro();
-    create_partitions();
-    create_network();
-    create_accounts();
-    create_localisation();
-    create_install(server);
+    add_menu_widget<IntroductionWidget>("Introduction");
+    add_menu_widget<PartitionsWidget>("Partitions");
+    add_menu_widget<NetworkWidget>("Network");
+    add_menu_widget<AccountWidget>("Accounts");
+    add_menu_widget<LocaliseWidget>("Locale");
+    add_menu_widget<PackagesWidget>("Packages");
+    add_menu_widget<InstallWidget>("Install", server);
   }
 
   static IntroductionWidget * get_intro() { return get<IntroductionWidget>("Introduction"); }
@@ -36,16 +38,10 @@ struct Widgets
   static NetworkWidget * get_network() { return get<NetworkWidget>("Network"); }
   static AccountWidget * get_account() { return get<AccountWidget>("Accounts"); }
   static LocaliseWidget * get_localise() { return get<LocaliseWidget>("Locale"); }
+  static PackagesWidget * get_packages() { return get<PackagesWidget>("Packages"); }
   static InstallWidget * get_install() { return get<InstallWidget>("Install"); }
 
 private:
-
-  static void create_intro() { add_menu_widget<IntroductionWidget>("Introduction"); }
-  static void create_partitions() { add_menu_widget<PartitionsWidget>("Partitions"); }
-  static void create_network() { add_menu_widget<NetworkWidget>("Network"); }
-  static void create_accounts() { add_menu_widget<AccountWidget>("Accounts"); }
-  static void create_localisation() { add_menu_widget<LocaliseWidget>("Locale"); }
-  static void create_install(WServer * server) { add_menu_widget<InstallWidget>("Install", server); }
 
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
   static void add_menu_widget(const std::string_view name, Args... args)

@@ -50,11 +50,6 @@ public:
 
   void install(Handlers handlers);
 
-  ~Install()
-  {
-    PLOGW << "Install::~Install()";
-  }
-
 private:
 
   // filesystems

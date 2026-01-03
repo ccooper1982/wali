@@ -434,6 +434,8 @@ bool Install::localise()
     log_info("Set timezone");
     if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
       log_warning("Failed to set locale timezone");
+    else if (log_info("Syncing clock"); !ReadCommand::execute("hwclock --systohc"))
+      log_warning("Failed to sync hardware clock");
   }
 
   if (!keymap.empty())

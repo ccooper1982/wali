@@ -152,6 +152,27 @@ textarea.stage_log {
     font: 10px monospace;
 }
 
+span.install_status {
+    font: 18px arial;
+    padding: 5px;
+}
+
+span.install_status_fail {
+    color: red;
+    padding: 5px;
+}
+
+span.install_status_complete {
+    color: seagreen;
+    padding: 5px;
+}
+
+span.install_status_partial {
+    color: #999900;
+    padding: 5px;
+    background-color: white;
+}
+
 .Wt-panel {
     border: 3px solid #888888;
     background: #eeeeee none repeat scroll 0%;
@@ -169,6 +190,7 @@ textarea.stage_log {
     /* background: #FFFFFF; */
     padding: 4px 6px 4px;
     -webkit-backface-visibility: hidden; /* !flicker on Chrome */
+    backface-visibility: hidden; /* warning from zed without this*/
     clear: left;
 }
 
