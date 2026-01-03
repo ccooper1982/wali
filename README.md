@@ -20,7 +20,7 @@
 1. In a browser, visit the URL (note it is `http`)
     - i.e. `http://192.168.1.2:8080/`
 
-# Usage
+# Use
 Go through the menu options, configuring as required. Most
 sections are self explanatory, 
 
@@ -33,19 +33,17 @@ sections are self explanatory,
     - New partition: wipes the partition and create a new filesystem
     - Existing partition: mount only
 
-> **Note**
-The boot partition is mounted at `/efi`
+> [!IMPORTANT]
+> The boot partition is mounted at `/efi`.
 
 ## User
 - A root password is required
 - A user account with password is required
 
 # Install Process
-- For minimal success all stages up to and including "Boot Loader" must succeed
-    - The Install Status will change to "Minimal"
-- Subsequent stages:
-    - Succeed: Install Status is "Complete"
-    - Fail: Install Status is "Partial"
+For a bootable system, all stages up to and including "Boot Loader" must succeed.
+If a subsequent stage fails the system can _probably_ still boot.
+   
 
 # Build
 - TODO
