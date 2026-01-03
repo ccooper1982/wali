@@ -12,10 +12,12 @@
     </application-settings>
 
     <session-management>
-        <!-- <shared-process>
+        <!--
+        <shared-process>
             <max-num-sessions>5</max-num-sessions>
             <num-session-threads>2</num-session-threads>
         </shared-process>
-        <server-push-timeout>20</server-push-timeout> -->
+        <server-push-timeout>20</server-push-timeout>
+        -->
     </session-management>
 </server>

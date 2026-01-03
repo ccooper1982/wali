@@ -44,11 +44,16 @@ struct Handlers
   OnInstallComplete complete;
 };
 
-class Install : public Wt::WObject
+class Install final
 {
 public:
 
   void install(Handlers handlers);
+
+  ~Install()
+  {
+    PLOGW << "Install::~Install()";
+  }
 
 private:
 

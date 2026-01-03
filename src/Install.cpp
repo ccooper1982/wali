@@ -351,8 +351,8 @@ bool Install::add_to_sudoers (const std::string_view user)
 // boot loader
 bool Install::boot_loader()
 {
-  const fs::path EfiConfigTargetDir{"/efi/grub"};
-  const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
+  static const fs::path EfiConfigTargetDir{"/efi/grub"};
+  static const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
 
   log_info("Install packages for grub");
 
@@ -473,7 +473,7 @@ bool Install::install_packages(const std::vector<std::string>& packages)
 
   const auto ok = Chroot{}(ss.str());
   if (!ok)
-    log_error("pacman failed to install to package(s)");
+    log_error("pacman failed to install package(s)");
 
   return ok;
 }

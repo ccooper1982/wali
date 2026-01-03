@@ -95,6 +95,11 @@ public:
     layout->addStretch(1);
   }
 
+  ~InstallWidget()
+  {
+    PLOGW << "InstallWidget::~InstallWidget()";
+  }
+
 private:
   void install ()
   {
@@ -213,6 +218,11 @@ private:
       bootable_msg = "Running";
     break;
 
+    case InstallState::Fail:
+      bootable_msg = "Failed - system is not bootable";
+      allow_install = true;
+    break;
+
     case InstallState::Complete:
       bootable_msg = "Complete - ready to reboot";
     break;
@@ -223,11 +233,6 @@ private:
 
     case InstallState::Partial:
       bootable_msg = "Partial - completed minimal, but a subsequent step failed";
-      allow_install = true;
-    break;
-
-    case InstallState::Fail:
-      bootable_msg = "Failed - system is not bootable";
       allow_install = true;
     break;
 
@@ -249,6 +254,11 @@ private:
       {
         m_stage_status->hide();
       }
+
+      WApplication::instance()->triggerUpdate();
+
+      if (state == InstallState::Complete || state == InstallState::Fail)
+        m_install_thread.join();
     });
   }
 

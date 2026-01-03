@@ -1,3 +1,4 @@
+#include <Wt/WEnvironment.h>
 #include <Wt/WText.h>
 #include <math.h>
 
@@ -10,6 +11,7 @@
 #include <plog/Init.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 
+#include <string_view>
 #include <wali/Commands.hpp>
 #include <wali/LogFormat.hpp>
 #include <wali/widgets/Common.hpp>
@@ -76,10 +78,10 @@ static std::string startup_checks()
     return "";
 }
 
-class HelloApplication : public Wt::WApplication
+class WaliApplication : public Wt::WApplication
 {
 public:
-  HelloApplication(const Wt::WEnvironment& env) : WApplication(env)
+  WaliApplication(const Wt::WEnvironment& env) : WApplication(env)
   {
     setTitle("wali");
 
@@ -114,17 +116,79 @@ public:
 };
 
 
+static std::unique_ptr<WApplication> create_app(const WEnvironment& env)
+{
+  return std::make_unique<WaliApplication>(env);
+}
+
+
+// TODO quite sure there should be a way to get this from WServer / WEnvironment _prior_
+//      to create_app() being called
+static std::tuple<std::string_view, std::string_view> get_server_host(const int argc, char ** argv)
+{
+  std::vector<std::string_view> args(argv, argv+argc);
+
+  const auto it_address = std::find_if(std::cbegin(args), std::cend(args), [](const std::string_view arg)
+                          {
+                            return arg == "--http-address";
+                          });
+
+  const auto it_port = std::find_if(std::cbegin(args), std::cend(args), [](const std::string_view arg)
+                       {
+                         return arg == "--http-port";
+                       });
+
+  // shouldn't happen because it suggests server won't reach this point
+  if (it_address == std::cend(args) || it_port == std::cend(args) ||
+      it_address+1 == std::cend(args) || it_port+1 == std::cend(args))
+    return {};
+  else
+    return {*(it_address+1), *(it_port+1)};
+}
+
+
 int main(int argc, char **argv)
 {
   init_logger();
 
   PLOGI << "Starting webtoolkit";
 
-  return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
+  try
   {
-    // server already running by now, need to start manually so this log entry is easier to notice
-    PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme(), env.hostName());
+    WServer server(argc, argv);
 
-    return std::make_unique<HelloApplication>(env);
-  });
+    server.addEntryPoint(Wt::EntryPointType::Application, &create_app);
+
+    if (server.start())
+    {
+      const auto [host, port] = get_server_host(argc, argv);
+
+      PLOGI << "Web server running on " << host << ':' << port;
+
+      const int signal = WServer::waitForShutdown();
+
+      PLOGW << "Shutdown: " << signal;
+
+      server.stop();
+    }
+  }
+  catch (Wt::WServer::Exception& wex)
+  {
+    PLOGE << "Wt exception: " << wex.what();
+    return 1;
+  }
+  catch (std::exception &e)
+  {
+    PLOGE << "exception: " << e.what();
+    return 1;
+  }
+
+  return 0;
+
+  // TODO Reinstate this when shutdown issue solved
+  // return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
+  // {
+  //   PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme(), env.hostName());
+  //   return std::make_unique<WaliApplication>(env);
+  // });
 }
