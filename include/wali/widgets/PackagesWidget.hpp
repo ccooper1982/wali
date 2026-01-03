@@ -73,7 +73,7 @@ private:
       client->done().connect(this, &PackagesWidget::on_response);
 
       // put 'any' arch to avoid missing packages, i.e. "reflector" is 'any'
-      if (client->get(std::format("https://archlinux.org/packages/search/json/?arch=any&name={}", package)))
+      if (client->get(std::format("https://archlinux.org/packages/search/json/?arch=x86_64&name={}", package)))
       {
         ++m_responses_expected;
         m_packages_pending.emplace(package);
@@ -84,17 +84,17 @@ private:
     //   WApplication::instance()->deferRendering();
   }
 
-  void on_response(std::error_code err, const Http::Message& rsp)
+  void on_response(std::error_code rsp_err, const Http::Message& rsp)
   {
     // WApplication::instance()->resumeRendering();
 
-    if (err || rsp.status() != 200)
+    if (rsp_err || rsp.status() != 200)
     {
       // TODO diplay something on UI on err
       if (rsp.status() == 429)
         PLOGE << "Package search response: Too many requests";
       else
-        PLOGE << "Package search response: " << rsp.status() << " : " << err.message();
+        PLOGE << "Package search response: " << rsp.status() << " : " << rsp_err.message();
     }
     else
     {
