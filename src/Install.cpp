@@ -17,27 +17,20 @@ static const constexpr char PartTypeRoot[] = "8304";
 static const constexpr char PartTypeHome[] = "8302";
 
 
-// void Install::init(Handlers&& handlers)
-// {
-//   m_stage_change = handlers.stage_change;
-//   m_install_state = handlers.complete;
-//   m_log = handlers.log;
-// }
-
 void Install::install(Handlers handlers)
 {
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
 
-  auto exec_stage = [this](std::function<bool()> f, const std::string_view stage) mutable
+  auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
     StageStatus state(StageStatus::Complete);
 
     try
     {
       log_stage_start(stage);
-      state = f() ? StageStatus::Complete : StageStatus::Fail;
+      state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
       log_stage_end(stage, state);
     }
     catch (const std::exception& ex)
@@ -57,27 +50,29 @@ void Install::install(Handlers handlers)
 
     on_state(InstallState::Running);
 
-    minimal = exec_stage(std::bind(&Install::filesystems, std::ref(*this)), "Create Filesystems") &&
-              exec_stage(std::bind(&Install::mount, std::ref(*this)), "Mounting") &&
-              exec_stage(std::bind(&Install::pacstrap, std::ref(*this)), "Pacstrap") &&
-              exec_stage(std::bind(&Install::fstab, std::ref(*this)), "Generate fstab") &&
-              exec_stage(std::bind(&Install::root_account, std::ref(*this)), "Root Account") &&
-              exec_stage(std::bind(&Install::boot_loader, std::ref(*this)), "Boot loader");
+    minimal = exec_stage(&Install::filesystems, "Create Filesystems") &&
+              exec_stage(&Install::mount, "Mounting") &&
+              exec_stage(&Install::pacstrap, "Pacstrap") &&
+              exec_stage(&Install::fstab, "Generate fstab") &&
+              exec_stage(&Install::root_account, "Root Account") &&
+              exec_stage(&Install::boot_loader, "Boot loader");
 
     if (minimal)
     {
       on_state(InstallState::Bootable);
 
       // TODO user shell, additional packages
-      extra = exec_stage(std::bind(&Install::user_account, std::ref(*this)), "User Account") &&
-              exec_stage(std::bind(&Install::localise, std::ref(*this)), "Localise");
-              exec_stage(std::bind(&Install::network, std::ref(*this)), "Network");
+      extra = exec_stage(&Install::user_account, "User Account") &&
+              exec_stage(&Install::localise, "Localise");
+              exec_stage(&Install::network, "Network");
     }
   }
   catch (const std::exception& ex)
   {
     log_error(std::format("Unknown error: {}", ex.what()));
   }
+
+  unmount();
 
   if (extra)
     on_state(InstallState::Complete);
@@ -183,21 +178,27 @@ bool Install::mount()
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
-  mounted_root = do_mount(root->get_device(), RootMnt.string(), root->get_fs());
+  mounted_root = do_mount(root->get_device(), RootMnt.string());
 
   if (mounted_root)
   {
-    mounted_boot = do_mount(boot->get_device(), EfiMnt.string(), boot->get_fs());
+    mounted_boot = do_mount(boot->get_device(), EfiMnt.string());
 
     if (!home->is_home_on_root())
-      mounted_home = do_mount(home->get_device(), HomeMnt.string(), home->get_fs());
+      mounted_home = do_mount(home->get_device(), HomeMnt.string());
   }
 
   return mounted_root && mounted_boot && mounted_home;
 }
 
+bool Install::unmount()
+{
+  // assumes user hasn't manual mounts
+  return Unmount{}("/mnt", true);
+}
 
-bool Install::do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs)
+
+bool Install::do_mount(const std::string_view dev, const std::string_view path)
 {
   log_info(std::format("Mount {} onto {}", path, dev));
 
@@ -212,7 +213,7 @@ bool Install::do_mount(const std::string_view dev, const std::string_view path, 
 }
 
 
-// pacstrap
+// pacman
 bool Install::pacstrap()
 {
   static const std::vector<std::string> Packages =
@@ -249,6 +250,20 @@ bool Install::pacstrap()
   return stat == CmdSuccess;
 }
 
+bool Install::install_packages(const std::vector<std::string>& packages)
+{
+  if (packages.empty())
+    return true;
+
+  std::stringstream ss;
+  ss << "pacman -S --noconfirm " << flatten(packages);
+
+  const auto ok = Chroot{}(ss.str());
+  if (!ok)
+    log_error("pacman failed to install package(s)");
+
+  return ok;
+}
 
 // fstab
 bool Install::fstab ()
@@ -387,44 +402,46 @@ bool Install::localise()
   static const fs::path TimezonePath{"/usr/share/zoneinfo/"};
   static const fs::path LocaleGen{"/etc/locale.gen"};
   static const fs::path LocaleConf{"/etc/locale.conf"};
+  static const fs::path TerminalConf{"/etc/vconsole.conf"};
 
   const auto& keymap = Widgets::get_localise()->get_keymap();
   const auto& zone = Widgets::get_localise()->get_timezone();
-  auto locale = Widgets::get_localise()->get_locale();
+  const auto locale = Widgets::get_localise()->get_locale();
 
-  // empty command so arch-choot starts a shell
-  // NOTE: appending is a bit lazy, and perhaps not obvious to future readers
-
-  log_info("Update locale.gen");
-
-  // UI returns "en_GB.UTF8" , correct entry is "en_GB.UTF8 UTF-8"
-  if (!ChrootWrite{}(std::format("echo \"{} UTF-8\" >> {}", locale, LocaleGen.string())))
-    log_warning(std::format("Failed to update {}", LocaleGen.string()));
-  else
+  if (!locale.empty())
   {
-    log_info("Create locales");
+    log_info("Update locale.gen");
 
-    if (!Chroot{}("locale-gen"))
-      log_warning("locale-gen failed");
+    // NOTE: appending is a bit lazy, and perhaps not obvious to future readers
+    if (!ChrootWrite{}(std::format("echo \"{} UTF-8\" >> {}", locale, LocaleGen.string())))
+      log_warning(std::format("Failed to update {}", LocaleGen.string()));
     else
     {
-      log_info("Setting locales");
+      if (log_info("Create locales"); !Chroot{}("locale-gen"))
+        log_warning("locale-gen failed");
+      else
+      {
+        log_info("Setting locales");
 
-      // localectl wants <country>.UTF-8 , but UI returns <country>.UTF8
-      locale.insert(locale.find_last_of('8'), 1, '-');
-
-      if (!Chroot{}(std::format("localectl set-locale {}", locale)))
-        log_warning("localectl failed to set locale");
+        if (!ChrootWrite{}(std::format("echo \"LANG={}\" >> {}", locale, LocaleConf.string())))
+          log_warning(std::format("Failed to update {}", LocaleConf.string()));
+      }
     }
   }
 
-  log_info("Set timezone");
-  if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
-    log_warning("Failed to set locale timezone");
+  if (!zone.empty())
+  {
+    log_info("Set timezone");
+    if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
+      log_warning("Failed to set locale timezone");
+  }
 
-  log_info("Set vconsole keymap");
-  if (!Chroot{}(std::format("localectl set-keymap {}", keymap)))
-    log_warning("Failed to set virtual terminal keymap");
+  if (!keymap.empty())
+  {
+    log_info("Set vconsole keymap");
+    if (!ChrootWrite{}(std::format("echo \"KEYMAP={}\" >> {}", keymap, TerminalConf.string())))
+      log_warning(std::format("Failed to update {}", TerminalConf.string()));
+  }
 
   return true;
 }
@@ -447,13 +464,17 @@ bool Install::network()
 
   if (copy_conf)
   {
-    const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
-                                                                        LiveIwdConfigPath.string(),
-                                                                        TargetIwdConfigPath.string());
+    log_info("Installing iws");
+    if (install_packages({"iwd"}) && enable_service("iwd.service"))
+    {
+      const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
+                                                                          LiveIwdConfigPath.string(),
+                                                                          TargetIwdConfigPath.string());
 
-    log_info("Copy iwd config");
-    if (ReadCommand::execute(cmd_string) != CmdSuccess)
-      log_warning("Failed to copy iwd config files");
+      log_info("Copy iwd config");
+      if (ReadCommand::execute(cmd_string) != CmdSuccess)
+        log_warning("Failed to copy iwd config files");
+    }
   }
 
   if (ntp && !enable_service("systemd-timesyncd.service"))
@@ -463,21 +484,6 @@ bool Install::network()
 }
 
 // general
-bool Install::install_packages(const std::vector<std::string>& packages)
-{
-  if (packages.empty())
-    return true;
-
-  std::stringstream ss;
-  ss << "pacman -S --noconfirm " << flatten(packages);
-
-  const auto ok = Chroot{}(ss.str());
-  if (!ok)
-    log_error("pacman failed to install package(s)");
-
-  return ok;
-}
-
 bool Install::enable_service(const std::string_view name)
 {
   log_info(std::format("Enabling service {}", name));

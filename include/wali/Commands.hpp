@@ -295,6 +295,14 @@ struct ProgramExists : public ReadCommand
   }
 };
 
+struct Reboot : public ReadCommand
+{
+  bool operator()()
+  {
+    return execute("reboot -f") == CmdSuccess;
+  }
+};
+
 // filesystems
 inline const constexpr char ext4[] = "ext4";
 inline const constexpr char vfat32[] = "vfat -F 32";
@@ -325,6 +333,15 @@ struct Mount : public ReadCommand
     return execute(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
   }
 };
+
+struct Unmount : public ReadCommand
+{
+  bool operator()(const std::string_view mount_point, const bool recursive)
+  {
+    return execute(std::format("umount {} {}", recursive ? "-R" : "", mount_point)) == CmdSuccess;
+  }
+};
+
 
 
 #endif

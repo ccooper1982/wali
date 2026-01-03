@@ -69,7 +69,8 @@ private:
 
   // mounting
   bool mount();
-  bool do_mount(const std::string_view dev, const std::string_view path, const std::string_view fs);
+  bool unmount();
+  bool do_mount(const std::string_view dev, const std::string_view path);
 
   // pacman
   bool pacstrap();

@@ -10,6 +10,7 @@
 #include <Wt/WServer.h>
 #include <Wt/WTextArea.h>
 #include <thread>
+#include <wali/Commands.hpp>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Common.hpp>
@@ -72,13 +73,12 @@ public:
 
     m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
     m_reboot_btn->setStyleClass("install");
-    m_reboot_btn->disable();
-    // m_reboot_btn->clicked().connect([this]() { install(); });
+    m_reboot_btn->enable();
+    m_reboot_btn->clicked().connect([] { Reboot{}(); });
     controls_layout->addStretch(1);
 
     // status text and logs
     m_install_status = layout->addWidget(make_wt<WText>());
-    m_stage_status = layout->addWidget(make_wt<WText>());
 
     m_fs_log = layout->addWidget(make_wt<StageLog>("Create Filesystem"));
     m_mount_log = layout->addWidget(make_wt<StageLog>("Mount Partitions"));
@@ -190,7 +190,6 @@ private:
           m_log->start();
       }
 
-      m_stage_status->setText(std::format("Stage {}: {} ", msg, name));
       WApplication::instance()->triggerUpdate();
     });
   }
@@ -210,50 +209,44 @@ private:
   void on_complete(const InstallState state, const std::string sid)
   {
     bool allow_install{false};
-    std::string_view bootable_msg;
+    std::string_view status;
 
     switch (state)
     {
     case InstallState::Running:
-      bootable_msg = "Running";
+      status = "Running";
     break;
 
     case InstallState::Fail:
-      bootable_msg = "Failed - system is not bootable";
+      status = "Failed - system is not bootable";
       allow_install = true;
     break;
 
     case InstallState::Complete:
-      bootable_msg = "Complete - ready to reboot";
+      status = "Complete - ready to reboot";
     break;
 
     case InstallState::Bootable:
-      bootable_msg = "Bootable - minimal steps successful";
+      status = "Bootable - minimal steps successful";
     break;
 
     case InstallState::Partial:
-      bootable_msg = "Partial - completed minimal, but a subsequent step failed";
+      status = "Partial - completed minimal, but a subsequent step failed";
       allow_install = true;
     break;
 
     case InstallState::None:
-      bootable_msg = "Press Install to start";
+      status = "Press Install to start";
       allow_install = true;
     break;
     }
 
-    const auto msg = std::format("Install Status: {}", bootable_msg);
     m_server->post(sid, [=, this]()
     {
+      set_install_status(status);
+
       if (allow_install)
-      {
-        m_install_status->setText(msg);
         m_install_btn->setEnabled(allow_install);
-      }
-      else
-      {
-        m_stage_status->hide();
-      }
 
       WApplication::instance()->triggerUpdate();
 
@@ -262,13 +255,16 @@ private:
     });
   }
 
+  void set_install_status(const std::string_view stat)
+  {
+    m_install_status->setText(std::format("Install Status: {}", stat));
+  }
 
 private:
   Install m_install;
   WPushButton * m_install_btn,
               * m_reboot_btn;
   WServer * m_server;
-  WText * m_stage_status;
   WText * m_install_status;
   std::jthread m_install_thread;
 

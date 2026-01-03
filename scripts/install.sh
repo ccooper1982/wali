@@ -2,11 +2,10 @@
 
 mount -o remount,size=600M /run/archiso/cowspace
 
-pacman -Sy
-pacman -Q wt
+pacman -Sy --noconfirm archlinux-keyring
+pacman -Q wt 2> /dev/null
 
 if [ $? -ne 0 ]
   then
-    echo "Installing wt"
     pacman -S --noconfirm wt
 fi

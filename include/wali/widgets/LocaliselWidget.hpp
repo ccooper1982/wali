@@ -19,8 +19,8 @@ class LocaliseWidget : public WContainerWidget
 
   inline static const std::vector<std::string> PriorityLocales =
   {
-    "en_GB.UTF8",  // not really, but convenient for me during testing
-    "en_US.UTF8",
+    "en_GB.UTF-8",  // not really, but convenient for me during testing
+    "en_US.UTF-8",
   };
 
   inline static const std::vector<std::string> PriorityKeymaps =
