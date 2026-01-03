@@ -4,6 +4,7 @@
 - In the live environment, `wali` runs a web server
 - Install Arch from a web browser
 
+
 # Install
 
 ## Target Machine
@@ -12,7 +13,7 @@
     - Assumed location is `/usr/local/bin/wali`
     - TODO
 3. Install dependencies: `./usr/local/bin/wali/install.sh`
-4. Use `ip addr` to find the appropriate the IP address for the web server 
+4. Use `ip addr` to find the appropriate IP address for the web server 
 5. Start: `./usr/local/bin/wali/start.sh <ip_address> [port]`
     - Default port is `8080`
 
@@ -22,7 +23,7 @@
 
 # Use
 Go through the menu options, configuring as required. Most
-sections are self explanatory, 
+sections are self explanatory:
 
 ## Partitions
 - `boot` and `root` are required, and must be separate partitions
@@ -39,6 +40,7 @@ sections are self explanatory,
 ## User
 - A root password is required
 - A user account with password is required
+
 
 # Install Process
 For a bootable system, all stages up to and including "Boot Loader" must succeed.
