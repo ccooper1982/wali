@@ -221,7 +221,7 @@ select.packages_confirmed {
     font-size: 12px;
 }
 
-input {
+input[type="text"] {
     min-width: 150px;
     font-family: sans-serif, arial;
     font-size: 12px;
