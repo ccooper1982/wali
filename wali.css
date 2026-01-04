@@ -151,30 +151,60 @@ select.keymaps {
 }
 
 textarea.stage_log {
-    width: 480px;
+    width: 100%;
+    box-sizing: border-box;
     height: 100px;
     font: 10px monospace;
 }
 
-span.install_status {
-    font: 18px arial;
-    padding: 5px;
+span.install_status_ready {
+    color: black;
+    padding: 20px;
+    background-color: white;
+    font: 16px monospace;
+    text-align: center;
+    border: 5px solid seagreen;
+}
+
+span.install_status_running {
+    color: black;
+    padding: 20px;
+    background-color: white;
+    font: 16px monospace;
+    text-align: center;
+    border: 5px solid #998400;
 }
 
 span.install_status_fail {
-    color: red;
-    padding: 5px;
+    color: white;
+    padding: 20px;
+    background-color: red;
+    font: 16px monospace;
+    text-align: center;
 }
 
 span.install_status_complete {
-    color: seagreen;
-    padding: 5px;
+    color: white;
+    padding: 20px;
+    background-color: seagreen;
+    font: 16px monospace;
+    text-align: center;
 }
 
 span.install_status_partial {
-    color: #999900;
-    padding: 5px;
-    background-color: white;
+    color: white;
+    padding: 20px;
+    background-color: #998400;
+    font: 16px monospace;
+    text-align: center;
+}
+
+span.install_status_bootable {
+    color: white;
+    padding: 20px;
+    background-color: #998400;
+    font: 16px monospace;
+    text-align: center;
 }
 
 .Wt-panel {

@@ -50,22 +50,22 @@ void Install::install(Handlers handlers)
 
     on_state(InstallState::Running);
 
-    minimal = exec_stage(&Install::filesystems, "Create Filesystems") &&
-              exec_stage(&Install::mount, "Mounting") &&
-              exec_stage(&Install::pacstrap, "Pacstrap") &&
-              exec_stage(&Install::fstab, "Generate fstab") &&
-              exec_stage(&Install::root_account, "Root Account") &&
-              exec_stage(&Install::boot_loader, "Boot loader");
+    minimal = exec_stage(&Install::filesystems,   STAGE_FS) &&
+              exec_stage(&Install::mount,         STAGE_MOUNT) &&
+              exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
+              exec_stage(&Install::fstab,         STAGE_FSTAB) &&
+              exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
+              exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
 
     if (minimal)
     {
       on_state(InstallState::Bootable);
 
       // TODO user shell
-      extra = exec_stage(&Install::user_account, "User Account") &&
-              exec_stage(&Install::localise, "Localise") &&
-              exec_stage(&Install::network, "Network") &&
-              exec_stage(&Install::packages, "Packages");
+      extra = exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
+              exec_stage(&Install::localise,      STAGE_LOCALISE) &&
+              exec_stage(&Install::network,       STAGE_NETWORK) &&
+              exec_stage(&Install::packages,      STAGE_PACKAGES);
     }
   }
   catch (const std::exception& ex)
@@ -222,6 +222,7 @@ bool Install::pacstrap()
     "base",
     "archlinux-keyring",
     "linux",
+    "linux-firmware",
     "sudo",
     "usb_modeswitch", // for usb devices that can switch modes (recharging/something else)
     "usbmuxd",
@@ -477,7 +478,7 @@ bool Install::network()
   if (copy_conf)
   {
     log_info("Installing iws");
-    if (install_packages({"iwd"}) && enable_service("iwd.service"))
+    if (install_packages({"iwd"}) && enable_service({"iwd.service"}))
     {
       const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
                                                                           LiveIwdConfigPath.string(),
@@ -489,21 +490,29 @@ bool Install::network()
     }
   }
 
-  if (ntp && !enable_service("systemd-timesyncd.service"))
-    log_warning("Failed to enable timesync for ntp");
+  if (ntp)
+    enable_service({"systemd-timesyncd.service"});
+
+  enable_service({"systemd-networkd.service", "systemd-resolved.service"});
 
   return true;
 }
 
 // general
-bool Install::enable_service(const std::string_view name)
+bool Install::enable_service(const std::vector<std::string_view> services)
 {
-  log_info(std::format("Enabling service {}", name));
+  bool enabled_all{};
 
-  const bool enabled = Chroot{}(std::format("systemctl enable {}", name));
+  for (const auto& svc : services)
+  {
+    log_info(std::format("Enabling service {}", svc));
 
-  if (!enabled)
-    log_error(std::format("Failed to enable service: {}", name));
+    const auto enabled = Chroot{}(std::format("systemctl enable {}", svc));
+    if (!enabled)
+      log_error(std::format("Failed to enable service: {}", svc));
 
-  return enabled;
+    enabled_all &= enabled;
+  }
+
+  return enabled_all;
 }

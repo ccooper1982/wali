@@ -1,3 +1,4 @@
+#include "wali/Install.hpp"
 #include <Wt/WEnvironment.h>
 #include <Wt/WText.h>
 #include <math.h>
@@ -109,8 +110,17 @@ public:
       menu_contents->setPadding(0);
 
       auto menu = menu_container->addNew<WMenu>(menu_contents);
-      menu->setStyleClass("menu");
       Widgets::create_menu(menu, env.server());
+
+      menu->setStyleClass("menu");
+
+      Widgets::get_install()->install_state().connect([menu](InstallState state)
+      {
+        if (state == InstallState::Fail || state == InstallState::Partial)
+          menu->enable();
+        else
+          menu->disable();
+      });
     }
   }
 };

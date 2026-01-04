@@ -87,7 +87,7 @@ private:
   bool network();
 
   // services
-  bool enable_service(const std::string_view name);
+  bool enable_service(const std::vector<std::string_view> services);
 
 private:
   // functions to call plog, then call a handler for the UI

@@ -4,6 +4,7 @@
 #include <concepts>
 #include <string_view>
 #include <Wt/WMenu.h>
+#include <Wt/WMenuItem.h>
 #include <Wt/WServer.h>
 #include <Wt/WWidget.h>
 #include <wali/widgets/Common.hpp>
@@ -23,6 +24,7 @@ struct Widgets
   static void create_menu (WMenu * menu, WServer * server)
   {
     m_menu = menu;
+    m_menu->setInternalPathEnabled();
 
     add_menu_widget<IntroductionWidget>("Introduction");
     add_menu_widget<PartitionsWidget>("Partitions");
@@ -30,7 +32,7 @@ struct Widgets
     add_menu_widget<AccountWidget>("Accounts");
     add_menu_widget<LocaliseWidget>("Locale");
     add_menu_widget<PackagesWidget>("Packages");
-    add_menu_widget<InstallWidget>("Install", server);
+    add_menu_widget<InstallWidget>("Install");
   }
 
   static IntroductionWidget * get_intro() { return get<IntroductionWidget>("Introduction"); }
@@ -46,8 +48,9 @@ private:
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
   static void add_menu_widget(const std::string_view name, Args... args)
   {
-    auto widget = m_menu->addItem(name.data(), make_wt<WidgetT>(args...));
-    widget->setObjectName(name.data());
+    auto item = m_menu->addItem(name.data(), make_wt<WidgetT>(args...));
+    item->setObjectName(name.data());
+    item->setPathComponent(name.data());
   }
 
   template<class WidgetT> requires std::derived_from<WidgetT, WWidget>
