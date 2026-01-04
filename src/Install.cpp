@@ -61,10 +61,11 @@ void Install::install(Handlers handlers)
     {
       on_state(InstallState::Bootable);
 
-      // TODO user shell, additional packages
+      // TODO user shell
       extra = exec_stage(&Install::user_account, "User Account") &&
-              exec_stage(&Install::localise, "Localise");
-              exec_stage(&Install::network, "Network");
+              exec_stage(&Install::localise, "Localise") &&
+              exec_stage(&Install::network, "Network") &&
+              exec_stage(&Install::packages, "Packages");
     }
   }
   catch (const std::exception& ex)
@@ -216,7 +217,7 @@ bool Install::do_mount(const std::string_view dev, const std::string_view path)
 // pacman
 bool Install::pacstrap()
 {
-  static const std::vector<std::string> Packages =
+  static const PackageSet Packages =
   {
     "base",
     "archlinux-keyring",
@@ -250,7 +251,15 @@ bool Install::pacstrap()
   return stat == CmdSuccess;
 }
 
-bool Install::install_packages(const std::vector<std::string>& packages)
+bool Install::packages()
+{
+  log_info("Install additional packages");
+  const auto& packages = Widgets::get_packages()->get_packages();
+  install_packages(packages);
+  return true;
+}
+
+bool Install::install_packages(const PackageSet& packages)
 {
   if (packages.empty())
     return true;
@@ -264,6 +273,7 @@ bool Install::install_packages(const std::vector<std::string>& packages)
 
   return ok;
 }
+
 
 // fstab
 bool Install::fstab ()
@@ -434,7 +444,7 @@ bool Install::localise()
     log_info("Set timezone");
     if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
       log_warning("Failed to set locale timezone");
-    else if (log_info("Syncing clock"); !ReadCommand::execute("hwclock --systohc"))
+    else if (log_info("Syncing clock"); ReadCommand::execute("hwclock --systohc") != CmdSuccess)
       log_warning("Failed to sync hardware clock");
   }
 

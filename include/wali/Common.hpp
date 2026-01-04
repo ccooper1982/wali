@@ -4,8 +4,10 @@
 #include <concepts>
 #include <filesystem>
 #include <math.h>
-#include <plog/Log.h>
+#include <set>
 #include <string_view>
+#include <plog/Log.h>
+
 
 namespace fs = std::filesystem;
 
@@ -16,6 +18,7 @@ inline static const fs::path HomeMnt{"/mnt/home"};
 inline static const fs::path FsTabPath{"/mnt/etc/fstab"};
 
 using StringViewVec = std::vector<std::string_view>;
+using PackageSet = std::set<std::string>;
 
 enum class GpuVendor
 {

@@ -61,7 +61,6 @@ private:
   void set_partition_type(const std::string_view part_dev, const std::string_view type);
   bool wipe_fs(const std::string_view dev);
 
-
   // mounting
   bool mount();
   bool unmount();
@@ -69,7 +68,8 @@ private:
 
   // pacman
   bool pacstrap();
-  bool install_packages(const std::vector<std::string>& packages);
+  bool packages();
+  bool install_packages(const PackageSet& packages);
 
   // acounts
   bool root_account();

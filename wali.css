@@ -115,11 +115,15 @@ div.msg_info {
     padding: 10px;*/
 }
 
-button.install {
-    padding: 5px;
+button {
+    background-color: #006a88;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    min-width: 100px;
+    max-width: 140px;
     font-family: sans-serif, arial;
     font-size: 14px;
-    width: 100px;
 }
 
 select.timezones {
@@ -209,4 +213,16 @@ span.install_status_partial {
 
 .Wt-collapsed .Wt-collapse-button {
     transform: rotate(-90deg);
+}
+
+select.packages_confirmed {
+    min-width: 150px;
+    font-family: sans-serif, arial;
+    font-size: 12px;
+}
+
+input {
+    min-width: 150px;
+    font-family: sans-serif, arial;
+    font-size: 12px;
 }

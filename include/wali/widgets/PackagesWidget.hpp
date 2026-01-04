@@ -12,6 +12,7 @@
 #include <Wt/Json/Array.h>
 #include <Wt/Json/Object.h>
 #include <Wt/Json/Parser.h>
+#include <Wt/WVBoxLayout.h>
 #include <wali/widgets/Common.hpp>
 #include <wali/Common.hpp>
 #include <ranges>
@@ -28,23 +29,66 @@ public:
   {
     auto layout = setLayout(make_wt<WVBoxLayout>());
     layout->addWidget(make_wt<Wt::WText>(IntroText));
+    //layout->setSpacing(10);
 
-    auto cont_search = layout->addLayout(make_wt<WHBoxLayout>());
-    m_line_packages = cont_search->addWidget(make_wt<WLineEdit>(), 1);
+    auto layout_search = layout->addLayout(make_wt<WHBoxLayout>());
+    m_line_packages = layout_search->addWidget(make_wt<WLineEdit>(), 1);
     m_line_packages->setStyleClass("packages");
     m_line_packages->setAttributeValue("maxlength", "100");
-    m_line_packages->setPlaceholderText("nano code ...");
+    m_line_packages->setPlaceholderText("nano git btop ...");
     m_line_packages->enterPressed().connect(this, &PackagesWidget::search);
 
-    m_btn_search = cont_search->addWidget(make_wt<WPushButton>("Search"));
+    m_btn_search = layout_search->addWidget(make_wt<WPushButton>("Search"));
     m_btn_search->enterPressed().connect(this, &PackagesWidget::search);
     m_btn_search->clicked().connect(this, &PackagesWidget::search);
+    m_btn_search->setStyleClass("packages");
 
-    m_list_confirmed = layout->addWidget(make_wt<WSelectionBox>());
+    // list of packages to install, control buttons
+    auto layout_results = layout->addLayout(make_wt<WHBoxLayout>());
+
+    m_list_confirmed = layout_results->addWidget(make_wt<WSelectionBox>(), 2);
     m_list_confirmed->setStyleClass("packages_confirmed");
     m_list_confirmed->setVerticalSize(10);
+    m_list_confirmed->setSelectionMode(SelectionMode::Extended);
+
+    auto layout_control = layout_results->addLayout(make_wt<WVBoxLayout>());
+
+    auto btn_rmv = layout_control->addWidget(make_wt<WPushButton>("Remove"));
+    auto btn_clear = layout_control->addWidget(make_wt<WPushButton>("Clear"));
+    layout_control->addStretch(1);
+    // layout_results->addStretch(1);
+
+    btn_rmv->setStyleClass("packages");
+    btn_clear->setStyleClass("packages");
+
+    btn_rmv->clicked().connect([this]
+    {
+      for_each(m_list_confirmed->selectedIndexes(), [this](const auto i)
+      {
+        m_packages_install.erase(m_list_confirmed->itemText(i).toUTF8());
+      });
+
+      // repopulate list with what remains
+      m_list_confirmed->clear();
+
+      for_each(m_packages_install, [this](const auto name)
+      {
+        m_list_confirmed->addItem(name);
+      });
+    });
+
+    btn_clear->clicked().connect([this]
+    {
+      m_packages_install.clear();
+      m_list_confirmed->clear();
+    });
 
     layout->addStretch(1);
+  }
+
+  const PackageSet& get_packages() const
+  {
+    return m_packages_install;
   }
 
 private:
@@ -62,6 +106,10 @@ private:
 
     for (const auto it : package_names | std::ranges::views::split(' '))
     {
+      static const constexpr auto search_string = "https://archlinux.org/packages/search/json/?"
+                                                  "arch=x86_64&arch=any&"
+                                                  "repo=Core&repo=Extra&name={}";
+
       const std::string package (std::string_view{it});
 
       if (m_packages_pending.contains(package) || m_packages_confirmed.contains(package) || m_packages_install.contains(package))
@@ -73,7 +121,7 @@ private:
       client->done().connect(this, &PackagesWidget::on_response);
 
       // put 'any' arch to avoid missing packages, i.e. "reflector" is 'any'
-      if (client->get(std::format("https://archlinux.org/packages/search/json/?arch=x86_64&name={}", package)))
+      if (client->get(std::format(search_string, package)))
       {
         ++m_responses_expected;
         m_packages_pending.emplace(package);

@@ -68,11 +68,9 @@ public:
     auto controls_layout = layout->addLayout(make_wt<WHBoxLayout>());
 
     m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
-    m_install_btn->setStyleClass("install");
     m_install_btn->clicked().connect([this]() { install(); });
 
     m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
-    m_reboot_btn->setStyleClass("install");
     m_reboot_btn->enable();
     m_reboot_btn->clicked().connect([] { Reboot{}(); });
     controls_layout->addStretch(1);
@@ -95,6 +93,7 @@ public:
     m_user_account_log = layout->addWidget(make_wt<StageLog>("User Account"));
     m_localise_log = layout->addWidget(make_wt<StageLog>("Localise"));
     m_network_log = layout->addWidget(make_wt<StageLog>("Network"));
+    m_packages_log = layout->addWidget(make_wt<StageLog>("Packages"));
 
     m_log = m_fs_log;
 
