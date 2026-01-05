@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 # Download tar from GitHub
 VERSION=v0.1-alpha1
