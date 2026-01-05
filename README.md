@@ -22,13 +22,17 @@
 1. In a browser, visit the URL (note it is `http`)
     - i.e. `http://192.168.1.2:8080/`
 
-# Use
+# Arch Install Process
 Go through the menu options, configuring as required. Most
-sections are self explanatory:
+sections are self explanatory.
 
+- For a bootable system, all stages up to and including "Boot Loader" must succeed
+- If a subsequent stage fails the system can _probably_ still boot (reported as Partial Success).
+   
+ 
 ## Partitions
 - `boot` and `root` are required, and must be separate partitions
-- `boot` must be `vfat`
+- `boot` is always a `vfat` filesystem
 - `root` can only be `ext4` (`btrfs` coming soon)
 - `home` can be mounted to:
     - `root` (default)
@@ -43,10 +47,11 @@ sections are self explanatory:
 - A user account with password is required
 
 
-# Install Process
-For a bootable system, all stages up to and including "Boot Loader" must succeed.
-If a subsequent stage fails the system can _probably_ still boot.
-   
+# Details
+- The web server is integrated into [`webtoolkit`](https://github.com/emweb/wt) (`Wt`), a C++ web framework (the web equivalent of Qt)
+- The install script increases the copy-on-write (`cow`) space from 250M to 600M
+- This allows space for `Wt` and it's dependencies
+
 
 # Build
 - TODO
