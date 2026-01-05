@@ -5,8 +5,16 @@
 #include <wali/Common.hpp>
 #include <wali/Commands.hpp>
 #include <wali/widgets/Common.hpp>
+#include <wali/widgets/WaliWidget.hpp>
 
-class LocaliseWidget : public WContainerWidget
+struct LocaliseData
+{
+  std::string timezone;
+  std::string locale;
+  std::string keymap;
+};
+
+class LocaliseWidget : public WaliWidget<LocaliseData>
 {
   inline static const std::vector<std::string> PriorityZones =
   {
@@ -65,19 +73,13 @@ public:
     layout->addStretch(1);
   }
 
-  std::string get_timezone() const
+  virtual LocaliseData get_data() const override
   {
-    return m_timezones->valueText().toUTF8();
-  }
-
-  std::string get_locale() const
-  {
-    return m_locales->valueText().toUTF8();
-  }
-
-  std::string get_keymap() const
-  {
-    return m_keymap->valueText().toUTF8();
+    return {
+              .timezone = m_timezones->valueText().toUTF8(),
+              .locale = m_locales->valueText().toUTF8(),
+              .keymap = m_keymap->valueText().toUTF8()
+           };
   }
 
 private:

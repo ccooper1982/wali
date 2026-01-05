@@ -1,9 +1,10 @@
 #ifndef WALI_INTROWIDGET_H
 #define WALI_INTROWIDGET_H
 
+#include "wali/widgets/WaliWidget.hpp"
 #include <wali/widgets/MessagesWidget.hpp>
 
-class IntroductionWidget : public Wt::WContainerWidget
+class IntroductionWidget : public WaliWidget<void>
 {
   static constexpr auto text = R"(
     <h1>Web Arch Linux Installer</h1>

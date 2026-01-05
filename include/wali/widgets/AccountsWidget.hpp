@@ -7,8 +7,17 @@
 #include <wali/Common.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/MessagesWidget.hpp>
+#include <wali/widgets/WaliWidget.hpp>
 
-class AccountWidget : public WContainerWidget
+struct AccountsData
+{
+  std::string root_pass;
+  std::string user_username;
+  std::string user_pass;
+  bool user_sudo{true};
+};
+
+class AccountWidget : public WaliWidget<AccountsData>
 {
 public:
   AccountWidget ()
@@ -45,26 +54,22 @@ public:
     layout->addStretch(1);
   }
 
-  const std::string get_root_password() const
+  virtual AccountsData get_data() const override
   {
-    return m_root_password->valueText().toUTF8();
+    return {
+              .root_pass = m_root_password->valueText().toUTF8(),
+              .user_username = m_user_username->valueText().toUTF8(),
+              .user_pass = m_user_password->valueText().toUTF8(),
+              .user_sudo = m_user_sudo->isChecked()
+            };
   }
 
-  const std::string get_user_username() const
+  bool is_valid() const override
   {
-    return m_user_username->valueText().toUTF8();
+    return  !m_root_password->valueText().empty() &&
+            !m_user_username->valueText().empty() &&
+            !m_user_password->valueText().empty();
   }
-
-  const std::string get_user_password() const
-  {
-    return m_user_password->valueText().toUTF8();
-  }
-
-  const bool get_user_can_sudo() const
-  {
-    return m_user_sudo->isChecked();
-  }
-
 
 private:
   Wt::WLineEdit * m_root_password,

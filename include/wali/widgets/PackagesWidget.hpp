@@ -13,11 +13,17 @@
 #include <Wt/Json/Object.h>
 #include <Wt/Json/Parser.h>
 #include <Wt/WVBoxLayout.h>
-#include <wali/widgets/Common.hpp>
 #include <wali/Common.hpp>
+#include <wali/widgets/Common.hpp>
+#include <wali/widgets/WaliWidget.hpp>
 #include <ranges>
 
-class PackagesWidget : public WContainerWidget
+struct PackagesData
+{
+  PackageSet additional;
+};
+
+class PackagesWidget : public WaliWidget<PackagesData>
 {
   static constexpr const auto IntroText = "Enter package names, separated by a space.<br/>"
                                           "Packages that don't exist, will remain in the textbox.";
@@ -65,13 +71,13 @@ public:
     {
       for_each(m_list_confirmed->selectedIndexes(), [this](const auto i)
       {
-        m_packages_install.erase(m_list_confirmed->itemText(i).toUTF8());
+        data.additional.erase(m_list_confirmed->itemText(i).toUTF8());
       });
 
       // repopulate list with what remains
       m_list_confirmed->clear();
 
-      for_each(m_packages_install, [this](const auto name)
+      for_each(data.additional, [this](const auto name)
       {
         m_list_confirmed->addItem(name);
       });
@@ -79,16 +85,16 @@ public:
 
     btn_clear->clicked().connect([this]
     {
-      m_packages_install.clear();
+      data.additional.clear();
       m_list_confirmed->clear();
     });
 
     layout->addStretch(1);
   }
 
-  const PackageSet& get_packages() const
+  virtual PackagesData get_data() const override
   {
-    return m_packages_install;
+    return data;
   }
 
 private:
@@ -112,7 +118,7 @@ private:
 
       const std::string package (std::string_view{it});
 
-      if (m_packages_pending.contains(package) || m_packages_confirmed.contains(package) || m_packages_install.contains(package))
+      if (m_packages_pending.contains(package) || m_packages_confirmed.contains(package) || data.additional.contains(package))
         continue;
 
       Http::Client * client = addChild(make_wt<Http::Client>());
@@ -164,7 +170,7 @@ private:
         m_packages_pending.erase(name);
 
         m_list_confirmed->addItem(name);
-        m_packages_install.emplace(name);
+        data.additional.emplace(name);
       }
     }
 
@@ -182,9 +188,9 @@ private:
   WLineEdit * m_line_packages;
   WPushButton * m_btn_search;
   WSelectionBox * m_list_confirmed;
-  std::set<std::string> m_packages_pending;   // waiting on http response OR package does not exist
-  std::set<std::string> m_packages_confirmed; // have http response and package exists
-  std::set<std::string> m_packages_install;   // final set of packages to install
+  PackageSet m_packages_pending;   // waiting on http response OR package does not exist
+  PackageSet m_packages_confirmed; // have http response and package exists
+  PackagesData data;
   std::size_t m_responses_expected{0};
 };
 

@@ -7,6 +7,7 @@
 #include <Wt/WMenuItem.h>
 #include <Wt/WServer.h>
 #include <Wt/WWidget.h>
+#include <wali/widgets/WaliWidget.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
 #include <wali/widgets/IntroductionWidget.hpp>
@@ -15,9 +16,11 @@
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PackagesWidget.hpp>
 #include <wali/widgets/PartitionWidget.hpp>
+#include <wali/widgets/WaliWidget.hpp>
+
 
 // TODO may a better way of doing this
-//  - The InstallWidget requires access to all widgets, but they are children of the menu
+//  - Install.cpp requires access to all widgets, but they are children of the menu
 //  - Could store values in the session variable, but seems to require a database, which is overkill
 struct Widgets
 {

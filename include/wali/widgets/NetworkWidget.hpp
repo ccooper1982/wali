@@ -3,8 +3,16 @@
 
 #include <wali/Common.hpp>
 #include <wali/widgets/Common.hpp>
+#include <wali/widgets/WaliWidget.hpp>
 
-class NetworkWidget : public WContainerWidget
+struct NetworkData
+{
+  std::string hostname;
+  bool ntp;
+  bool copy_config;
+};
+
+class NetworkWidget : public WaliWidget<NetworkData>
 {
   static constexpr auto text = R"(<ul><li>If using Wi-Fi, copy the iwd config to have internet connectivity in the live system</li></ul>)";
 
@@ -33,9 +41,19 @@ public:
     layout->addWidget(make_wt<WText>(text), 1);
   }
 
-  bool ntp() const { return m_ntp->isChecked(); }
-  bool copy_config() const { return m_copy_config->isChecked(); }
-  std::string hostname () const { return m_hostname->valueText().toUTF8(); }
+  virtual NetworkData get_data() const override
+  {
+    return {
+              .hostname = m_hostname->valueText().toUTF8(),
+              .ntp = m_ntp->isChecked(),
+              .copy_config = m_copy_config->isChecked()
+            };
+  }
+
+  bool is_valid() const override
+  {
+    return !m_hostname->valueText().empty();
+  }
 
 private:
   WLineEdit * m_hostname;

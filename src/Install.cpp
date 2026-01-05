@@ -1,4 +1,5 @@
 #include "wali/Common.hpp"
+#include "wali/widgets/PartitionWidget.hpp"
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -84,26 +85,26 @@ void Install::install(Handlers handlers)
 
 bool Install::filesystems()
 {
-  const auto boot = Widgets::get_partitions()->get_boot();
-  const auto root = Widgets::get_partitions()->get_root();
+  const PartData data = Widgets::get_partitions()->get_data();
 
-  log_info(std::format("/     -> {} with {}", root->get_device(), root->get_fs()));
-  log_info(std::format("/boot -> {} with {}", boot->get_device(), boot->get_fs()));
+  log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
+  log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
 
   bool boot_root_valid{false}, home_valid{true};
 
-  const auto wiped_boot_root = wipe_fs(root->get_device()) &&
-                               wipe_fs(boot->get_device());
+  const auto wiped_boot_root = wipe_fs(data.boot_dev) &&
+                               wipe_fs(data.root_dev);
+
 
   if (wiped_boot_root)
   {
-    boot_root_valid = create_boot_filesystem(boot->get_device()) &&
-                      create_ext4_filesystem(root->get_device());
+    boot_root_valid = create_boot_filesystem(data.boot_dev) &&
+                      create_ext4_filesystem(data.root_dev);
 
     if (boot_root_valid)
     {
-      set_partition_type(boot->get_device(), PartTypeEfi);
-      set_partition_type(root->get_device(), PartTypeRoot);
+      set_partition_type(data.boot_dev, PartTypeEfi);
+      set_partition_type(data.root_dev, PartTypeRoot);
       home_valid = create_home_filesystem();
     }
   }
@@ -121,22 +122,21 @@ bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
-  const auto root = Widgets::get_partitions()->get_root();
-  const auto home = Widgets::get_partitions()->get_home();
+  const PartData data = Widgets::get_partitions()->get_data();
 
-  if (home->get_mount_target() == HomeMountTarget::Existing)
+  if (data.home_target == HomeMountTarget::Existing)
   {
-    log_info(std::format("/home -> {}", home->get_device()));
+    log_info(std::format("/home -> {}", data.home_dev));
   }
-  else if(home->is_home_on_root())
+  else if(data.home_dev == data.root_dev)
   {
-    log_info(std::format("/home -> {} with {}", root->get_device(), root->get_fs()));
+    log_info(std::format("/home -> {} with {}", data.home_dev, data.home_fs));
   }
   else
   {
     // new partition
-    const auto home_dev = home->get_device();
-    const auto home_fs = home->get_fs();
+    const auto home_dev = data.home_dev;
+    const auto home_fs = data.home_fs;
 
     log_info(std::format("/home -> {} with {}", home_dev, home_fs));
 
@@ -173,20 +173,18 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
 // mount
 bool Install::mount()
 {
-  const auto root = Widgets::get_partitions()->get_root();
-  const auto boot = Widgets::get_partitions()->get_boot();
-  const auto home = Widgets::get_partitions()->get_home();
+  const PartData data = Widgets::get_partitions()->get_data();
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
-  mounted_root = do_mount(root->get_device(), RootMnt.string());
+  mounted_root = do_mount(data.root_dev, RootMnt.string());
 
   if (mounted_root)
   {
-    mounted_boot = do_mount(boot->get_device(), EfiMnt.string());
+    mounted_boot = do_mount(data.boot_dev, EfiMnt.string());
 
-    if (!home->is_home_on_root())
-      mounted_home = do_mount(home->get_device(), HomeMnt.string());
+    if (data.home_dev != data.root_dev)
+      mounted_home = do_mount(data.home_dev, HomeMnt.string());
   }
 
   return mounted_root && mounted_boot && mounted_home;
@@ -255,8 +253,7 @@ bool Install::pacstrap()
 bool Install::packages()
 {
   log_info("Install additional packages");
-  const auto& packages = Widgets::get_packages()->get_packages();
-  install_packages(packages);
+  install_packages(Widgets::get_packages()->get_data().additional);
   return true;
 }
 
@@ -285,7 +282,7 @@ bool Install::fstab ()
 
   log_info(cmd_string);
 
-  auto stat = ReadCommand::execute(cmd_string);;
+  const auto stat = ReadCommand::execute(cmd_string);;
   if (stat != CmdSuccess)
     log_error(std::format("genfstab failed: {}", ::strerror(stat)));
 
@@ -295,7 +292,7 @@ bool Install::fstab ()
 // accounts
 bool Install::root_account()
 {
-  const auto root_password = Widgets::get_account()->get_root_password();
+  const auto& root_password = Widgets::get_account()->get_data().root_pass;
 
   bool set{};
   if (root_password.empty())
@@ -308,8 +305,9 @@ bool Install::root_account()
 
 bool Install::user_account()
 {
-  const auto user = Widgets::get_account()->get_user_username();
-  const auto password = Widgets::get_account()->get_user_password();
+  const auto& user = Widgets::get_account()->get_data().user_username;
+  const auto& password = Widgets::get_account()->get_data().user_pass;
+  const auto user_sudo = Widgets::get_account()->get_data().user_sudo;
 
   if (user.empty())
   {
@@ -324,7 +322,6 @@ bool Install::user_account()
 
   log_info(std::format("Create account for {}", user));
 
-  const auto user_sudo = Widgets::get_account()->get_user_can_sudo();
   const std::string_view wheel_group = user_sudo ? "-G wheel" : "";
 
   if (!Chroot{}(std::format("useradd -s /usr/bin/bash -m {} {}", wheel_group, user)))
@@ -415,9 +412,7 @@ bool Install::localise()
   static const fs::path LocaleConf{"/etc/locale.conf"};
   static const fs::path TerminalConf{"/etc/vconsole.conf"};
 
-  const auto& keymap = Widgets::get_localise()->get_keymap();
-  const auto& zone = Widgets::get_localise()->get_timezone();
-  const auto locale = Widgets::get_localise()->get_locale();
+  const auto& [zone, locale, keymap] = Widgets::get_localise()->get_data();
 
   if (!locale.empty())
   {
@@ -467,9 +462,7 @@ bool Install::network()
   static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
   static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
 
-  const auto& hostname = Widgets::get_network()->hostname();
-  const bool copy_conf = Widgets::get_network()->copy_config();
-  const bool ntp = Widgets::get_network()->ntp();
+  const auto [hostname, ntp, copy_conf] = Widgets::get_network()->get_data();
 
   log_info("Set hostname");
   if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))

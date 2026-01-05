@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <wali/widgets/MessagesWidget.hpp>
+#include <wali/widgets/WaliWidget.hpp>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
 
@@ -64,7 +65,18 @@ private:
   WComboBox * m_fs{};
 };
 
-class PartitionsWidget : public WContainerWidget
+struct PartData
+{
+  std::string boot_dev;
+  std::string boot_fs;
+  std::string root_dev;
+  std::string root_fs;
+  std::string home_dev;
+  std::string home_fs;
+  HomeMountTarget home_target;
+};
+
+class PartitionsWidget : public WaliWidget<PartData>
 {
   struct DeviceFilesystemProvider
   {
@@ -271,20 +283,29 @@ public:
     }
   }
 
-  const BootPartitionWidget * get_boot() const
+  virtual PartData get_data() const override
   {
-    return m_boot;
+    const auto root_dev = m_root->get_device();
+    const auto root_fs = m_root->get_fs();
+    const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
+    const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
+
+    return {
+              .boot_dev = m_boot->get_device(),
+              .boot_fs = m_boot->get_fs(),
+              .root_dev = root_dev,
+              .root_fs = root_fs,
+              .home_dev = home_dev,
+              .home_fs = home_fs,
+              .home_target = m_home->get_mount_target()
+           };
   }
 
-  const RootPartitionWidget * get_root() const
+  virtual bool is_valid() const override
   {
-    return m_root;
+    return !m_messages->has_errors();
   }
 
-  const HomePartitionWidget * get_home() const
-  {
-    return m_home;
-  }
 private:
   BootPartitionWidget * m_boot;
   RootPartitionWidget * m_root;

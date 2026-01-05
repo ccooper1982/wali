@@ -31,16 +31,23 @@ public:
     auto container = m_layout->addWidget(make_wt<Wt::WContainerWidget>());
     container->setStyleClass(LevelValueMap.at(lvl));
     container->addWidget(make_wt<Wt::WText>(msg.data()));
+
+    if (lvl == Level::Error)
+      ++m_error_count;
   }
+
+  bool has_errors() const { return m_error_count > 0; }
 
 private:
   void create()
   {
+    m_error_count = 0;
     m_layout = setLayout(make_wt<Wt::WVBoxLayout>());
   }
 
 private:
   Wt::WVBoxLayout * m_layout;
+  std::size_t m_error_count{};
 };
 
 #endif
