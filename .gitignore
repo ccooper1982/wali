@@ -1,5 +1,6 @@
 .cache/*
 build/*
+release/*
 subprojects/.wraplock
 subprojects/packagecache
 subprojects/plog-*

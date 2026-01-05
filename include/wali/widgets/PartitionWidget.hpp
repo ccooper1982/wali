@@ -8,7 +8,6 @@
 #include <Wt/WTable.h>
 
 #include <Wt/WVBoxLayout.h>
-#include <exception>
 #include <functional>
 #include <memory>
 #include <wali/widgets/MessagesWidget.hpp>
