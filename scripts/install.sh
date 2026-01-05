@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+set -eu
 
 # Download tar from GitHub
 VERSION=v0.1-alpha1

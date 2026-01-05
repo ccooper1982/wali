@@ -12,10 +12,10 @@
 2. `wali` doesn't create partitions yet, so do so as normal with `fdisk`, `cfdisk`, etc
 3. Download and extract `wali` 
     - Assumed location is `/usr/local/bin/wali`
-    - TODO
-4. Install dependencies: `./usr/local/bin/wali/install.sh`
+    - `curl -sfL https://raw.githubusercontent.com/ccooper1982/wali/main/scripts/install.sh | sh`
+4. Install dependencies: `./install.sh && cd /usr/local/bin/wali`
 5. Use `ip addr` to find the appropriate IP address for the web server 
-6. Start: `./usr/local/bin/wali/start.sh <ip_address> [port]`
+6. Start: `./start.sh <ip_address> [port]`
     - Default port is `8080`
 
 ## Other Machine
