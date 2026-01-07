@@ -30,16 +30,6 @@ div.menu {
     align-content: flex-start;
 }
 
-div.menu_disabled {
-    background-color: #898989;
-    margin: 0px;
-    padding: 0px;
-    width: 150px;
-    font-size: 18px;
-    text-align: left;
-    align-content: flex-start;
-}
-
 ul.menu {
     list-style-type: square;
     list-style-position: inside;

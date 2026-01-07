@@ -9,14 +9,14 @@
 template<class... Ts>
 struct overload : Ts... { using Ts::operator()...; };
 
-inline std::optional<std::string> is_config_valid(const WidgetsMap& widgets)
+inline std::optional<std::string> validate_widgets(const WidgetsMap& widgets)
 {
   auto check = [](const std::string_view name, const auto * w)
   {
     return w->is_valid();
   };
 
-  for (const auto& [name, widget] : widgets)
+  for (const auto& [name, widgets_variant] : widgets)
   {
     const bool valid = std::visit(overload{
                           [&](IntroductionWidget * w){ return check(name, w);  },
@@ -27,7 +27,7 @@ inline std::optional<std::string> is_config_valid(const WidgetsMap& widgets)
                           [&](PackagesWidget * w){ return check(name, w);  },
                           [&](InstallWidget * w){ return check(name, w);  }
                         },
-                        widget);
+                        widgets_variant);
 
     if (!valid)
       return {name};

@@ -117,20 +117,18 @@ public:
 
       menu->setStyleClass("menu");
 
-      m_widgets->get_install()->install_state().connect([menu, menu_container](InstallState state)
+      m_widgets->get_install()->install_state().connect([menu](InstallState state)
       {
         // TODO change CSS class so it's obviously disabled
         if (state == InstallState::Fail || state == InstallState::Partial)
         {
           menu->enable();
           menu->show();
-          menu_container->setStyleClass("menu");
         }
         else
         {
           menu->disable();
           menu->hide();
-          menu_container->setStyleClass("menu_disabled");
         }
       });
     }
