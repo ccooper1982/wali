@@ -1,6 +1,7 @@
 #include "wali/Install.hpp"
 #include <Wt/WEnvironment.h>
 #include <Wt/WText.h>
+#include <Wt/WVBoxLayout.h>
 #include <math.h>
 
 #include <Wt/WApplication.h>
@@ -104,19 +105,26 @@ public:
       m_widgets = new Widgets;
 
       // menu on left, selected menu displays on right
-      auto menu_container = hbox->addWidget(make_wt<Wt::WContainerWidget>());
-      auto menu_contents = hbox->addWidget(make_wt<Wt::WStackedWidget>());
+      auto lhs = hbox->addWidget(make_wt<WContainerWidget>());
+      auto rhs = hbox->addLayout(make_wt<WVBoxLayout>());
+
+      lhs->setStyleClass("menu");
+      rhs->setSpacing(0);
+
+      // auto wali_widget_text = rhs->addWidget(make_wt<WText>("hello"));
+      // wali_widget_text->setStyleClass("page_title");
+      // wali_widget_text->setInline(true);
+
+      auto wali_widgets = rhs->addWidget(make_wt<WStackedWidget>());
       hbox->addStretch(1);
 
-      menu_container->setStyleClass("menu");
-      menu_contents->setStyleClass("menu_content");
-      menu_contents->setPadding(0);
+      wali_widgets->setStyleClass("menu_content");
+      wali_widgets->setPadding(0);
 
-      auto menu = menu_container->addNew<WMenu>(menu_contents);
-      m_widgets->create_menu(menu);
-
+      auto menu = lhs->addNew<WMenu>(wali_widgets);
       menu->setStyleClass("menu");
 
+      m_widgets->create_menu(menu);
       m_widgets->get_install()->install_state().connect([menu](InstallState state)
       {
         // TODO change CSS class so it's obviously disabled
