@@ -10,12 +10,11 @@
 ## Target Machine
 1. Boot into the latest Arch ISO and configure the internet connection as usual
 2. `wali` doesn't create partitions yet, so do so as normal with `fdisk`, `cfdisk`, etc
-3. Download and extract `wali` 
-    - Assumed location is `/usr/local/bin/wali`
+3. Download and extract `wali`     
     - `curl -sfL https://raw.githubusercontent.com/ccooper1982/wali/main/scripts/install.sh | sh`
-4. Install dependencies: `./install.sh && cd /usr/local/bin/wali`
-5. Use `ip addr` to find the appropriate IP address for the web server 
-6. Start: `./start.sh <ip_address> [port]`
+    - Install location is `/usr/local/bin/wali`
+4. Use `ip addr` to find the appropriate IP address for the web server 
+5. Start: `cd /usr/local/bin/wali && ./start.sh <ip_address> [port]`
     - Default port is `8080`
 
 ## Other Machine

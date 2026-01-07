@@ -1,13 +1,12 @@
 #ifndef WALI_INSTALL_H
 #define WALI_INSTALL_H
 
-#include <Wt/WObject.h>
 #include <Wt/WSignal.h>
 #include <functional>
 #include <string_view>
 #include <utility>
 #include <wali/Common.hpp>
-
+#include <wali/widgets/WidgetData.hpp>
 
 enum class InstallState
 {
@@ -33,22 +32,24 @@ enum class InstallLogLevel
   Error
 };
 
+
 using OnStageChange = std::function<void(const std::string, const StageStatus)>;
 using OnInstallComplete = std::function<void(const InstallState)>;
 using OnLog = std::function<void(const std::string, const InstallLogLevel)>;
 
-struct Handlers
+struct InstallHandlers
 {
   OnStageChange stage_change;
   OnLog log;
   OnInstallComplete complete;
 };
 
+
 class Install final
 {
 public:
 
-  void install(Handlers handlers);
+  void install(InstallHandlers handlers, WidgetData data);
 
 private:
 
@@ -131,6 +132,7 @@ private:
   OnStageChange m_stage_change;
   OnInstallComplete m_install_state;
   OnLog m_log;
+  WidgetData m_data;
 };
 
 #endif

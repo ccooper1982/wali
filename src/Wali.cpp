@@ -92,6 +92,7 @@ public:
 
     auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
     hbox->setSpacing(0);
+    hbox->setContentsMargins(0, 0, 0, 0);
 
     if (const auto err = startup_checks(); !err.empty())
     {
@@ -100,6 +101,8 @@ public:
     }
     else
     {
+      m_widgets = new Widgets;
+
       // menu on left, selected menu displays on right
       auto menu_container = hbox->addWidget(make_wt<Wt::WContainerWidget>());
       auto menu_contents = hbox->addWidget(make_wt<Wt::WStackedWidget>());
@@ -110,19 +113,37 @@ public:
       menu_contents->setPadding(0);
 
       auto menu = menu_container->addNew<WMenu>(menu_contents);
-      Widgets::create_menu(menu, env.server());
+      m_widgets->create_menu(menu);
 
       menu->setStyleClass("menu");
 
-      Widgets::get_install()->install_state().connect([menu](InstallState state)
+      m_widgets->get_install()->install_state().connect([menu, menu_container](InstallState state)
       {
+        // TODO change CSS class so it's obviously disabled
         if (state == InstallState::Fail || state == InstallState::Partial)
+        {
           menu->enable();
+          menu->show();
+          menu_container->setStyleClass("menu");
+        }
         else
+        {
           menu->disable();
+          menu->hide();
+          menu_container->setStyleClass("menu_disabled");
+        }
       });
     }
   }
+
+  ~WaliApplication()
+  {
+    if (m_widgets)
+      delete m_widgets;
+  }
+
+private:
+  Widgets * m_widgets{};
 };
 
 

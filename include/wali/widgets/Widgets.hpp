@@ -1,14 +1,13 @@
 #ifndef WALI_WIDGETS_H
 #define WALI_WIDGETS_H
 
-#include <concepts>
-#include <string_view>
 #include <Wt/WMenu.h>
 #include <Wt/WMenuItem.h>
 #include <Wt/WServer.h>
 #include <Wt/WWidget.h>
 #include <wali/widgets/WaliWidget.hpp>
 #include <wali/widgets/Common.hpp>
+#include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
 #include <wali/widgets/IntroductionWidget.hpp>
 #include <wali/widgets/InstallWidget.hpp>
@@ -24,53 +23,62 @@
 //  - Could store values in the session variable, but seems to require a database, which is overkill
 struct Widgets
 {
-  static void create_menu (WMenu * menu, WServer * server)
+  void create_menu (WMenu * menu)
   {
-    m_menu = menu;
-    m_menu->setInternalPathEnabled();
+    menu->setInternalPathEnabled();
 
-    add_menu_widget<IntroductionWidget>("Introduction");
-    add_menu_widget<PartitionsWidget>("Partitions");
-    add_menu_widget<NetworkWidget>("Network");
-    add_menu_widget<AccountWidget>("Accounts");
-    add_menu_widget<LocaliseWidget>("Locale");
-    add_menu_widget<PackagesWidget>("Packages");
-    add_menu_widget<InstallWidget>("Install");
+    m_widgets.insert(add_menu_widget<IntroductionWidget>(menu, "Introduction"));
+    m_widgets.insert(add_menu_widget<PartitionsWidget>(menu, "Partitions"));
+    m_widgets.insert(add_menu_widget<NetworkWidget>(menu, "Network"));
+    m_widgets.insert(add_menu_widget<AccountWidget>(menu, "Accounts"));
+    m_widgets.insert(add_menu_widget<LocaliseWidget>(menu, "Locale"));
+    m_widgets.insert(add_menu_widget<PackagesWidget>(menu, "Packages"));
+    m_widgets.insert(add_menu_widget<InstallWidget>(menu, "Install", this));
   }
 
-  static IntroductionWidget * get_intro() { return get<IntroductionWidget>("Introduction"); }
-  static PartitionsWidget * get_partitions() { return get<PartitionsWidget>("Partitions"); }
-  static NetworkWidget * get_network() { return get<NetworkWidget>("Network"); }
-  static AccountWidget * get_account() { return get<AccountWidget>("Accounts"); }
-  static LocaliseWidget * get_localise() { return get<LocaliseWidget>("Locale"); }
-  static PackagesWidget * get_packages() { return get<PackagesWidget>("Packages"); }
-  static InstallWidget * get_install() { return get<InstallWidget>("Install"); }
+  IntroductionWidget * get_intro() const { return get<IntroductionWidget>("Introduction"); }
+  PartitionsWidget * get_partitions() const { return get<PartitionsWidget>("Partitions"); }
+  NetworkWidget * get_network() const { return get<NetworkWidget>("Network"); }
+  AccountWidget * get_account() const { return get<AccountWidget>("Accounts"); }
+  LocaliseWidget * get_localise() const { return get<LocaliseWidget>("Locale"); }
+  PackagesWidget * get_packages() const { return get<PackagesWidget>("Packages"); }
+  InstallWidget * get_install() const { return get<InstallWidget>("Install"); }
+
+  const WidgetsMap& get_all() { return m_widgets; }
+
+  WidgetData get_data() const
+  {
+    WidgetData data;
+
+    data.partitions = get_partitions()->get_data();
+    data.accounts = get_account()->get_data();
+    data.network = get_network()->get_data();
+    data.accounts = get_account()->get_data();
+    data.localise = get_localise()->get_data();
+    data.packages = get_packages()->get_data();
+
+    return data;
+  }
 
 private:
 
   template<class WidgetT, typename...Args> requires std::derived_from<WidgetT, WWidget>
-  static void add_menu_widget(const std::string_view name, Args... args)
+  std::pair<std::string, WidgetT*> add_menu_widget (WMenu * menu, const std::string& name, Args... args)
   {
-    auto item = m_menu->addItem(name.data(), make_wt<WidgetT>(args...));
+    auto item = menu->addItem(name.data(), make_wt<WidgetT>(std::forward<Args>(args)...));
     item->setObjectName(name.data());
     item->setPathComponent(name.data());
+    return {name, dynamic_cast<WidgetT *>(item->contents())};
   }
 
   template<class WidgetT> requires std::derived_from<WidgetT, WWidget>
-  static WidgetT * get (const std::string_view name)
+  WidgetT * get (const std::string& name) const
   {
-    const auto& items = m_menu->items();
-
-    auto it_item = std::find_if(items.cbegin(), items.cend(), [name](const WMenuItem * item)
-    {
-      return item->objectName() == name;
-    });
-
-    return it_item == items.cend() ? nullptr : dynamic_cast<WidgetT*>((*it_item)->contents());
+    return m_widgets.contains(name) ? std::get<WidgetT*>(m_widgets.at(name)) : nullptr;
   }
 
 private:
-  inline static WMenu * m_menu;
+  WidgetsMap m_widgets;
 };
 
 

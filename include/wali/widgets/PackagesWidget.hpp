@@ -15,13 +15,9 @@
 #include <Wt/WVBoxLayout.h>
 #include <wali/Common.hpp>
 #include <wali/widgets/Common.hpp>
-#include <wali/widgets/WaliWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
 #include <ranges>
 
-struct PackagesData
-{
-  PackageSet additional;
-};
 
 class PackagesWidget : public WaliWidget<PackagesData>
 {

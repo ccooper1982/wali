@@ -1,5 +1,4 @@
-#include "wali/Common.hpp"
-#include "wali/widgets/PartitionWidget.hpp"
+
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -9,6 +8,7 @@
 #include <sys/mount.h>
 #include <system_error>
 #include <wali/Commands.hpp>
+#include <wali/Common.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Widgets.hpp>
 
@@ -18,11 +18,12 @@ static const constexpr char PartTypeRoot[] = "8304";
 static const constexpr char PartTypeHome[] = "8302";
 
 
-void Install::install(Handlers handlers)
+void Install::install(InstallHandlers handlers, WidgetData data)
 {
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
+  m_data = std::move(data);
 
   auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
@@ -85,7 +86,7 @@ void Install::install(Handlers handlers)
 
 bool Install::filesystems()
 {
-  const PartData data = Widgets::get_partitions()->get_data();
+  const PartData& data = m_data.partitions;
 
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
@@ -122,7 +123,7 @@ bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
-  const PartData data = Widgets::get_partitions()->get_data();
+  const PartData& data = m_data.partitions;
 
   if (data.home_target == HomeMountTarget::Existing)
   {
@@ -173,7 +174,7 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
 // mount
 bool Install::mount()
 {
-  const PartData data = Widgets::get_partitions()->get_data();
+  const PartData data = m_data.partitions;
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
@@ -253,7 +254,7 @@ bool Install::pacstrap()
 bool Install::packages()
 {
   log_info("Install additional packages");
-  install_packages(Widgets::get_packages()->get_data().additional);
+  install_packages(m_data.packages.additional);
   return true;
 }
 
@@ -292,7 +293,7 @@ bool Install::fstab ()
 // accounts
 bool Install::root_account()
 {
-  const auto& root_password = Widgets::get_account()->get_data().root_pass;
+  const auto& root_password = m_data.accounts.root_pass;
 
   bool set{};
   if (root_password.empty())
@@ -305,9 +306,9 @@ bool Install::root_account()
 
 bool Install::user_account()
 {
-  const auto& user = Widgets::get_account()->get_data().user_username;
-  const auto& password = Widgets::get_account()->get_data().user_pass;
-  const auto user_sudo = Widgets::get_account()->get_data().user_sudo;
+  const auto& user = m_data.accounts.user_username;
+  const auto& password = m_data.accounts.user_pass;
+  const auto user_sudo = m_data.accounts.user_sudo;
 
   if (user.empty())
   {
@@ -412,7 +413,7 @@ bool Install::localise()
   static const fs::path LocaleConf{"/etc/locale.conf"};
   static const fs::path TerminalConf{"/etc/vconsole.conf"};
 
-  const auto& [zone, locale, keymap] = Widgets::get_localise()->get_data();
+  const auto& [zone, locale, keymap] = m_data.localise;
 
   if (!locale.empty())
   {
@@ -462,7 +463,7 @@ bool Install::network()
   static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
   static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
 
-  const auto [hostname, ntp, copy_conf] = Widgets::get_network()->get_data();
+  const auto [hostname, ntp, copy_conf] = m_data.network;
 
   log_info("Set hostname");
   if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))

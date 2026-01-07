@@ -6,13 +6,8 @@
 #include <wali/Commands.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
 
-struct LocaliseData
-{
-  std::string timezone;
-  std::string locale;
-  std::string keymap;
-};
 
 class LocaliseWidget : public WaliWidget<LocaliseData>
 {

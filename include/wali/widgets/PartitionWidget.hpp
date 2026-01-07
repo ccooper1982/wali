@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <wali/widgets/MessagesWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
@@ -65,16 +66,7 @@ private:
   WComboBox * m_fs{};
 };
 
-struct PartData
-{
-  std::string boot_dev;
-  std::string boot_fs;
-  std::string root_dev;
-  std::string root_fs;
-  std::string home_dev;
-  std::string home_fs;
-  HomeMountTarget home_target;
-};
+
 
 class PartitionsWidget : public WaliWidget<PartData>
 {
@@ -259,6 +251,8 @@ public:
 
         // TODO bootloader
       }
+
+      validate_selection();
     }
 
     layout->addStretch(1);
@@ -272,7 +266,11 @@ public:
     m_messages->clear_messages();
 
     if (boot_dev == root_dev)
-      m_messages->add("Boot and root partitions must be separate partitions", MessageWidget::Level::Error);
+      m_messages->add("Boot and root must be on separate partitions", MessageWidget::Level::Error);
+    else if (boot_dev.empty())
+      m_messages->add("Boot not set", MessageWidget::Level::Error);
+    else if (root_dev.empty())
+      m_messages->add("Root not set", MessageWidget::Level::Error);
 
     const auto target = m_home->get_mount_target();
     if (target != HomeMountTarget::Root)

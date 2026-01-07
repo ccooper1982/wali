@@ -3,7 +3,9 @@
 
 #include <concepts>
 #include <filesystem>
+#include <functional>
 #include <math.h>
+#include <ranges>
 #include <set>
 #include <string_view>
 #include <plog/Log.h>
@@ -66,9 +68,12 @@ static inline std::string format_size(const int64_t size)
 }
 
 template<class C, typename F>
-void for_each (const C& c, F&& f) requires std::ranges::range<C>
+void for_each (const C& c, F&& f) requires std::ranges::constant_range<C> || std::ranges::range<C>
 {
-  std::for_each(std::cbegin(c), std::cend(c), std::move(f));
+  if constexpr (std::ranges::constant_range<C>)
+    std::for_each(std::cbegin(c), std::cend(c), std::move(f));
+  else
+    std::for_each(std::begin(c), std::end(c), std::move(f));
 }
 
 template<class C>
