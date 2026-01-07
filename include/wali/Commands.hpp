@@ -145,12 +145,19 @@ struct Chroot : public ReadCommand
   {
     const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
 
+    // caller doesn't want output, so write to stdout
     const auto stat = execute_read(chroot_cmd, [](const std::string_view m)
     {
       PLOGI << m;
     });
 
     return stat == CmdSuccess;
+  }
+
+  virtual bool operator()(const std::string_view cmd, OutputHandler&& handler)
+  {
+    const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
+    return execute_read(chroot_cmd, std::move(handler)) == CmdSuccess;
   }
 };
 

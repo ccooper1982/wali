@@ -233,8 +233,6 @@ bool Install::pacstrap()
     "less",           // useful
   };
 
-  log_info("This may take a while, depending on your connection speed");
-
   std::stringstream cmd_string;
   cmd_string << "pacstrap -K " <<  RootMnt.string();
   for (const auto& package : Packages)
@@ -266,7 +264,11 @@ bool Install::install_packages(const PackageSet& packages)
   std::stringstream ss;
   ss << "pacman -S --noconfirm " << flatten(packages);
 
-  const auto ok = Chroot{}(ss.str());
+  const auto ok = Chroot{}(ss.str(), [this](const std::string_view m)
+  {
+    log_info(m);
+  });
+
   if (!ok)
     log_error("pacman failed to install package(s)");
 

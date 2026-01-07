@@ -65,7 +65,12 @@ public:
 
     btn_rmv->clicked().connect([this]
     {
-      for_each(m_list_confirmed->selectedIndexes(), [this](const auto i)
+      const auto& selected = m_list_confirmed->selectedIndexes();
+
+      if (selected.empty())
+        return;
+
+      for_each(selected, [this](const auto i)
       {
         data.additional.erase(m_list_confirmed->itemText(i).toUTF8());
       });

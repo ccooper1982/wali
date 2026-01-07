@@ -127,7 +127,6 @@ public:
       m_widgets->create_menu(menu);
       m_widgets->get_install()->install_state().connect([menu](InstallState state)
       {
-        // TODO change CSS class so it's obviously disabled
         if (state == InstallState::Fail || state == InstallState::Partial)
         {
           menu->enable();
