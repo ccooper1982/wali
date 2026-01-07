@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=v0.1-alpha1
+VERSION=v0.2
 
 meson configure --buildtype=release build
 
