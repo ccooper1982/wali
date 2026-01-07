@@ -191,6 +191,8 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
 
   WServer::instance()->post(sid, [=, this]()
   {
+    std::scoped_lock lck{m_post_lock};
+
     m_on_install_state(state);
     set_install_status(status, css_class);
 
