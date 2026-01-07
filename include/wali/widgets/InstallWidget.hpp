@@ -14,6 +14,7 @@
 #include <Wt/WTextArea.h>
 #include <functional>
 #include <future>
+#include <mutex>
 #include <wali/Commands.hpp>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
@@ -63,9 +64,6 @@ struct StageLog : public WContainerWidget
 };
 
 
-inline static std::vector<StageLog*> logs;
-
-
 class InstallWidget : public WaliWidget<void>
 {
   using StageFunc = std::function<bool()>;
@@ -80,7 +78,7 @@ public:
 
 private:
 
-  bool is_config_validate();
+  bool is_config_valid();
   void install ();
 
 private:
@@ -105,6 +103,8 @@ private:
   Signal<InstallState> m_on_install_state;
 
   std::size_t m_log{};
+  std::mutex m_post_lock;
+  std::vector<StageLog*> m_stage_logs;
 };
 
 #endif
