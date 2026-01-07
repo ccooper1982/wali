@@ -234,9 +234,8 @@ bool Install::pacstrap()
   };
 
   std::stringstream cmd_string;
-  cmd_string << "pacstrap -K " <<  RootMnt.string();
-  for (const auto& package : Packages)
-    cmd_string << ' ' << package;
+  cmd_string << "pacstrap -K " <<  RootMnt.string() << ' ';
+  cmd_string << flatten(Packages);
 
   const int stat = ReadCommand::execute_read(cmd_string.str(), [this](const std::string_view m)
   {
