@@ -15,13 +15,9 @@ tar -xf wali-bin_$VERSION.tar.gz -C /usr/local/bin
 mount -o remount,size=600M /run/archiso/cowspace
 
 pacman -Sy --noconfirm archlinux-keyring
-pacman -Q wt 2> /dev/null
+pacman -Q wt || pacman -Sy --noconfirm wt
 
-if [ $? -ne 0 ]
-  then
-    pacman -Sy --noconfirm wt
-fi
-
+echo
 echo "--------------"
 echo Change directory to $INSTALL_DIR
 echo Then ./$START_SH
