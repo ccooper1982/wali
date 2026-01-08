@@ -51,4 +51,9 @@ struct WidgetData
   LocaliseData localise;
 };
 
+struct VideoData
+{
+  PackageSet drivers;
+};
+
 #endif

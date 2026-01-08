@@ -24,11 +24,12 @@ class AccountWidget;
 class LocaliseWidget;
 class InstallWidget;
 class PackagesWidget;
+class VideoWidget;
 
 using WidgetVariant = std::variant< IntroductionWidget*, PartitionsWidget*,
                                     NetworkWidget*, AccountWidget*,
                                     LocaliseWidget*, InstallWidget*,
-                                    PackagesWidget*>;
+                                    PackagesWidget*, VideoWidget*>;
 using WidgetsMap = std::map<std::string, WidgetVariant>;
 
 

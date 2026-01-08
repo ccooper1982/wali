@@ -25,7 +25,8 @@ inline std::optional<std::string> validate_widgets(const WidgetsMap& widgets)
                           [&](AccountWidget * w){ return check(name, w);  },
                           [&](LocaliseWidget * w){ return check(name, w);  },
                           [&](PackagesWidget * w){ return check(name, w);  },
-                          [&](InstallWidget * w){ return check(name, w);  }
+                          [&](InstallWidget * w){ return check(name, w);  },
+                          [&](VideoWidget * w){ return check(name, w);  }
                         },
                         widgets_variant);
 

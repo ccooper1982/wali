@@ -15,6 +15,7 @@
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PackagesWidget.hpp>
 #include <wali/widgets/PartitionWidget.hpp>
+#include <wali/widgets/VideoWidget.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 
 
@@ -32,6 +33,7 @@ struct Widgets
     m_widgets.insert(add_menu_widget<NetworkWidget>(menu, "Network"));
     m_widgets.insert(add_menu_widget<AccountWidget>(menu, "Accounts"));
     m_widgets.insert(add_menu_widget<LocaliseWidget>(menu, "Locale"));
+    m_widgets.insert(add_menu_widget<VideoWidget>(menu, "Video"));
     m_widgets.insert(add_menu_widget<PackagesWidget>(menu, "Packages"));
     m_widgets.insert(add_menu_widget<InstallWidget>(menu, "Install", this));
   }
@@ -41,6 +43,7 @@ struct Widgets
   NetworkWidget * get_network() const { return get<NetworkWidget>("Network"); }
   AccountWidget * get_account() const { return get<AccountWidget>("Accounts"); }
   LocaliseWidget * get_localise() const { return get<LocaliseWidget>("Locale"); }
+  VideoWidget * get_video() const { return get<VideoWidget>("Video"); }
   PackagesWidget * get_packages() const { return get<PackagesWidget>("Packages"); }
   InstallWidget * get_install() const { return get<InstallWidget>("Install"); }
 

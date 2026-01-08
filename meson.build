@@ -24,6 +24,7 @@ sources = [
   'src/DiskUtils.cpp',
   'src/Install.cpp',
   'src/widgets/InstallWidget.cpp',
+  'src/widgets/VideoWidget.cpp',
 ]
 
 executable(

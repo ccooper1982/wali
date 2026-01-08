@@ -1,7 +1,7 @@
 #ifndef WALI_INTROWIDGET_H
 #define WALI_INTROWIDGET_H
 
-#include "wali/widgets/WaliWidget.hpp"
+#include <wali/widgets/WaliWidget.hpp>
 #include <wali/widgets/MessagesWidget.hpp>
 
 class IntroductionWidget : public WaliWidget<void>
