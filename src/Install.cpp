@@ -222,11 +222,7 @@ bool Install::pacstrap()
     "linux",
     "linux-firmware",
     "sudo",
-    "usb_modeswitch", // for usb devices that can switch modes (recharging/something else)
-    "usbmuxd",
-    "usbutils",
     "reflector",      // pacman mirrors list
-    "dmidecode",      // BIOS / hardware info, may not actually be useful for most users
     "gpm",            // laptop touchpad support
     "e2fsprogs",      // useful
     "less",           // useful
