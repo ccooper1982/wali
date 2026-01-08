@@ -21,6 +21,7 @@ public:
 private:
   void init_combos();
   void set_driver(WRadioButton * btn);
+  void set_driver();
   void set_active(WRadioButton * btn);
 
 private:

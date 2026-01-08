@@ -48,7 +48,7 @@ void Install::install(InstallHandlers handlers, WidgetData data)
 
   try
   {
-    // TODO swap
+    // TODO swap, user shell
 
     on_state(InstallState::Running);
 
@@ -63,9 +63,9 @@ void Install::install(InstallHandlers handlers, WidgetData data)
     {
       on_state(InstallState::Bootable);
 
-      // TODO user shell
       extra = exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
               exec_stage(&Install::localise,      STAGE_LOCALISE) &&
+              exec_stage(&Install::video,         STAGE_VIDEO) &&
               exec_stage(&Install::network,       STAGE_NETWORK) &&
               exec_stage(&Install::packages,      STAGE_PACKAGES);
     }
@@ -373,6 +373,7 @@ bool Install::add_to_sudoers (const std::string_view user)
 }
 
 
+
 // boot loader
 bool Install::boot_loader()
 {
@@ -404,6 +405,7 @@ bool Install::boot_loader()
   fs::create_directory(EfiMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/efi/grub
   return Chroot{}(std::format("grub-mkconfig -o {}", EfiConfigTarget.string()));
 }
+
 
 
 // localise
@@ -457,6 +459,7 @@ bool Install::localise()
 }
 
 
+
 // network
 bool Install::network()
 {
@@ -492,6 +495,19 @@ bool Install::network()
 
   return true;
 }
+
+
+// video
+bool Install::video()
+{
+  log_info("Installing video drivers");
+
+  if (!install_packages(m_data.video.drivers))
+    log_warning("Failed to install GPU drivers");
+
+  return true;
+}
+
 
 // general
 bool Install::enable_service(const std::vector<std::string_view> services)

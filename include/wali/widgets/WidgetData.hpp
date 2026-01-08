@@ -42,6 +42,11 @@ struct LocaliseData
   std::string keymap;
 };
 
+struct VideoData
+{
+  PackageSet drivers;
+};
+
 struct WidgetData
 {
   AccountsData accounts;
@@ -49,11 +54,8 @@ struct WidgetData
   PackagesData packages;
   NetworkData network;
   LocaliseData localise;
+  VideoData video;
 };
 
-struct VideoData
-{
-  PackageSet drivers;
-};
 
 #endif

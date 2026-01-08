@@ -42,6 +42,7 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_BOOT_LOADER)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_USER_ACC)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_LOCALISE)));
+  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_VIDEO)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_NETWORK)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACKAGES)));
 

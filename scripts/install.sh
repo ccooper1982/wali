@@ -16,6 +16,7 @@ mount -o remount,size=600M /run/archiso/cowspace
 
 pacman -Sy --noconfirm archlinux-keyring
 pacman -Q wt || pacman -Sy --noconfirm wt
+pacman -Q lshw || pacman -Sy --noconfirm lshw
 
 echo
 echo "--------------"

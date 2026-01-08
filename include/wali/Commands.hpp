@@ -302,11 +302,47 @@ struct ProgramExists : public ReadCommand
   }
 };
 
+
 struct Reboot : public ReadCommand
 {
   bool operator()()
   {
     return execute("reboot -f") == CmdSuccess;
+  }
+};
+
+
+struct GetGpuVendor : public ReadCommand
+{
+  GpuVendor vendor{GpuVendor::Unknown};
+  unsigned short n_amd{0}, n_nvidia{0}, n_vm{0}, n_intel{0};
+
+  GpuVendor operator()()
+  {
+    const auto stat = execute_read("lshw -C display | grep 'vendor: '", [&](const std::string_view m)
+    {
+      if (!m.empty())
+      {
+        n_amd += ::strcasestr(m.data(), "amd") ? 1 : 0;
+        n_nvidia += ::strcasestr(m.data(), "nvidia") ? 1 : 0;
+        n_vm += ::strcasestr(m.data(), "vmware") ? 1 : 0;
+        n_intel += ::strcasestr(m.data(), "intel") ? 1 : 0;
+      }
+    });
+
+    if (stat == CmdSuccess && n_amd + n_nvidia + n_vm + n_intel == 1)
+    {
+      if (n_amd)
+        vendor = GpuVendor::Amd;
+      else if (n_nvidia)
+        vendor = GpuVendor::Nvidia;
+      else if (n_intel)
+        vendor = GpuVendor::Intel;
+      else
+        vendor = GpuVendor::Vm;
+    }
+
+    return vendor;
   }
 };
 

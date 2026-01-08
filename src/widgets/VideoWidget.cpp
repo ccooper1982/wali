@@ -1,3 +1,5 @@
+#include "wali/Commands.hpp"
+#include "wali/Common.hpp"
 #include "wali/widgets/WidgetData.hpp"
 #include <Wt/WApplication.h>
 #include <Wt/WComboBox.h>
@@ -129,7 +131,7 @@ VideoWidget::VideoWidget()
   m_waffle = layout->addWidget(make_wt<WText>());
 
   init_combos();
-  set_driver(m_group_company->checkedButton());
+  set_driver();
 
   layout_company->addStretch(1);
   layout->addStretch(1);
@@ -164,6 +166,28 @@ void VideoWidget::set_driver(WRadioButton * btn)
   m_waffle->setText(waffle.data());
 
   set_active(btn);
+}
+
+void VideoWidget::set_driver()
+{
+  switch (GetGpuVendor{}())
+  {
+    case GpuVendor::Amd:
+      m_group_company->setSelectedButtonIndex(1);
+    break;
+
+    case GpuVendor::Nvidia:
+      m_group_company->setSelectedButtonIndex(2);
+    break;
+
+    case GpuVendor::Intel:
+      m_group_company->setSelectedButtonIndex(3);
+    break;
+
+    default:
+      m_group_company->setSelectedButtonIndex(0);
+    break;
+  }
 }
 
 void VideoWidget::set_active(WRadioButton * btn)

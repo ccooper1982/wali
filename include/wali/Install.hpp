@@ -87,6 +87,9 @@ private:
   // network
   bool network();
 
+  // video
+  bool video();
+
   // services
   bool enable_service(const std::vector<std::string_view> services);
 
