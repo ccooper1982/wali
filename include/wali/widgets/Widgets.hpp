@@ -58,6 +58,7 @@ struct Widgets
     data.network = get_network()->get_data();
     data.accounts = get_account()->get_data();
     data.localise = get_localise()->get_data();
+    data.video = get_video()->get_data();
     data.packages = get_packages()->get_data();
 
     return data;

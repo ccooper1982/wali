@@ -61,7 +61,7 @@ static bool check_programs_exist()
 static bool sync_system_clock()
 {
   ReadCommand cmd;
-  return cmd.execute("timedatectl") == CmdSuccess;
+  return cmd.execute_read("timedatectl") == CmdSuccess;
 }
 
 static std::string startup_checks()

@@ -174,20 +174,26 @@ void VideoWidget::set_driver()
   {
     case GpuVendor::Amd:
       m_group_company->setSelectedButtonIndex(1);
+      m_waffle->setText(amd_waffle);
     break;
 
     case GpuVendor::Nvidia:
       m_group_company->setSelectedButtonIndex(2);
+      m_waffle->setText(nvidia_waffle);
     break;
 
     case GpuVendor::Intel:
       m_group_company->setSelectedButtonIndex(3);
+      m_waffle->setText(intel_waffle);
     break;
 
     default:
       m_group_company->setSelectedButtonIndex(0);
+      m_waffle->setText(none_waffle);
     break;
   }
+
+  set_active(m_group_company->checkedButton());
 }
 
 void VideoWidget::set_active(WRadioButton * btn)
@@ -234,7 +240,6 @@ VideoData VideoWidget::get_data() const
   else
   {
     PLOGE << "VideoWidget::get_data() should not be here";
+    return {};
   }
-
-  return {};
 }

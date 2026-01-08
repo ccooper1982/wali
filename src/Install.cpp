@@ -116,7 +116,7 @@ bool Install::filesystems()
 bool Install::wipe_fs(const std::string_view dev)
 {
   log_info(std::format("Wipe filesystem on {}", dev));
-  return ReadCommand::execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
+  return ReadCommand::execute_read(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
 }
 
 bool Install::create_home_filesystem()
@@ -167,7 +167,7 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
   const int part_num = PartitionUtils::get_partition_part_number(part_dev);
   const auto parent_dev = PartitionUtils::get_partition_parent(part_dev);
 
-  if (ReadCommand::execute(std::format("sgdisk -t{}:{} {}", part_num, type, parent_dev)) != CmdSuccess)
+  if (ReadCommand::execute_read(std::format("sgdisk -t{}:{} {}", part_num, type, parent_dev)) != CmdSuccess)
     log_warning(std::format("Set partition type failed on {}", part_dev));
 }
 
@@ -193,8 +193,7 @@ bool Install::mount()
 
 bool Install::unmount()
 {
-  // assumes user hasn't manual mounts
-  return Unmount{}("/mnt", true);
+  return Unmount{}(RootMnt.string(), true);
 }
 
 
@@ -284,7 +283,7 @@ bool Install::fstab ()
 
   log_info(cmd_string);
 
-  const auto stat = ReadCommand::execute(cmd_string);;
+  const auto stat = ReadCommand::execute_read(cmd_string);;
   if (stat != CmdSuccess)
     log_error(std::format("genfstab failed: {}", ::strerror(stat)));
 
@@ -444,7 +443,7 @@ bool Install::localise()
     log_info("Set timezone");
     if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
       log_warning("Failed to set locale timezone");
-    else if (log_info("Syncing clock"); ReadCommand::execute("hwclock --systohc") != CmdSuccess)
+    else if (log_info("Syncing clock"); ReadCommand::execute_read("hwclock --systohc") != CmdSuccess)
       log_warning("Failed to sync hardware clock");
   }
 
@@ -483,7 +482,7 @@ bool Install::network()
                                                                           TargetIwdConfigPath.string());
 
       log_info("Copy iwd config");
-      if (ReadCommand::execute(cmd_string) != CmdSuccess)
+      if (ReadCommand::execute_read(cmd_string) != CmdSuccess)
         log_warning("Failed to copy iwd config files");
     }
   }

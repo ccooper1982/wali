@@ -57,9 +57,9 @@ public:
     return execute_read(cmd, std::move(handler), 1);
   }
 
-  static int execute(const std::string_view cmd)
+  static int execute_read(const std::string_view cmd)
   {
-    return execute_read(cmd, nullptr, 1);
+    return execute_read(cmd, nullptr);
   }
 
   static int execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
@@ -307,7 +307,7 @@ struct Reboot : public ReadCommand
 {
   bool operator()()
   {
-    return execute("reboot -f") == CmdSuccess;
+    return execute_read("reboot -f") == CmdSuccess;
   }
 };
 
@@ -361,7 +361,7 @@ struct CreateFilesystem : public ReadCommand
     // });
     // PLOGE << "stat=" << stat;
     // return stat == CmdSuccess;
-    return execute(std::format("mkfs.{} {}", cmd, dev)) == CmdSuccess;
+    return execute_read(std::format("mkfs.{} {}", cmd, dev)) == CmdSuccess;
   }
 };
 
@@ -373,7 +373,7 @@ struct Mount : public ReadCommand
 {
   bool operator()(const std::string_view dev, const std::string_view mount_point)
   {
-    return execute(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
+    return execute_read(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
   }
 };
 
@@ -381,7 +381,7 @@ struct Unmount : public ReadCommand
 {
   bool operator()(const std::string_view mount_point, const bool recursive)
   {
-    return execute(std::format("umount {} {}", recursive ? "-R" : "", mount_point)) == CmdSuccess;
+    return execute_read(std::format("umount {} {}", recursive ? "-R" : "", mount_point)) == CmdSuccess;
   }
 };
 
