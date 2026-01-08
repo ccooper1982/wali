@@ -17,6 +17,7 @@ public:
   VideoWidget();
 
   VideoData get_data() const override;
+  bool is_valid() const override;
 
 private:
   void init_combos();

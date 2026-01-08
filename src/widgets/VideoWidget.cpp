@@ -243,3 +243,29 @@ VideoData VideoWidget::get_data() const
     return {};
   }
 }
+
+bool VideoWidget::is_valid() const
+{
+  if (m_group_company->selectedButtonIndex() == 0)
+    return true;
+
+  switch (m_group_company->selectedButtonIndex())
+  {
+    case 1:
+      return !m_amd_driver->currentText().empty();
+    break;
+
+    case 2:
+      return !m_nvidia_driver->currentText().empty();
+    break;
+
+    case 3:
+      return !m_intel_driver->currentText().empty();
+    break;
+
+    default:
+      PLOGE << "VideoWidget::is_valid() : shouldn't reach here";
+      return false;
+    break;
+  }
+}
