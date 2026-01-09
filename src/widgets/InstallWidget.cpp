@@ -1,3 +1,4 @@
+#include "wali/Common.hpp"
 #include <mutex>
 #include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/InstallWidget.hpp>
@@ -45,6 +46,7 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_VIDEO)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_NETWORK)));
   m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACKAGES)));
+  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_UNMOUNT)));
 
   layout->addStretch(1);
 }

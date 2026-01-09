@@ -33,6 +33,7 @@ inline static const constexpr auto STAGE_LOCALISE     = "Localise";
 inline static const constexpr auto STAGE_VIDEO        = "Video";
 inline static const constexpr auto STAGE_NETWORK      = "Network";
 inline static const constexpr auto STAGE_PACKAGES     = "Packages";
+inline static const constexpr auto STAGE_UNMOUNT      = "Unmount";
 
 
 enum class GpuVendor

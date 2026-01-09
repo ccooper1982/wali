@@ -75,7 +75,8 @@ void Install::install(InstallHandlers handlers, WidgetData data)
     log_error(std::format("Unknown error: {}", ex.what()));
   }
 
-  unmount();
+  // we always want to do this, and ignore any errors
+  exec_stage(&Install::unmount, STAGE_UNMOUNT);
 
   if (extra)
     on_state(InstallState::Complete);
@@ -193,6 +194,7 @@ bool Install::mount()
 
 bool Install::unmount()
 {
+  log_info("Recursive unmount");
   return Unmount{}(RootMnt.string(), true);
 }
 
@@ -511,7 +513,7 @@ bool Install::enable_service(const std::vector<std::string_view> services)
 
   for (const auto& svc : services)
   {
-    log_info(std::format("Enabling service {}", svc));
+    log_info(std::format("Enable service {}", svc));
 
     const auto enabled = Chroot{}(std::format("systemctl enable {}", svc));
     if (!enabled)
