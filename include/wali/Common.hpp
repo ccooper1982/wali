@@ -3,7 +3,6 @@
 
 #include <concepts>
 #include <filesystem>
-#include <functional>
 #include <math.h>
 #include <ranges>
 #include <set>
@@ -73,9 +72,9 @@ template<class C, typename F>
 void for_each (C& c, F f) requires std::ranges::constant_range<C> || std::ranges::range<C>
 {
   if constexpr (std::ranges::constant_range<C>)
-    std::for_each(std::cbegin(c), std::cend(c), std::move(f));
+    std::for_each(std::cbegin(c), std::cend(c), std::forward<F>(f));
   else
-    std::for_each(std::begin(c), std::end(c), std::move(f));
+    std::for_each(std::begin(c), std::end(c), std::forward<F>(f));
 }
 
 template<class C>

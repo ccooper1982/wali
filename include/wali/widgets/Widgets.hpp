@@ -51,17 +51,14 @@ struct Widgets
 
   WidgetData get_data() const
   {
-    WidgetData data;
-
-    data.partitions = get_partitions()->get_data();
-    data.accounts = get_account()->get_data();
-    data.network = get_network()->get_data();
-    data.accounts = get_account()->get_data();
-    data.localise = get_localise()->get_data();
-    data.video = get_video()->get_data();
-    data.packages = get_packages()->get_data();
-
-    return data;
+    return {
+              .accounts = get_account()->get_data(),
+              .partitions = get_partitions()->get_data(),
+              .packages = get_packages()->get_data(),
+              .network = get_network()->get_data(),
+              .localise = get_localise()->get_data(),
+              .video = get_video()->get_data()
+            };
   }
 
 private:

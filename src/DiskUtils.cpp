@@ -1,4 +1,5 @@
 #include <exception>
+#include <functional>
 #include <ranges>
 #include <string.h>
 #include <blkid/blkid.h>

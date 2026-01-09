@@ -23,7 +23,12 @@ sources = [
   'src/Wali.cpp',
   'src/DiskUtils.cpp',
   'src/Install.cpp',
+  'src/widgets/AccountsWidget.cpp',
   'src/widgets/InstallWidget.cpp',
+  'src/widgets/LocaliseWidget.cpp',
+  'src/widgets/NetworkWidget.cpp',
+  'src/widgets/PackagesWidget.cpp',
+  'src/widgets/PartitionsWidget.cpp',
   'src/widgets/VideoWidget.cpp',
 ]
 
@@ -33,15 +38,3 @@ executable(
   include_directories: includes,
   dependencies: [wthttp_dep, wt_dep, plog_dep, blkid_dep, libmount_dep],
 )
-
-# run_command('mkdir', '-p', 'build/wwwroot', check: true)
-
-# run_command(
-#   'cp',
-#   'build/wali',
-#   'wali.css',
-#   'wt_config.xml',
-#   'collapse.gif',
-#   'build/wwwroot',
-#   check: true,
-# )
