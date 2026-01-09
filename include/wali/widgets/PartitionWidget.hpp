@@ -1,15 +1,17 @@
 #ifndef WALI_PARTITIONWIDGET_H
 #define WALI_PARTITIONWIDGET_H
 
+#include <functional>
+#include <memory>
+#include <ranges>
+
 #include <Wt/WComboBox.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WRadioButton.h>
 #include <Wt/WButtonGroup.h>
 #include <Wt/WTable.h>
-
 #include <Wt/WVBoxLayout.h>
-#include <functional>
-#include <memory>
+
 #include <wali/widgets/MessagesWidget.hpp>
 #include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/WaliWidget.hpp>
@@ -218,14 +220,17 @@ public:
     auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
 
     if (!PartitionUtils::probe_for_install())
-      std::cout << "Probe failed\n";
+      PLOGE << "Probe failed\n";
     else
     {
       if (!PartitionUtils::have_partitions())
-        std::cout << "No partitions found\n";
+        PLOGE << "No partitions found\n";
       else
       {
-        const auto parts = PartitionUtils::partitions();
+        auto has_partitions = [](const TreePair& pair){ return !pair.second.empty(); } ;
+
+        m_tree = PartitionUtils::partitions();
+        Partitions devices;
 
         auto table_parts = layout->addWidget(make_wt<Wt::WTable>());
         table_parts->setHeaderCount(1);
@@ -234,24 +239,38 @@ public:
         table_parts->elementAt(0, 2)->addNew<Wt::WText>("Size");
         table_parts->setStyleClass("table_partitions");
 
-        for(size_t i = 0; i < parts.size() ; ++i)
+        size_t r{1}; // 1 because of the header row
+
+        for (const auto& [parent, parts] : m_tree | std::views::filter(has_partitions))
         {
-          table_parts->elementAt(i+1,0)->addNew<Wt::WText>(parts[i].dev);
-          table_parts->elementAt(i+1,1)->addNew<Wt::WText>(parts[i].fs_type);
-          table_parts->elementAt(i+1,2)->addNew<Wt::WText>(format_size(parts[i].size));
+          devices.append_range(parts);
+
+          table_parts->elementAt(r,0)->addNew<WText>(parent);
+          table_parts->elementAt(r,0)->setColumnSpan(3);
+          table_parts->rowAt(r)->setStyleClass("partitions_parent");
+
+          ++r;
+
+          for(size_t i = 0 ; i < parts.size() ; ++i)
+          {
+            table_parts->elementAt(r,0)->addNew<WText>(parts[i].dev);
+            table_parts->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
+            table_parts->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
+            table_parts->rowAt(r)->setStyleClass("partition");
+            ++r;
+          }
         }
 
+        m_boot = layout->addWidget(make_wt<BootPartitionWidget>(devices, [this]{validate_selection();}));
+        m_root = layout->addWidget(make_wt<RootPartitionWidget>(devices, [this]{validate_selection();}));
+        m_home = layout->addWidget(make_wt<HomePartitionWidget>(devices, [this]{validate_selection();}));
+
         table_parts->addStyleClass("table");
-
-        m_boot = layout->addWidget(make_wt<BootPartitionWidget>(parts, [this]{validate_selection();}));
-        m_root = layout->addWidget(make_wt<RootPartitionWidget>(parts, [this]{validate_selection();}));
-        m_home = layout->addWidget(make_wt<HomePartitionWidget>(parts, [this]{validate_selection();}));
-
-        m_messages = layout->addWidget(make_wt<MessageWidget>());
 
         // TODO bootloader
       }
 
+      m_messages = layout->addWidget(make_wt<MessageWidget>());
       validate_selection();
     }
 
@@ -309,6 +328,7 @@ private:
   RootPartitionWidget * m_root;
   HomePartitionWidget * m_home;
   MessageWidget * m_messages;
+  Tree2 m_tree;
 };
 
 #endif

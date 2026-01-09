@@ -69,7 +69,7 @@ static inline std::string format_size(const int64_t size)
 }
 
 template<class C, typename F>
-void for_each (const C& c, F&& f) requires std::ranges::constant_range<C> || std::ranges::range<C>
+void for_each (C& c, F f) requires std::ranges::constant_range<C> || std::ranges::range<C>
 {
   if constexpr (std::ranges::constant_range<C>)
     std::for_each(std::cbegin(c), std::cend(c), std::move(f));
