@@ -223,8 +223,8 @@ public:
       PLOGE << "Probe failed\n";
     else
     {
-      if (!PartitionUtils::have_partitions())
-        PLOGE << "No partitions found\n";
+      if (!PartitionUtils::have_devices())
+        PLOGE << "No applicable devices found\n";
       else
       {
         auto has_partitions = [](const TreePair& pair){ return !pair.second.empty(); } ;
@@ -328,7 +328,7 @@ private:
   RootPartitionWidget * m_root;
   HomePartitionWidget * m_home;
   MessageWidget * m_messages;
-  Tree2 m_tree;
+  Tree m_tree;
 };
 
 #endif

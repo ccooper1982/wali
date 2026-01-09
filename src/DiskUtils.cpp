@@ -8,7 +8,7 @@
 #include <wali/DiskUtils.hpp>
 
 
-Tree2 PartitionUtils::m_tree;
+Tree PartitionUtils::m_tree;
 
 static const std::string EfiPartitionType {"c12a7328-f81f-11d2-ba4b-00a0c93ec93b"};
 
@@ -46,7 +46,7 @@ struct Probe
 };
 
 
-bool PartitionUtils::do_probe2(const ProbeOpts opts, const bool gpt_only)
+bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
 {
   blkid_cache cache;
   if (blkid_get_cache(&cache, nullptr) != 0)

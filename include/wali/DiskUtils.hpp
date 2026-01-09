@@ -51,8 +51,8 @@ inline std::ostream& operator<<(std::ostream& q, const Partition& p)
 
 
 using Partitions = std::vector<Partition>;
-using Tree2 = std::map<std::string, Partitions>; // parent device, partitions
-using TreePair = Tree2::value_type;
+using Tree = std::map<std::string, Partitions>; // parent device, partitions
+using TreePair = Tree::value_type;
 
 enum class ProbeOpts
 {
@@ -72,7 +72,7 @@ public:
   static bool probe_for_install()
   {
     //return do_probe(ProbeOpts::UnMounted, true);
-    return do_probe2(ProbeOpts::All, false);
+    return do_probe(ProbeOpts::All, false);
   }
 
   // Probe all block devices, storing information for all partitions,
@@ -80,13 +80,12 @@ public:
   // This call clears previous probe results.
   static bool probe_for_os_discover()
   {
-    return do_probe2(ProbeOpts::All, false);
+    return do_probe(ProbeOpts::All, false);
   }
 
 
-  static const Tree2& partitions() { return m_tree; }
-  // static std::size_t num_partitions() { return m_tree.size(); }
-  static bool have_partitions() { return !m_tree.empty(); } // TODO wrong. devices without partitions
+  static const Tree& partitions() { return m_tree; }
+  static bool have_devices() { return !m_tree.empty(); }
 
   static std::string get_partition_fs (const std::string_view dev);
   static int get_partition_part_number (const std::string_view dev);
@@ -96,17 +95,17 @@ public:
   static bool is_dev_mounted(const std::string_view path);
 
 private:
-  static bool do_probe2(const ProbeOpts opts, const bool gpt_only);
+static bool do_probe(const ProbeOpts opts, const bool gpt_only);
   static std::optional<std::string> add_to_tree(const std::string& dev);
   static void probe_partitions(const std::string& parent_dev, const std::string_view dev, const ProbeOpts opts, const bool gpt_only);
-
   static std::optional<Partition> probe_partition(const std::string_view part_dev);
+
   static std::optional<std::reference_wrapper<const Partition>> get_partition(const std::string_view dev);
 
   static bool is_mounted(const std::string_view path_or_dev, const bool is_dev);
 
 private:
-  static Tree2 m_tree;
+  static Tree m_tree;
 };
 
 #endif
