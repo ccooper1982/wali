@@ -5,6 +5,7 @@
 #include <Wt/WContainerWidget.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WLayout.h>
+#include <Wt/WSignal.h>
 #include <cstdlib>
 #include <wali/DiskUtils.hpp>
 #include <wali/widgets/Common.hpp>
@@ -16,6 +17,8 @@ public:
   PartitionsWidget();
 
   bool is_changed() const { return m_changed; };
+
+  Signal<bool>& busy() { return m_evt_busy; };
 
 private:
   void read_partitions();
@@ -36,6 +39,8 @@ private:
   WPushButton * m_create;
   WText * m_total;
   bool m_changed{};
+
+  Signal<bool> m_evt_busy;
 };
 
 #endif

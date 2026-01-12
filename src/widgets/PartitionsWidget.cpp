@@ -8,11 +8,13 @@
 #include <wali/Commands.hpp>
 #include <wali/DiskUtils.hpp>
 #include <wali/widgets/Common.hpp>
+#include <Wt/WApplication.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WCompositeWidget.h>
 #include <Wt/WHBoxLayout.h>
 #include <Wt/WPushButton.h>
 #include <Wt/WSpinBox.h>
+#include <Wt/WServer.h>
 #include <Wt/WText.h>
 #include <Wt/WVBoxLayout.h>
 #include <wali/widgets/PartitionsWidget.hpp>
@@ -164,44 +166,50 @@ void PartitionsWidget::create()
     PLOGI << m;
   };
 
+  m_evt_busy(true);
   m_create->disable();
 
-  try
+  WServer::instance()->post(WApplication::instance()->sessionId(), [=, this]()
   {
-    const auto& disk =  m_disk->currentText().toUTF8();
-
-    if (!CreatePartitionTable{}(disk, log))
+    try
     {
-      // TODO something
-      PLOGE << "Failed to create parition table";
-    }
-    else
-    {
-      const int64_t boot_size = std::strtoll(m_boot->currentText().toUTF8().data(), nullptr, 10);
-      const int64_t root_size = gb_to_mb(std::strtoll(m_root->text().toUTF8().data(), nullptr, 10));
+      const auto& disk =  m_disk->currentText().toUTF8();
 
-      PLOGW << "Boot: " << m_boot->currentText().toUTF8().data() << "MB, " << boot_size << "MB";
-      PLOGW << "Root: " << m_root->text().toUTF8().data() << "GB, " << root_size << "MB";
-
-      CreatePartition{}(disk, 1, boot_size, log);
-      CreatePartition{}(disk, 2, root_size, log);
-
-      SetPartitionType{}(disk, 1, PartTypeEfi);
-      SetPartitionType{}(disk, 2, PartTypeRoot);
-
-      if (m_home->currentIndex() == 0)
+      if (!CreatePartitionTable{}(disk, log))
       {
-        CreatePartition{}(disk, 3, log);
-        SetPartitionType{}(disk, 3, PartTypeHome);
+        // TODO something
+        PLOGE << "Failed to create parition table";
       }
+      else
+      {
+        const int64_t boot_size = std::strtoll(m_boot->currentText().toUTF8().data(), nullptr, 10);
+        const int64_t root_size = gb_to_mb(std::strtoll(m_root->text().toUTF8().data(), nullptr, 10));
+
+        PLOGW << "Boot: " << m_boot->currentText().toUTF8().data() << "MB, " << boot_size << "MB";
+        PLOGW << "Root: " << m_root->text().toUTF8().data() << "GB, " << root_size << "MB";
+
+        CreatePartition{}(disk, 1, boot_size, log);
+        CreatePartition{}(disk, 2, root_size, log);
+
+        SetPartitionType{}(disk, 1, PartTypeEfi);
+        SetPartitionType{}(disk, 2, PartTypeRoot);
+
+        if (m_home->currentIndex() == 0)
+        {
+          CreatePartition{}(disk, 3, log);
+          SetPartitionType{}(disk, 3, PartTypeHome);
+        }
+      }
+
+      m_changed = true;
+    }
+    catch (const std::exception& ex)
+    {
+      PLOGE << "PartitionsWidget::create() exception: " <<ex.what();
     }
 
-    m_changed = true;
-  }
-  catch (const std::exception& ex)
-  {
-    PLOGE << "PartitionsWidget::create() exception: " <<ex.what();
-  }
-
-  m_create->enable();
+    m_evt_busy(false);
+    m_create->enable();
+    WApplication::instance()->triggerUpdate();
+  });
 }

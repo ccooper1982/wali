@@ -23,6 +23,7 @@ MountsWidget::MountsWidget()
   {
     auto dialog = btn_manage->addChild(make_wt<WDialog>("Partitions"));
     auto partitions = dialog->contents()->addWidget(make_wt<PartitionsWidget>());
+    auto btn_close = dialog->footer()->addWidget(make_wt<WPushButton>("Close"));
 
     dialog->rejectWhenEscapePressed();
     dialog->titleBar()->setStyleClass("partitions_dialog_title");
@@ -34,8 +35,12 @@ MountsWidget::MountsWidget()
       if (partitions->is_changed())
         create_table();
     });
+    partitions->busy().connect([=](bool busy)
+    {
+      dialog->rejectWhenEscapePressed(!busy);
+      btn_close->setEnabled(!busy);
+    });
 
-    auto btn_close = dialog->footer()->addWidget(make_wt<WPushButton>("Close"));
     btn_close->clicked().connect(dialog, &WDialog::reject);
 
     dialog->show();
