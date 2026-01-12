@@ -12,7 +12,7 @@ struct AccountsData
   bool user_sudo{true};
 };
 
-struct PartData
+struct MountData
 {
   std::string boot_dev;
   std::string boot_fs;
@@ -50,7 +50,7 @@ struct VideoData
 struct WidgetData
 {
   AccountsData accounts;
-  PartData partitions;
+  MountData mounts;
   PackagesData packages;
   NetworkData network;
   LocaliseData localise;

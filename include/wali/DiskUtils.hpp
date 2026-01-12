@@ -60,52 +60,53 @@ enum class ProbeOpts
   UnMounted
 };
 
+// Hex codes: https://gist.github.com/gotbletu/a05afe8a76d0d0e8ec6659e9194110d2
+inline static const constexpr char PartTypeEfi[] = "ef00";
+inline static const constexpr char PartTypeRoot[] = "8304";
+inline static const constexpr char PartTypeHome[] = "8302";
 
-class PartitionUtils
+
+class DiskUtils
 {
-
-
 public:
-  // Probe all block devices, storing information for partitions
-  // that are not mounted and are GPT.
-  // This call clears previous probe results.
-  static bool probe_for_install()
+
+  // Prove all block devices that are unmounted,
+  static Tree probe_for_partitioning()
   {
-    //return do_probe(ProbeOpts::UnMounted, true);
-    return do_probe(ProbeOpts::All, false);
+    return do_probe(ProbeOpts::UnMounted, false);
+  }
+
+  // Probe all block devices that are not mounted and are GPT.
+  static Tree probe_for_install()
+  {
+    return do_probe(ProbeOpts::UnMounted, true);
   }
 
   // Probe all block devices, storing information for all partitions,
   // irrespective of partition type and mount state.
   // This call clears previous probe results.
-  static bool probe_for_os_discover()
+  static Tree probe_for_os_discover()
   {
     return do_probe(ProbeOpts::All, false);
   }
 
-
-  static const Tree& partitions() { return m_tree; }
-  static bool have_devices() { return !m_tree.empty(); }
-
-  static std::string get_partition_fs (const std::string_view dev);
-  static int get_partition_part_number (const std::string_view dev);
-  static std::string get_partition_parent (const std::string_view dev);
+  static std::optional<int64_t> get_disk_size (const std::string_view dev);
+  static int get_partition_part_number (const Tree& tree, const std::string_view dev);
+  static std::string get_partition_parent (const Tree& tree, const std::string_view dev);
+  // static std::string get_partition_fs (const std::string_view dev);
+  // static std::optional<int64_t> get_partition_size (const std::string_view dev);
 
   static bool is_path_mounted(const std::string_view path);
   static bool is_dev_mounted(const std::string_view path);
 
 private:
-static bool do_probe(const ProbeOpts opts, const bool gpt_only);
-  static std::optional<std::string> add_to_tree(const std::string& dev);
-  static void probe_partitions(const std::string& parent_dev, const std::string_view dev, const ProbeOpts opts, const bool gpt_only);
-  static std::optional<Partition> probe_partition(const std::string_view part_dev);
+  static Tree do_probe(const ProbeOpts opts, const bool gpt_only);
+  static void probe_partitions(const std::string& parent_dev, Partition& part, const ProbeOpts opts, const bool gpt_only);
+  static bool probe_partition(Partition& partition);
 
-  static std::optional<std::reference_wrapper<const Partition>> get_partition(const std::string_view dev);
+  static std::optional<std::reference_wrapper<const Partition>> get_partition(const Tree& tree, const std::string_view dev);
 
   static bool is_mounted(const std::string_view path_or_dev, const bool is_dev);
-
-private:
-  static Tree m_tree;
 };
 
 #endif

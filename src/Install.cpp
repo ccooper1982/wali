@@ -1,4 +1,6 @@
 
+#include <wali/DiskUtils.hpp>
+#include <wali/widgets/WidgetData.hpp>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -11,11 +13,6 @@
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Widgets.hpp>
-
-// Hex codes: https://gist.github.com/gotbletu/a05afe8a76d0d0e8ec6659e9194110d2
-static const constexpr char PartTypeEfi[] = "ef00";
-static const constexpr char PartTypeRoot[] = "8304";
-static const constexpr char PartTypeHome[] = "8302";
 
 
 void Install::install(InstallHandlers handlers, WidgetData data)
@@ -87,7 +84,7 @@ void Install::install(InstallHandlers handlers, WidgetData data)
 
 bool Install::filesystems()
 {
-  const PartData& data = m_data.partitions;
+  const MountData& data = m_data.mounts;
 
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
@@ -124,7 +121,7 @@ bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
-  const PartData& data = m_data.partitions;
+  const MountData& data = m_data.mounts;
 
   if (data.home_target == HomeMountTarget::Existing)
   {
@@ -165,17 +162,18 @@ bool Install::create_ext4_filesystem(const std::string_view part_dev)
 
 void Install::set_partition_type(const std::string_view part_dev, const std::string_view type)
 {
-  const int part_num = PartitionUtils::get_partition_part_number(part_dev);
-  const auto parent_dev = PartitionUtils::get_partition_parent(part_dev);
+  const Tree tree = DiskUtils::probe_for_install();
+  const int part_num = DiskUtils::get_partition_part_number(tree, part_dev);
+  const auto parent_dev = DiskUtils::get_partition_parent(tree, part_dev);
 
-  if (ReadCommand::execute_read(std::format("sgdisk -t{}:{} {}", part_num, type, parent_dev)) != CmdSuccess)
+  if (SetPartitionType{}(parent_dev, part_num, type))
     log_warning(std::format("Set partition type failed on {}", part_dev));
 }
 
 // mount
 bool Install::mount()
 {
-  const PartData data = m_data.partitions;
+  const MountData data = m_data.mounts;
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 

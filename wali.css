@@ -108,28 +108,18 @@ div.msg_info {
     background-color: #808080;
     padding: 10px;*/
 }
-
-select.timezones {
-    height: 30px;
-    width: 220px;
+select {
+    height: 20px;
     font:
-        14px arial,
+        12px arial,
         sans-serif;
 }
 
-select.locales {
-    height: 30px;
-    width: 220px;
+select.localise {
+    height: 20px;
+    width: 180px;
     font:
-        14px arial,
-        sans-serif;
-}
-
-select.keymaps {
-    height: 30px;
-    width: 220px;
-    font:
-        14px arial,
+        12px arial,
         sans-serif;
 }
 
@@ -259,6 +249,11 @@ input[type="text"] {
     font-size: 12px;
 }
 
+input.partition_size {
+    min-width: 50px;
+    max-width: 50px;
+}
+
 button {
     appearance: none;
     background-color: #fafbfc;
@@ -320,4 +315,36 @@ button:before {
 
 button:-webkit-details-marker {
     display: none;
+}
+
+div.partitions_dialog_title {
+    background-color: steelblue;
+    border: solid steelblue;
+    color: white;
+    font:
+        18px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 0px;
+}
+
+div.partitions_dialog_contents {
+    background-color: white;
+    border: solid steelblue;
+    font:
+        14px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 0px;
+}
+
+div.partitions_dialog_foot {
+    background-color: #3672a4;
+    /*border: solid steelblue;*/
+    color: white;
+    font:
+        14px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 10px;
 }

@@ -1,6 +1,7 @@
 #ifndef WALI_COMMANDS_H
 #define WALI_COMMANDS_H
 
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -367,6 +368,49 @@ struct CreateFilesystem : public ReadCommand
 
 using CreateExt4Filesystem = CreateFilesystem<ext4>;
 using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
+
+
+// partitions
+struct CreatePartitionTable : public ReadCommand
+{
+  bool operator()(const std::string_view disk, OutputHandler handler)
+  {
+    if (execute_read(std::format("wipefs -a {}", disk)) != CmdSuccess)
+    {
+      PLOGE << "Failed to wipe device " << disk;
+      return false;
+    }
+
+    // this forces the label creation, whilst sgdisk --label does not
+    return execute_read(std::format("echo 'label: gpt' | sfdisk {}", disk), std::move(handler)) == CmdSuccess;
+  }
+};
+
+struct CreatePartition : public ReadCommand
+{
+  bool operator()(const std::string_view disk, const std::uint16_t part_num, const std::int64_t size_mb, OutputHandler handler)
+  {
+    // <part_num>:start:<part_size>  (where start is default=first available sector)
+    return execute_read(std::format("sgdisk -n {}:-:+{}MiB {}", part_num, size_mb, disk), std::move(handler)) == CmdSuccess;
+  }
+
+  bool operator()(const std::string_view disk, const std::uint16_t part_num, OutputHandler handler)
+  {
+    // <part_num>:start:<part_size>
+    //  start is default (first available sector)
+    //  part_size is default (remaining space)
+    return execute_read(std::format("sgdisk -n {}:-:- {}", part_num, disk), std::move(handler)) == CmdSuccess;
+  }
+};
+
+
+struct SetPartitionType : public ReadCommand
+{
+  bool operator()(const std::string_view dev, const std::uint16_t part_num, const std::string_view type)
+  {
+    return execute_read(std::format("sgdisk -t {}:{} {}", part_num, type, dev)) == CmdSuccess;
+  }
+};
 
 // mount
 struct Mount : public ReadCommand

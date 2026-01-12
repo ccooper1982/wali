@@ -12,9 +12,10 @@
 #include <wali/widgets/IntroductionWidget.hpp>
 #include <wali/widgets/InstallWidget.hpp>
 #include <wali/widgets/LocaliselWidget.hpp>
+#include <wali/widgets/MountsWidget.hpp>
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PackagesWidget.hpp>
-#include <wali/widgets/PartitionWidget.hpp>
+#include <wali/widgets/PartitionsWidget.hpp>
 #include <wali/widgets/VideoWidget.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 
@@ -29,7 +30,8 @@ struct Widgets
     menu->setInternalPathEnabled();
 
     m_widgets.insert(add_menu_widget<IntroductionWidget>(menu, "Introduction"));
-    m_widgets.insert(add_menu_widget<PartitionsWidget>(menu, "Partitions"));
+    // m_widgets.insert(add_menu_widget<PartitionsWidget>(menu, "Partitions"));
+    m_widgets.insert(add_menu_widget<MountsWidget>(menu, "Mounts"));
     m_widgets.insert(add_menu_widget<NetworkWidget>(menu, "Network"));
     m_widgets.insert(add_menu_widget<AccountWidget>(menu, "Accounts"));
     m_widgets.insert(add_menu_widget<LocaliseWidget>(menu, "Locale"));
@@ -39,7 +41,8 @@ struct Widgets
   }
 
   IntroductionWidget * get_intro() const { return get<IntroductionWidget>("Introduction"); }
-  PartitionsWidget * get_partitions() const { return get<PartitionsWidget>("Partitions"); }
+  // PartitionsWidget * get_partitions() const { return get<PartitionsWidget>("Partitions"); }
+  MountsWidget * get_mounts() const { return get<MountsWidget>("Mounts"); }
   NetworkWidget * get_network() const { return get<NetworkWidget>("Network"); }
   AccountWidget * get_account() const { return get<AccountWidget>("Accounts"); }
   LocaliseWidget * get_localise() const { return get<LocaliseWidget>("Locale"); }
@@ -53,7 +56,7 @@ struct Widgets
   {
     return {
               .accounts = get_account()->get_data(),
-              .partitions = get_partitions()->get_data(),
+              .mounts = get_mounts()->get_data(),
               .packages = get_packages()->get_data(),
               .network = get_network()->get_data(),
               .localise = get_localise()->get_data(),

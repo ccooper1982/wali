@@ -27,6 +27,7 @@ sources = [
   'src/widgets/InstallWidget.cpp',
   'src/widgets/LocaliseWidget.cpp',
   'src/widgets/NetworkWidget.cpp',
+  'src/widgets/MountsWidget.cpp',
   'src/widgets/PackagesWidget.cpp',
   'src/widgets/PartitionsWidget.cpp',
   'src/widgets/VideoWidget.cpp',

@@ -7,7 +7,7 @@ LocaliseWidget::LocaliseWidget()
 
   // timezones
   m_timezones = add_form_pair<WComboBox>(layout, "Timezone");
-  m_timezones->setStyleClass("timezones");
+  m_timezones->setStyleClass("localise");
   m_timezones->setNoSelectionEnabled(true);
 
   const auto zones = GetTimeZones{}();
@@ -16,7 +16,7 @@ LocaliseWidget::LocaliseWidget()
 
   // locales
   m_locales = add_form_pair<WComboBox>(layout, "Locale");
-  m_locales->setStyleClass("locales");
+  m_locales->setStyleClass("localise");
   m_locales->setNoSelectionEnabled(true);
 
   const auto locales = GetLocales{}();
@@ -25,7 +25,7 @@ LocaliseWidget::LocaliseWidget()
 
   // terminal key map
   m_keymap = add_form_pair<WComboBox>(layout, "Keymap");
-  m_keymap->setStyleClass("keymaps");
+  m_keymap->setStyleClass("localise");
   m_keymap->setNoSelectionEnabled(true);
 
   const auto keys = GetKeyMaps{}();

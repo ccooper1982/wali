@@ -1,9 +1,8 @@
-#ifndef WALI_PARTITIONWIDGET_H
-#define WALI_PARTITIONWIDGET_H
+#ifndef WALI_MOUNTSWIDGET_H
+#define WALI_MOUNTSWIDGET_H
 
 #include <functional>
 #include <memory>
-#include <ranges>
 
 #include <Wt/WComboBox.h>
 #include <Wt/WGlobal.h>
@@ -25,7 +24,7 @@ using Validate = std::function<void()>;
 // Draws a Device dropdown and Filesystem dropdown (optional)
 struct DeviceFilesytemWidget : public WContainerWidget
 {
-  DeviceFilesytemWidget(const Partitions& parts, Validate validate, const StringViewVec filesystems = {}, const bool enable_fs = true)
+  DeviceFilesytemWidget(const std::shared_ptr<Partitions> parts, Validate validate, const StringViewVec filesystems = {}, const bool enable_fs = true)
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
 
@@ -46,7 +45,7 @@ struct DeviceFilesytemWidget : public WContainerWidget
         m_fs->disable();
     }
 
-    for_each(parts, [this](const Partition& part) { m_device->addItem(part.dev); });
+    for_each(*parts, [this](const Partition& part) { m_device->addItem(part.dev); });
 
     layout->addStretch(1);
   }
@@ -69,34 +68,21 @@ private:
 };
 
 
-class PartitionsWidget : public WaliWidget<PartData>
+class MountsWidget : public WaliWidget<MountData>
 {
-  struct DeviceFilesystemProvider
-  {
-    virtual std::string get_device() const = 0;
-    virtual std::string get_fs() const = 0;
-  };
-
   struct BootPartitionWidget : public WContainerWidget
   {
-    BootPartitionWidget(const Partitions& parts, Validate validate)
+    BootPartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
-      layout->addWidget(make_wt<Wt::WText>("<h2>Boot</h2>"));
+      layout->addWidget(make_wt<Wt::WText>("<h3>Boot</h3>"));
 
       m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"vfat"}, false));
     }
 
-    std::string get_device() const
-    {
-      return m_dev_fs->get_device();
-    }
-
-    std::string get_fs() const
-    {
-      return m_dev_fs->get_fs();
-    }
+    std::string get_device() const { return m_dev_fs->get_device(); }
+    std::string get_fs() const { return m_dev_fs->get_fs(); }
 
   private:
     DeviceFilesytemWidget * m_dev_fs;
@@ -104,24 +90,17 @@ class PartitionsWidget : public WaliWidget<PartData>
 
   struct RootPartitionWidget : public WContainerWidget
   {
-    RootPartitionWidget(const Partitions& parts, Validate validate)
+    RootPartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
-      layout->addWidget(make_wt<Wt::WText>("<h2>Root</h2>"));
+      layout->addWidget(make_wt<Wt::WText>("<h3>Root</h3>"));
 
       m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"ext4"}));
     }
 
-    std::string get_device() const
-    {
-      return m_dev_fs->get_device();
-    }
-
-    std::string get_fs() const
-    {
-      return m_dev_fs->get_fs();
-    }
+    std::string get_device() const { return m_dev_fs->get_device(); }
+    std::string get_fs() const { return m_dev_fs->get_fs(); }
 
   private:
       DeviceFilesytemWidget * m_dev_fs;
@@ -129,11 +108,11 @@ class PartitionsWidget : public WaliWidget<PartData>
 
   struct HomePartitionWidget : public WContainerWidget
   {
-    HomePartitionWidget(const Partitions& parts, Validate validate)
+    HomePartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
 
-      layout->addWidget(make_wt<Wt::WText>("<h2>Home</h2>"));
+      layout->addWidget(make_wt<Wt::WText>("<h3>Home</h3>"));
 
       m_btn_to_root = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to /"));
 
@@ -176,15 +155,8 @@ class PartitionsWidget : public WaliWidget<PartData>
       m_btn_group->setSelectedButtonIndex(0);
     }
 
-    bool is_home_on_root() const
-    {
-      return m_target == HomeMountTarget::Root;
-    }
-
-    HomeMountTarget get_mount_target() const
-    {
-      return m_target;
-    }
+    bool is_home_on_root() const { return m_target == HomeMountTarget::Root; }
+    HomeMountTarget get_mount_target() const { return m_target; }
 
     std::string get_device() const
     {
@@ -203,24 +175,27 @@ class PartitionsWidget : public WaliWidget<PartData>
         return m_btn_to_existing->isChecked() ? "" : m_devfs_to_new->get_fs();
     }
 
-    private:
-      WRadioButton * m_btn_to_root,
-                   * m_btn_to_existing,
-                   * m_btn_to_new;
-      std::shared_ptr<WButtonGroup> m_btn_group;
-      DeviceFilesytemWidget * m_devfs_to_existing;
-      DeviceFilesytemWidget * m_devfs_to_new;
-      HomeMountTarget m_target;
+  private:
+    WRadioButton * m_btn_to_root,
+                  * m_btn_to_existing,
+                  * m_btn_to_new;
+    std::shared_ptr<WButtonGroup> m_btn_group;
+    DeviceFilesytemWidget * m_devfs_to_existing;
+    DeviceFilesytemWidget * m_devfs_to_new;
+    HomeMountTarget m_target;
   };
 
 public:
-  PartitionsWidget();
+  MountsWidget();
 
   void validate_selection();
 
-  PartData get_data() const override;
+  MountData get_data() const override;
 
   bool is_valid() const override { return !m_messages->has_errors(); }
+
+private:
+  void create_table();
 
 private:
   BootPartitionWidget * m_boot;
@@ -228,6 +203,8 @@ private:
   HomePartitionWidget * m_home;
   MessageWidget * m_messages;
   Tree m_tree;
+  std::shared_ptr<Partitions> m_partitions;
+  WTable * m_table;
 };
 
 #endif
