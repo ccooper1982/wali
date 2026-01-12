@@ -21,8 +21,9 @@
 
 
 static const constexpr auto waffle_info = R"(
-  You can create partitions of the given sizes here.
+  This will delete all partitions and create new partitions as configured.
   <br/>
+  If
   <ul>
     <li>
       <b>Boot:</b> 1024MB is preferred
@@ -34,7 +35,7 @@ static const constexpr auto waffle_info = R"(
   )";
 
 static const constexpr auto waffle_warning = R"(
-  <p style="color: red;">When you press 'Create', all data on the selected device will be lost.</p>
+  <p style="color: red;">When you press 'Create', all data on the selected device is lost.</p>
   )";
 
 // TODO user defined literal

@@ -33,8 +33,8 @@ static constexpr const  auto nvidia_waffle = R"(
     <li>Partially open source</li>
     <li>Turing (Titan RTX, GeForce RTX20xx, RTX16xx) onwards</li>
     <li>
-        If your GPU predates the above, you will need to install the AUR,
-        see <a href="https://wiki.archlinux.org/title/Graphics_processing_unit#NVIDIA">guide</a>
+        If your GPU predates the above, you will need to install via the AUR after install.
+        See <a href="https://wiki.archlinux.org/title/Graphics_processing_unit#NVIDIA">guide</a>
     </li>
   </ul>
   <br/>

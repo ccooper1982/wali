@@ -34,6 +34,7 @@ PackagesWidget::PackagesWidget()
   m_list_confirmed = layout_results->addWidget(make_wt<WSelectionBox>(), 2);
   m_list_confirmed->setStyleClass("packages_confirmed");
   m_list_confirmed->setVerticalSize(10);
+  m_list_confirmed->setHeight(200);
   m_list_confirmed->setSelectionMode(SelectionMode::Extended);
 
   auto layout_control = layout_results->addLayout(make_wt<WVBoxLayout>());

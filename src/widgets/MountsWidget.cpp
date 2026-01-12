@@ -33,7 +33,7 @@ MountsWidget::MountsWidget()
     dialog->finished().connect([=, this]()
     {
       if (partitions->is_changed())
-        create_table();
+        refresh_data();
     });
     partitions->busy().connect([=](bool busy)
     {
@@ -50,7 +50,7 @@ MountsWidget::MountsWidget()
   m_root = layout->addWidget(make_wt<RootPartitionWidget>(m_partitions, [this]{validate_selection();}));
   m_home = layout->addWidget(make_wt<HomePartitionWidget>(m_partitions, [this]{validate_selection();}));
 
-  create_table();
+  refresh_data();
 
   // TODO bootloader
 
@@ -60,7 +60,7 @@ MountsWidget::MountsWidget()
   layout->addStretch(1);
 }
 
-void MountsWidget::create_table()
+void MountsWidget::refresh_data()
 {
   auto has_partitions = [](const TreePair& pair){ return !pair.second.empty(); } ;
 
@@ -96,6 +96,10 @@ void MountsWidget::create_table()
       ++r;
     }
   }
+
+  m_boot->refresh_partitions();
+  m_root->refresh_partitions();
+  m_home->refresh_partitions();
 
   WApplication::instance()->triggerUpdate();
 

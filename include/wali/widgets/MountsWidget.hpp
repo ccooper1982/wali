@@ -25,6 +25,7 @@ using Validate = std::function<void()>;
 struct DeviceFilesytemWidget : public WContainerWidget
 {
   DeviceFilesytemWidget(const std::shared_ptr<Partitions> parts, Validate validate, const StringViewVec filesystems = {}, const bool enable_fs = true)
+    : m_parts(parts)
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
 
@@ -45,7 +46,7 @@ struct DeviceFilesytemWidget : public WContainerWidget
         m_fs->disable();
     }
 
-    for_each(*parts, [this](const Partition& part) { m_device->addItem(part.dev); });
+    refresh_partitions();
 
     layout->addStretch(1);
   }
@@ -62,9 +63,16 @@ struct DeviceFilesytemWidget : public WContainerWidget
     return m_fs->currentText().toUTF8();
   }
 
+  void refresh_partitions()
+  {
+    m_device->clear();
+    for_each(*m_parts, [this](const Partition& part) { m_device->addItem(part.dev); });
+  }
+
 private:
   WComboBox * m_device;
   WComboBox * m_fs{};
+  std::shared_ptr<Partitions> m_parts;
 };
 
 
@@ -84,6 +92,11 @@ class MountsWidget : public WaliWidget<MountData>
     std::string get_device() const { return m_dev_fs->get_device(); }
     std::string get_fs() const { return m_dev_fs->get_fs(); }
 
+    void refresh_partitions()
+    {
+      m_dev_fs->refresh_partitions();
+    }
+
   private:
     DeviceFilesytemWidget * m_dev_fs;
   };
@@ -101,6 +114,7 @@ class MountsWidget : public WaliWidget<MountData>
 
     std::string get_device() const { return m_dev_fs->get_device(); }
     std::string get_fs() const { return m_dev_fs->get_fs(); }
+    void refresh_partitions() { m_dev_fs->refresh_partitions(); }
 
   private:
       DeviceFilesytemWidget * m_dev_fs;
@@ -175,6 +189,12 @@ class MountsWidget : public WaliWidget<MountData>
         return m_btn_to_existing->isChecked() ? "" : m_devfs_to_new->get_fs();
     }
 
+    void refresh_partitions()
+    {
+      m_devfs_to_new->refresh_partitions();
+      m_devfs_to_existing->refresh_partitions();
+    }
+
   private:
     WRadioButton * m_btn_to_root,
                   * m_btn_to_existing,
@@ -195,7 +215,7 @@ public:
   bool is_valid() const override { return !m_messages->has_errors(); }
 
 private:
-  void create_table();
+  void refresh_data();
 
 private:
   BootPartitionWidget * m_boot;
