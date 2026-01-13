@@ -52,87 +52,83 @@ struct Probe
 };
 
 
-Tree DiskUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
+Tree DiskUtils::do_probe()
 {
   static const fs::path DevSeq {"/dev/disk/by-diskseq"};
 
-  std::map<int, fs::path> seq_path_map; // i.e. {1, /dev/sda}, {2, /dev/sdb}
+  std::map<int, std::string> seq_path_map; // i.e. {1, /dev/sda}, {2, /dev/sdb}
 
-  // returns: {<is_whole_disk>, <sequence_number>}
-  auto get_info = [](const std::string_view entry) -> std::optional<std::pair<bool,int>>
+  auto is_block_disk = [](const fs::directory_entry& dir_entry)
   {
+    const auto& entry = dir_entry.path().stem().string();
     const auto delim = entry.find('-');
-    const auto is_disk = delim == std::string_view::npos;
-    int seq = is_disk ? std::stol(entry.substr(0,delim).data()) : std::stol(entry.data());
+    return dir_entry.is_block_file() && delim == std::string_view::npos;
+  };
 
-    if (is_disk)
-      return {{true, seq}};
-    else if (entry.contains("part"))
-      return {{false,seq}};
-    else
-      return {};
+  auto get_seq = [](const fs::directory_entry& dir_entry)
+  {
+    const auto& entry = dir_entry.path().stem().string();
+    const auto delim = entry.find('-');
+    return delim == std::string_view::npos ? std::stol(entry.data()) : std::stol(entry.substr(0,delim).data());
+  };
+
+  auto is_partition = [](const fs::directory_entry& dir_entry)
+  {
+    const auto& entry = dir_entry.path().stem().string();
+    return entry.find('-') != std::string_view::npos;
   };
 
   Tree tree;
 
-  for(const auto& sequence : fs::directory_iterator{DevSeq})
+  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_block_disk))
   {
-    const auto target = fs::weakly_canonical(sequence.path());
-    const auto seq_opt = get_info(sequence.path().stem().string());
+    const auto target = fs::weakly_canonical(entry.path());
+    const auto seq = get_seq(entry);
 
-    if (!fs::exists(target) || !seq_opt || !sequence.is_block_file())
+    if (!fs::exists(target))
       continue;
 
-    if (const auto [is_disk, seq] = *seq_opt; is_disk)
-    {
-      seq_path_map[seq] = target;
-      tree.emplace(target.string(), std::vector<Partition>{});
-    }
+    Disk disk{target};
+    probe_disk(disk);
+
+    tree[disk] = std::vector<Partition>{};
+    seq_path_map[seq] = disk.dev;
   }
 
-  for(const auto& sequence : fs::directory_iterator{DevSeq})
+  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_partition))
   {
-    const auto target = fs::weakly_canonical(sequence.path());
-    const auto seq_opt = get_info(sequence.path().stem().string());
-
-    if (!fs::exists(target) || !seq_opt || !sequence.is_block_file())
-      continue;
-
-    const auto [is_disk, seq] = *seq_opt;
+    const auto target = fs::weakly_canonical(entry.path());
+    const auto seq = get_seq(entry);
     const auto disk_dev = seq_path_map.at(seq);
 
-    if (!is_disk)
-      tree[disk_dev].emplace_back(Partition{.dev = target});
+    Partition part { .dev = target, .is_mounted = is_dev_mounted(target.string()) };
+
+    probe_partition(part);
+
+    tree[disk_dev].push_back(std::move(part));
   }
 
   for (auto& [disk, parts] : tree)
-  {
-    for(auto& part : parts)
-      probe_partitions(disk, part, opts, gpt_only);
-
     std::ranges::sort(parts, [](const Partition&a, const Partition& b){ return a.dev < b.dev; });
-  }
 
   return tree;
 }
 
 
-void DiskUtils::probe_partitions(const std::string& parent_dev, Partition& part, const ProbeOpts opts, const bool gpt_only)
+void DiskUtils::probe_disk(Disk& disk)
 {
-  const auto& dev = part.dev;
-
-  Probe probe{parent_dev};
+  Probe probe{disk.dev};
 
   if (!probe.valid())
   {
-    PLOGE << "Probe invalid for: " << dev;
+    PLOGE << "Probe invalid for: " << disk.dev;
     return;
   }
 
   blkid_partlist ls;
   if (ls = blkid_probe_get_partitions(probe.pr); ls == nullptr)
   {
-    PLOGE << "Get partitions failed for: " << dev;
+    PLOGE << "probe_disk failed for: " << disk.dev;
     return;
   }
 
@@ -140,31 +136,24 @@ void DiskUtils::probe_partitions(const std::string& parent_dev, Partition& part,
 
   if (!part_table)
   {
-    PLOGE << "Failed to get partition table: " << dev;
+    // this a warning because /dev/loop0 doesn't have partitions
+    PLOGW << "Failed to get partition table: " << disk.dev;
     return;
   }
 
   const char * part_table_type =  blkid_parttable_get_type(part_table);
-  const bool is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
+  disk.is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
 
-  if ((gpt_only && !is_gpt) || (opts == ProbeOpts::UnMounted && is_dev_mounted(dev)))
-    return;
-
-  if (probe_partition(part))
-  {
-    part.parent_dev = parent_dev;
-    part.is_gpt = is_gpt;
-  }
-  else
-  {
-    PLOGE << "Probe partition failed: " << dev;
-  }
+  if (const auto size_opt = get_disk_size(disk.dev); size_opt)
+    disk.size = *size_opt;
 }
 
 
 bool DiskUtils::probe_partition(Partition& partition)
 {
   static const unsigned SectorsPerPartSize = 512;
+
+  PLOGW << "probe_partition() " << partition.dev;
 
   Probe probe (partition.dev);
 
@@ -256,17 +245,16 @@ std::optional<std::reference_wrapper<const Partition>> DiskUtils::get_partition(
 }
 
 
-// std::string DiskUtils::get_partition_fs (const std::string_view dev)
-// {
-//   const auto opt = get_partition(dev);
-//   return opt ? opt->get().fs_type : std::string{};
-// }
-
-
-std::string DiskUtils::get_partition_parent (const Tree& tree, const std::string_view dev)
+std::string DiskUtils::get_partition_disk (const Tree& tree, const std::string_view dev)
 {
-  const auto opt = get_partition(tree, dev);
-  return opt ? opt->get().parent_dev : std::string{};
+  for (const auto& [disk, parts] : tree)
+  {
+    auto part_view = parts | std::views::filter([dev](const Partition& part){ return part.dev == dev; });
+    if (part_view)
+      return disk.dev;
+  }
+
+  return {};
 }
 
 

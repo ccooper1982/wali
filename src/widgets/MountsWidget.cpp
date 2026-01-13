@@ -62,9 +62,10 @@ MountsWidget::MountsWidget()
 
 void MountsWidget::refresh_data()
 {
-  auto has_partitions = [](const TreePair& pair){ return !pair.second.empty(); } ;
+  auto valid_disk = [](const TreePair& pair){ return !pair.second.empty() && pair.first.is_gpt; } ;
+  auto valid_partition = [](const Partition& part) { return !part.is_mounted; };
 
-  m_tree = DiskUtils::probe_for_install();
+  m_tree = DiskUtils::probe();
   m_partitions->clear();
   m_table->clear();
 
@@ -76,11 +77,11 @@ void MountsWidget::refresh_data()
 
   size_t r{1}; // 1 because of the header row
 
-  for (const auto& [parent, parts] : m_tree | std::views::filter(has_partitions))
+  for (const auto& [parent, parts] : m_tree | std::views::filter(valid_disk))
   {
-    m_partitions->append_range(parts);
+    m_partitions->append_range(parts | std::views::filter(valid_partition));
 
-    m_table->elementAt(r,0)->addNew<WText>(parent);
+    m_table->elementAt(r,0)->addNew<WText>(parent.dev);
     m_table->elementAt(r,0)->setColumnSpan(3);
     m_table->rowAt(r)->setStyleClass("partitions_parent");
 

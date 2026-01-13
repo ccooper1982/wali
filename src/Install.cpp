@@ -162,9 +162,9 @@ bool Install::create_ext4_filesystem(const std::string_view part_dev)
 
 void Install::set_partition_type(const std::string_view part_dev, const std::string_view type)
 {
-  const Tree tree = DiskUtils::probe_for_install();
+  const Tree tree = DiskUtils::probe();
   const int part_num = DiskUtils::get_partition_part_number(tree, part_dev);
-  const auto parent_dev = DiskUtils::get_partition_parent(tree, part_dev);
+  const auto parent_dev = DiskUtils::get_partition_disk(tree, part_dev);
 
   if (SetPartitionType{}(parent_dev, part_num, type))
     log_warning(std::format("Set partition type failed on {}", part_dev));

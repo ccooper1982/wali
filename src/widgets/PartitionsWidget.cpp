@@ -118,7 +118,7 @@ PartitionsWidget::PartitionsWidget()
 
 void PartitionsWidget::read_partitions()
 {
-  m_tree = DiskUtils::probe_for_partitioning();
+  m_tree = DiskUtils::probe();
   set_devices();
 }
 
@@ -128,13 +128,11 @@ void PartitionsWidget::set_devices()
 
   for (const auto& disk : m_tree | std::views::keys)
   {
-    if (const auto size = DiskUtils::get_disk_size(disk); !size)
-      PLOGE << "Could not get size for " << disk; // TODO something
-    else if (size >= MinDevSize)
+    if (disk.size >= MinDevSize)
     {
-      PLOGI << disk << " : " << format_size(*size);
-      m_disk->addItem(disk);
-      m_disk_sizes[disk] = *size;
+      PLOGI << disk.dev << " : " << format_size(disk.size);
+      m_disk->addItem(disk.dev);
+      m_disk_sizes[disk.dev] = disk.size;
     }
   }
 }
