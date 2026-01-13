@@ -15,8 +15,6 @@
 #include <wali/Common.hpp>
 
 
-// Tree DiskUtils::m_tree;
-
 static const std::string EfiPartitionType {"c12a7328-f81f-11d2-ba4b-00a0c93ec93b"};
 
 struct Probe
@@ -128,7 +126,8 @@ void DiskUtils::probe_disk(Disk& disk)
   blkid_partlist ls;
   if (ls = blkid_probe_get_partitions(probe.pr); ls == nullptr)
   {
-    PLOGE << "probe_disk failed for: " << disk.dev;
+    // warning because /dev/loop0 has no partition table
+    PLOGW << "probe_disk failed for: " << disk.dev;
     return;
   }
 
@@ -263,15 +262,6 @@ int DiskUtils::get_partition_part_number (const Tree& tree, const std::string_vi
   const auto opt = get_partition(tree, dev);
   return opt ? opt->get().part_number : 0;
 }
-
-
-// std::optional<int64_t> DiskUtils::get_partition_size (const std::string_view dev)
-// {
-//   if (const auto opt = get_partition(dev); opt)
-//     return opt->get().size;
-
-//   return {};
-// }
 
 
 bool DiskUtils::is_mounted(const std::string_view path_or_dev, const bool is_dev)

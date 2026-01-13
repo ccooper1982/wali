@@ -14,7 +14,6 @@ struct Disk
 {
   Disk(const std::string& dev) : dev(dev)
   {
-
   }
 
   std::string dev;
@@ -74,8 +73,6 @@ public:
   static std::optional<int64_t> get_disk_size (const std::string_view dev);
   static int get_partition_part_number (const Tree& tree, const std::string_view dev);
   static std::string get_partition_disk (const Tree& tree, const std::string_view dev);
-  // static std::string get_partition_fs (const std::string_view dev);
-  // static std::optional<int64_t> get_partition_size (const std::string_view dev);
 
   static bool is_path_mounted(const std::string_view path);
   static bool is_dev_mounted(const std::string_view path);
