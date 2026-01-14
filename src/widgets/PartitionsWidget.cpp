@@ -1,106 +1,214 @@
-#include <wali/widgets/PartitionWidget.hpp>
+#include <Wt/WCheckBox.h>
+#include <Wt/WContainerWidget.h>
+#include <Wt/WGlobal.h>
+#include <cstdlib>
+#include <exception>
+#include <ranges>
+#include <wali/Common.hpp>
+#include <wali/Commands.hpp>
+#include <wali/DiskUtils.hpp>
+#include <wali/widgets/Common.hpp>
+#include <Wt/WApplication.h>
+#include <Wt/WComboBox.h>
+#include <Wt/WCompositeWidget.h>
+#include <Wt/WHBoxLayout.h>
+#include <Wt/WPushButton.h>
+#include <Wt/WSpinBox.h>
+#include <Wt/WServer.h>
+#include <Wt/WText.h>
+#include <Wt/WVBoxLayout.h>
+#include <wali/widgets/PartitionsWidget.hpp>
+
+
+static const constexpr auto waffle_info = R"(
+  This will delete all partitions and create new partitions as configured.
+  <br/>
+  If
+  <ul>
+    <li>
+      <b>Boot:</b> 1024MB is preferred
+    </li>
+    <li>
+      <b>Root:</b> At least 24GB
+    </li>
+  </ul>
+  )";
+
+static const constexpr auto waffle_warning = R"(
+  <p style="color: red;">When you press 'Create', all data on the selected device is lost.</p>
+  )";
+
+// TODO user defined literal
+
+static const constexpr int64_t B_MB = 1024*1024;
+static const constexpr int64_t B_GB = 1024*1024*1024;
+static const constexpr int64_t MB_GB = 1024;
+
+static constexpr int64_t b_to_gb(const int64_t n) { return n / B_GB; }
+static constexpr int64_t mb_to_b(const int64_t n) { return n * B_MB; }
+static constexpr int64_t gb_to_b(const int64_t n) { return n * B_GB; }
+static constexpr int64_t gb_to_mb(const int64_t n) { return n * MB_GB; }
+
+static const int64_t BootSizeMin = mb_to_b(512);
+static const int64_t RootSizeMin = gb_to_b(5);
 
 
 PartitionsWidget::PartitionsWidget()
 {
-  auto layout = setLayout(make_wt<Wt::WVBoxLayout>());
+  auto layout = setLayout(make_wt<WVBoxLayout>());
+  layout->setSpacing(20);
+  layout->addWidget(make_wt<WText>(waffle_info));
 
-  if (!PartitionUtils::probe_for_install())
-    PLOGE << "Probe failed\n";
+  auto disk_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  auto metrics_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  auto boot_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  auto root_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  auto home_layout = layout->addLayout(make_wt<WHBoxLayout>());
+
+
+  auto lbl_disk = disk_layout->addWidget(make_wt<WLabel>("Disk"));
+  lbl_disk->setWidth(100);
+  m_disk = disk_layout->addWidget(make_wt<WComboBox>());
+  m_disk->changed().connect(this, &PartitionsWidget::calculate_sizes);
+  disk_layout->addStretch(1);
+
+  m_total = metrics_layout->addWidget(make_wt<WText>());
+  m_remaining = metrics_layout->addWidget(make_wt<WText>());
+  metrics_layout->addStretch(1);
+
+  auto lbl_boot = boot_layout->addWidget(make_wt<WLabel>("Boot/EFI"));
+  lbl_boot->setWidth(100);
+  m_boot = boot_layout->addWidget(make_wt<WComboBox>());
+  m_boot->changed().connect(this, &PartitionsWidget::calculate_sizes);
+  m_boot->addItem("1024");
+  m_boot->addItem("512");
+  boot_layout->addWidget(make_wt<WLabel>("MB"));
+  boot_layout->addStretch(1);
+
+  auto lbl_root = root_layout->addWidget(make_wt<WLabel>("Root"));
+  lbl_root->setWidth(100);
+  m_root = root_layout->addWidget(make_wt<WSpinBox>());
+  m_root->changed().connect(this, &PartitionsWidget::calculate_sizes);
+  m_root->setValue(b_to_gb(RootSizeMin));
+  m_root->setSingleStep(100);
+  m_root->setStyleClass("partition_size");
+  root_layout->addWidget(make_wt<WLabel>("GB"));
+  root_layout->addStretch(1);
+
+  auto lbl_home = home_layout->addWidget(make_wt<WLabel>("Home"));
+  lbl_home->setWidth(100);
+  m_home = home_layout->addWidget(make_wt<WComboBox>());
+  //m_boot->changed().connect(this, &PartitionsWidget::calculate_sizes);
+  m_home->addItem("Use remaining");
+  m_home->addItem("Do nothing");
+  home_layout->addStretch(1);
+
+  // m_create_remaining = remaining_layout->addWidget(make_wt<WCheckBox>("Create partition for remaining space"));
+
+  layout->addWidget(make_wt<WText>(waffle_warning));
+
+  m_create = layout->addWidget(make_wt<WPushButton>("Create"));
+  m_create->clicked().connect(this, &PartitionsWidget::create);
+
+  layout->addStretch(1);
+
+  read_partitions();
+  calculate_sizes();
+}
+
+void PartitionsWidget::read_partitions()
+{
+  m_tree = DiskUtils::probe();
+  set_devices();
+}
+
+void PartitionsWidget::set_devices()
+{
+  static const constexpr int64_t MinDevSize = BootSizeMin + RootSizeMin;
+
+  for (const auto& disk : m_tree | std::views::keys)
+  {
+    if (disk.size >= MinDevSize)
+    {
+      PLOGI << disk.dev << " : " << format_size(disk.size);
+      m_disk->addItem(disk.dev);
+      m_disk_sizes[disk.dev] = disk.size;
+    }
+  }
+}
+
+void PartitionsWidget::calculate_sizes()
+{
+  const auto& disk = m_disk->currentText().toUTF8();
+
+  if (!m_tree.contains(disk) || !m_disk_sizes.contains(disk))
+    PLOGE << "Disk not present in tree or disk sizes"; // shouldn't happen
   else
   {
-    if (!PartitionUtils::have_devices())
-      PLOGE << "No applicable devices found\n";
-    else
+    const auto disk_size = m_disk_sizes.at(disk);
+    const auto boot_size = mb_to_b(std::strtoll(m_boot->currentText().toUTF8().data(), nullptr, 10));
+    const int64_t max_root_size = disk_size - boot_size;
+
+    m_total->setText(std::format("<b>Size:</b> {}", format_size(disk_size)));
+    m_root->setRange(b_to_gb(RootSizeMin), b_to_gb(max_root_size));
+    //m_root->setValue(std::clamp(m_root->value(), m_root->minimum(), m_root->maximum()));
+
+    const auto root_size = gb_to_b(std::strtoll(m_root->text().toUTF8().data(), nullptr, 10));
+    m_remaining->setText(std::format("<b>Remaining:</b> {}", format_size(disk_size - boot_size - root_size)));
+  }
+}
+
+void PartitionsWidget::create()
+{
+  auto log = [this](const std::string_view m)
+  {
+    PLOGI << m;
+  };
+
+  m_evt_busy(true);
+  m_create->disable();
+
+  WServer::instance()->post(WApplication::instance()->sessionId(), [=, this]()
+  {
+    try
     {
-      auto has_partitions = [](const TreePair& pair){ return !pair.second.empty(); } ;
+      const auto& disk =  m_disk->currentText().toUTF8();
 
-      m_tree = PartitionUtils::partitions();
-      Partitions devices;
-
-      auto table_parts = layout->addWidget(make_wt<Wt::WTable>());
-      table_parts->setHeaderCount(1);
-      table_parts->elementAt(0, 0)->addNew<Wt::WText>("Device");
-      table_parts->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
-      table_parts->elementAt(0, 2)->addNew<Wt::WText>("Size");
-      table_parts->setStyleClass("table_partitions");
-
-      size_t r{1}; // 1 because of the header row
-
-      for (const auto& [parent, parts] : m_tree | std::views::filter(has_partitions))
+      if (!CreatePartitionTable{}(disk, log))
       {
-        devices.append_range(parts);
+        // TODO something
+        PLOGE << "Failed to create parition table";
+      }
+      else
+      {
+        const int64_t boot_size = std::strtoll(m_boot->currentText().toUTF8().data(), nullptr, 10);
+        const int64_t root_size = gb_to_mb(std::strtoll(m_root->text().toUTF8().data(), nullptr, 10));
 
-        table_parts->elementAt(r,0)->addNew<WText>(parent);
-        table_parts->elementAt(r,0)->setColumnSpan(3);
-        table_parts->rowAt(r)->setStyleClass("partitions_parent");
+        PLOGW << "Boot: " << m_boot->currentText().toUTF8().data() << "MB, " << boot_size << "MB";
+        PLOGW << "Root: " << m_root->text().toUTF8().data() << "GB, " << root_size << "MB";
 
-        ++r;
+        CreatePartition{}(disk, 1, boot_size, log);
+        CreatePartition{}(disk, 2, root_size, log);
 
-        for(size_t i = 0 ; i < parts.size() ; ++i)
+        SetPartitionType{}(disk, 1, PartTypeEfi);
+        SetPartitionType{}(disk, 2, PartTypeRoot);
+
+        if (m_home->currentIndex() == 0)
         {
-          table_parts->elementAt(r,0)->addNew<WText>(parts[i].dev);
-          table_parts->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
-          table_parts->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
-          table_parts->rowAt(r)->setStyleClass("partition");
-          ++r;
+          CreatePartition{}(disk, 3, log);
+          SetPartitionType{}(disk, 3, PartTypeHome);
         }
       }
 
-      m_boot = layout->addWidget(make_wt<BootPartitionWidget>(devices, [this]{validate_selection();}));
-      m_root = layout->addWidget(make_wt<RootPartitionWidget>(devices, [this]{validate_selection();}));
-      m_home = layout->addWidget(make_wt<HomePartitionWidget>(devices, [this]{validate_selection();}));
-
-      table_parts->addStyleClass("table");
-
-      // TODO bootloader
+      m_changed = true;
+    }
+    catch (const std::exception& ex)
+    {
+      PLOGE << "PartitionsWidget::create() exception: " <<ex.what();
     }
 
-    m_messages = layout->addWidget(make_wt<MessageWidget>());
-    validate_selection();
-  }
-
-  layout->addStretch(1);
-}
-
-void PartitionsWidget::validate_selection()
-{
-  const auto& boot_dev = m_boot->get_device();
-  const auto& root_dev = m_root->get_device();
-
-  m_messages->clear_messages();
-
-  if (boot_dev == root_dev)
-    m_messages->add("Boot and root must be on separate partitions", MessageWidget::Level::Error);
-  else if (boot_dev.empty())
-    m_messages->add("Boot not set", MessageWidget::Level::Error);
-  else if (root_dev.empty())
-    m_messages->add("Root not set", MessageWidget::Level::Error);
-
-  const auto target = m_home->get_mount_target();
-  if (target != HomeMountTarget::Root)
-  {
-    const auto& home_dev = m_home->get_device();
-    if (home_dev == boot_dev || home_dev == root_dev)
-      m_messages->add("/home is mounted to root or boot partition", MessageWidget::Level::Error);
-  }
-}
-
-
-PartData PartitionsWidget::get_data() const
-{
-  const auto root_dev = m_root->get_device();
-  const auto root_fs = m_root->get_fs();
-  const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
-  const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
-
-  return {
-            .boot_dev = m_boot->get_device(),
-            .boot_fs = m_boot->get_fs(),
-            .root_dev = root_dev,
-            .root_fs = root_fs,
-            .home_dev = home_dev,
-            .home_fs = home_fs,
-            .home_target = m_home->get_mount_target()
-         };
+    m_evt_busy(false);
+    m_create->enable();
+    WApplication::instance()->triggerUpdate();
+  });
 }

@@ -6,7 +6,9 @@
 #include <string_view>
 #include <utility>
 #include <wali/Common.hpp>
+#include <wali/DiskUtils.hpp>
 #include <wali/widgets/WidgetData.hpp>
+
 
 enum class InstallState
 {
@@ -136,6 +138,7 @@ private:
   OnInstallComplete m_install_state;
   OnLog m_log;
   WidgetData m_data;
+  Tree m_tree;
 };
 
 #endif

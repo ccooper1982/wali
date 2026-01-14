@@ -20,7 +20,8 @@ inline std::optional<std::string> validate_widgets(const WidgetsMap& widgets)
   {
     const bool valid = std::visit(overload{
                           [&](IntroductionWidget * w){ return check(name, w);  },
-                          [&](PartitionsWidget * w){ return check(name, w);  },
+                          // [&](PartitionsWidget * w){ return check(name, w);  },
+                          [&](MountsWidget * w){ return check(name, w);  },
                           [&](NetworkWidget * w){ return check(name, w);  },
                           [&](AccountWidget * w){ return check(name, w);  },
                           [&](LocaliseWidget * w){ return check(name, w);  },

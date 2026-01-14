@@ -15,6 +15,7 @@
 
 #include <string_view>
 #include <wali/Commands.hpp>
+#include <wali/DiskUtils.hpp>
 #include <wali/LogFormat.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/Widgets.hpp>

@@ -1,18 +1,21 @@
+#include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <functional>
+#include <optional>
 #include <ranges>
 #include <string.h>
+#include <string>
+#include <unistd.h>
 #include <blkid/blkid.h>
 #include <libmount/libmount.h>
 #include <sys/mount.h>
 #include <plog/Log.h>
 #include <wali/DiskUtils.hpp>
+#include <wali/Common.hpp>
 
-
-Tree PartitionUtils::m_tree;
 
 static const std::string EfiPartitionType {"c12a7328-f81f-11d2-ba4b-00a0c93ec93b"};
-
 
 struct Probe
 {
@@ -47,68 +50,84 @@ struct Probe
 };
 
 
-bool PartitionUtils::do_probe(const ProbeOpts opts, const bool gpt_only)
+Tree DiskUtils::do_probe()
 {
-  blkid_cache cache;
-  if (blkid_get_cache(&cache, nullptr) != 0)
+  static const fs::path DevSeq {"/dev/disk/by-diskseq"};
+
+  std::map<int, std::string> seq_path_map; // i.e. {1, /dev/sda}, {2, /dev/sdb}
+
+  auto is_block_disk = [](const fs::directory_entry& dir_entry)
   {
-    PLOGE << "Could not create blkid cache";
-    return false;
+    const auto& entry = dir_entry.path().stem().string();
+    const auto delim = entry.find('-');
+    return dir_entry.is_block_file() && delim == std::string_view::npos;
+  };
+
+  auto get_seq = [](const fs::directory_entry& dir_entry)
+  {
+    const auto& entry = dir_entry.path().stem().string();
+    const auto delim = entry.find('-');
+    return delim == std::string_view::npos ? std::stol(entry.data()) : std::stol(entry.substr(0,delim).data());
+  };
+
+  auto is_partition = [](const fs::directory_entry& dir_entry)
+  {
+    const auto& entry = dir_entry.path().stem().string();
+    return entry.find('-') != std::string_view::npos;
+  };
+
+  Tree tree;
+
+  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_block_disk))
+  {
+    const auto target = fs::weakly_canonical(entry.path());
+    const auto seq = get_seq(entry);
+
+    if (!fs::exists(target))
+      continue;
+
+    Disk disk{target};
+    probe_disk(disk);
+
+    tree[disk] = std::vector<Partition>{};
+    seq_path_map[seq] = disk.dev;
   }
 
-  if (blkid_probe_all(cache) != 0)
+  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_partition))
   {
-    PLOGE << "blkid cache probe failed";
-    return false;
+    const auto target = fs::weakly_canonical(entry.path());
+    const auto seq = get_seq(entry);
+    const auto disk_dev = seq_path_map.at(seq);
+
+    Partition part { .dev = target, .is_mounted = is_dev_mounted(target.string()) };
+
+    probe_partition(part);
+
+    tree[disk_dev].push_back(std::move(part));
   }
 
-  m_tree.clear();
+  for (auto& [disk, parts] : tree)
+    std::ranges::sort(parts, [](const Partition&a, const Partition& b){ return a.dev < b.dev; });
 
-  try
-  {
-    const auto dev_it = blkid_dev_iterate_begin (cache);
-
-    for (blkid_dev dev ; blkid_dev_next(dev_it, &dev) == 0 ;)
-    {
-      const auto dev_name = blkid_dev_devname(dev);
-      const auto parent = add_to_tree(dev_name);
-
-      if (!parent) // device is whole disk (a parent)
-        continue;
-
-      probe_partitions(*parent, dev_name, opts, gpt_only);
-
-      std::sort(std::begin(m_tree.at(*parent)), std::end(m_tree.at(*parent)), [](const Partition& a, const Partition& b)
-      {
-        return a.dev < b.dev;
-      });
-    }
-
-    blkid_dev_iterate_end(dev_it);
-  }
-  catch (const std::exception& ex)
-  {
-    PLOGE << "do_probe(): " << ex.what();
-    return false;
-  }
-
-  return true;
+  return tree;
 }
 
-void PartitionUtils::probe_partitions(const std::string& parent_dev, const std::string_view dev, const ProbeOpts opts, const bool gpt_only)
+
+void DiskUtils::probe_disk(Disk& disk)
 {
-  Probe probe{parent_dev};
+  Probe probe{disk.dev};
 
   if (!probe.valid())
   {
-    PLOGE << "Probe invalid for: " << dev;
+    PLOGE << "Probe invalid for: " << disk.dev;
     return;
   }
 
   blkid_partlist ls;
   if (ls = blkid_probe_get_partitions(probe.pr); ls == nullptr)
   {
-    PLOGE << "Get partitions failed for: " << dev;
+    // warning because /dev/loop0 has no partition table
+    PLOGW << "probe_disk failed for: " << disk.dev;
     return;
   }
 
@@ -116,70 +135,32 @@ void PartitionUtils::probe_partitions(const std::string& parent_dev, const std::
 
   if (!part_table)
   {
-    PLOGE << "Failed to get partition table: " << dev;
+    // this a warning because /dev/loop0 doesn't have partitions
+    PLOGW << "Failed to get partition table: " << disk.dev;
     return;
   }
 
   const char * part_table_type =  blkid_parttable_get_type(part_table);
-  const bool is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
+  disk.is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
 
-  if ((gpt_only && !is_gpt) || (opts == ProbeOpts::UnMounted && is_dev_mounted(dev)))
-    return;
-
-  if (auto partition = probe_partition(dev); partition)
-  {
-    partition->parent_dev = parent_dev;
-    partition->is_gpt = is_gpt;
-    m_tree.at(parent_dev).push_back(std::move(*partition));
-  }
-  else
-  {
-    PLOGE << "Probe partition failed: " << dev;
-  }
+  if (const auto size_opt = get_disk_size(disk.dev); size_opt)
+    disk.size = *size_opt;
 }
 
 
-// If dev is a disk, adds to tree.
-// If dev is a partition, finds the parent disk, and adds to tree
-std::optional<std::string> PartitionUtils::add_to_tree(const std::string& dev)
-{
-  std::optional<std::string> parent;
-
-  if (Probe probe {dev}; probe.valid())
-  {
-    if (blkid_probe_is_wholedisk(probe.pr) && !m_tree.contains(dev))
-      m_tree.emplace(dev, Partitions{});
-    else
-    {
-      // dev is a partition: add parent to tree if not present
-      const dev_t disk_no = blkid_probe_get_wholedisk_devno(probe.pr);
-      const char * parent_dev = blkid_devno_to_devname(disk_no);
-
-      if (parent_dev)
-      {
-        parent = parent_dev;
-
-        if (!m_tree.contains(parent_dev))
-          m_tree.emplace(parent_dev, Partitions{});
-      }
-    }
-  }
-  return parent;
-}
-
-
-std::optional<Partition> PartitionUtils::probe_partition(const std::string_view part_dev)
+bool DiskUtils::probe_partition(Partition& partition)
 {
   static const unsigned SectorsPerPartSize = 512;
 
-  Probe probe (part_dev);
+  PLOGW << "probe_partition() " << partition.dev;
+
+  Probe probe (partition.dev);
 
   if (!probe.valid())
   {
-    PLOGE << "probe_partition(): probe failed for: " << part_dev;
-    return {};
+    PLOGE << "probe_partition(): probe failed for: " << partition.dev;
+    return false;
   }
-
 
   auto pr = probe.pr;
 
@@ -187,92 +168,101 @@ std::optional<Partition> PartitionUtils::probe_partition(const std::string_view 
   if (const int r = blkid_do_fullprobe(pr) ; r == BLKID_PROBE_ERROR)
   {
     PLOGE << "Fullprobe failed: " << strerror(r);
-    return {};
+    return false;
   }
 
-  auto get_value = [pr, part_dev](const char * name, std::function<void(const char *)> func)
+  auto get_value = [pr, dev=partition.dev](const char * name, std::function<void(const char *)> func, const bool required = true)
   {
+    const char * value{};
     if (blkid_probe_has_value(pr, name))
     {
-      const char * value{};
       if (blkid_probe_lookup_value(pr, name, &value, nullptr); value)
         func(value);
-      else
-        PLOGE << "probe_partition(): value lookup failed for " << name;
     }
-    else
-      PLOGE << "probe_partition(): " << part_dev << " does not have " << name;
+
+    if (!value && required)
+    {
+      PLOGE << "probe_partition(): " << dev << " does not have " << name;
+    }
   };
 
-
-  Partition partition {.dev = std::string{part_dev}};
-
-  get_value("TYPE", [&partition](const char * value)
+  get_value("TYPE", [&partition, get_value](const char * value)
   {
     partition.fs_type = value;
-  });
+
+    if (partition.fs_type == "vfat")
+    {
+      get_value("VERSION", [&partition](const char * value)
+      {
+        partition.is_fat32 = (strcmp(value, "FAT32") == 0) ;
+      });
+    }
+  }, false);
+
   get_value("PART_ENTRY_SIZE", [&partition](const char * value)
   {
     partition.size = SectorsPerPartSize * std::strtoull (value, nullptr, 10);
   });
+
   get_value("PART_ENTRY_TYPE", [&partition](const char * value)
   {
     partition.type_uuid = value;
     partition.is_efi = partition.type_uuid == EfiPartitionType;
   });
+
   get_value("PART_ENTRY_NUMBER", [&partition](const char * value)
   {
     partition.part_number = static_cast<int>(std::strtol(value, nullptr, 10) & 0xFFFFFFFF);
   });
 
-  if (partition.fs_type == "vfat")
-  {
-    get_value("VERSION", [&partition](const char * value)
-    {
-      partition.is_fat32 = (strcmp(value, "FAT32") == 0) ;
-    });
-  }
-
-  return partition;
+  return true;
 }
 
 
-// TODO do we have std::optional<T&> ?
-std::optional<std::reference_wrapper<const Partition>> PartitionUtils::get_partition(const std::string_view dev)
+std::optional<int64_t> DiskUtils::get_disk_size (const std::string_view dev)
 {
-  for (const auto& parts : m_tree | std::views::values)
+  if (int fd = open(dev.data(), O_RDONLY); fd != -1)
   {
-    const auto it = std::ranges::find_if(parts, [&](const Partition& part){ return part.dev == dev; });
-    if (it != std::ranges::cend(parts))
+    int64_t size = blkid_get_dev_size(fd);
+    close(fd);
+    return size;
+  }
+  return {};
+}
+
+// TODO do we have std::optional<T&> ?
+std::optional<std::reference_wrapper<const Partition>> DiskUtils::get_partition(const Tree& tree, const std::string_view dev)
+{
+  for (const auto& parts : tree | std::views::values)
+  {
+    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
       return *it;
   }
 
-  return std::nullopt;
+  return {};
 }
 
 
-std::string PartitionUtils::get_partition_fs (const std::string_view dev)
+std::string DiskUtils::get_partition_disk (const Tree& tree, const std::string_view dev)
 {
-  const auto opt = get_partition(dev);
-  return opt ? opt->get().fs_type : std::string{};
+  for (const auto& [disk, parts] : tree)
+  {
+    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
+      return disk.dev;
+  }
+
+  return {};
 }
 
 
-std::string PartitionUtils::get_partition_parent (const std::string_view dev)
+int DiskUtils::get_partition_part_number (const Tree& tree, const std::string_view dev)
 {
-  const auto opt = get_partition(dev);
-  return opt ? opt->get().parent_dev : std::string{};
-}
-
-
-int PartitionUtils::get_partition_part_number (const std::string_view dev)
-{
-  const auto opt = get_partition(dev);
+  const auto opt = get_partition(tree, dev);
   return opt ? opt->get().part_number : 0;
 }
 
 
-bool PartitionUtils::is_mounted(const std::string_view path_or_dev, const bool is_dev)
+bool DiskUtils::is_mounted(const std::string_view path_or_dev, const bool is_dev)
 {
   bool mounted = false;
 
@@ -291,13 +281,13 @@ bool PartitionUtils::is_mounted(const std::string_view path_or_dev, const bool i
 }
 
 
-bool PartitionUtils::is_path_mounted(const std::string_view path)
+bool DiskUtils::is_path_mounted(const std::string_view path)
 {
   return is_mounted(path, false);
 }
 
 
-bool PartitionUtils::is_dev_mounted(const std::string_view path)
+bool DiskUtils::is_dev_mounted(const std::string_view path)
 {
   return is_mounted(path, true);
 }
