@@ -141,25 +141,28 @@ class MountsWidget : public WaliWidget<MountData>
       m_btn_group->addButton(m_btn_to_new);
       m_btn_group->addButton(m_btn_to_existing);
 
-      m_btn_to_root->checked().connect([this]()
+      m_btn_to_root->checked().connect([validate, this]()
       {
         m_target = HomeMountTarget::Root;
         m_devfs_to_new->setDisabled(true);
         m_devfs_to_existing->setDisabled(true);
+        validate();
       });
 
-      m_btn_to_new->checked().connect([this]()
+      m_btn_to_new->checked().connect([validate, this]()
       {
         m_target = HomeMountTarget::New;
         m_devfs_to_new->setDisabled(false);
         m_devfs_to_existing->setDisabled(true);
+        validate();
       });
 
-      m_btn_to_existing->checked().connect([this]()
+      m_btn_to_existing->checked().connect([validate, this]()
       {
         m_target = HomeMountTarget::Existing;
         m_devfs_to_existing->setDisabled(false);
         m_devfs_to_new->setDisabled(true);
+        validate();
       });
 
       m_target = HomeMountTarget::Root;
