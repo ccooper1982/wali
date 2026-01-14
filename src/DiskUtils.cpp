@@ -120,6 +120,11 @@ Tree DiskUtils::do_probe()
 
 void DiskUtils::probe_disk(Disk& disk)
 {
+  // get disk size does not rely on probe
+  if (const auto size_opt = get_disk_size(disk.dev); size_opt)
+    disk.size = *size_opt;
+
+
   Probe probe{disk.dev};
 
   if (!probe.valid())
@@ -147,9 +152,6 @@ void DiskUtils::probe_disk(Disk& disk)
 
   const char * part_table_type =  blkid_parttable_get_type(part_table);
   disk.is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
-
-  if (const auto size_opt = get_disk_size(disk.dev); size_opt)
-    disk.size = *size_opt;
 }
 
 
