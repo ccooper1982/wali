@@ -2,7 +2,7 @@
 set -eu
 
 # Download tar from GitHub
-VERSION=v0.3
+VERSION=v0.4
 INSTALL_DIR=/usr/local/bin/wali
 START_SH="start.sh <ip_address> [port]"
 
