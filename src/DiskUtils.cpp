@@ -17,6 +17,9 @@
 
 static const std::string EfiPartitionType {"c12a7328-f81f-11d2-ba4b-00a0c93ec93b"};
 
+namespace rng = std::ranges;
+namespace view = std::views;
+
 struct Probe
 {
   Probe(const std::string_view dev,
@@ -63,6 +66,11 @@ Tree DiskUtils::do_probe()
     return dir_entry.is_block_file() && delim == std::string_view::npos;
   };
 
+  auto is_partition = [is_block_disk](const fs::directory_entry& dir_entry)
+  {
+    return !is_block_disk(dir_entry);
+  };
+
   auto get_seq = [](const fs::directory_entry& dir_entry)
   {
     const auto& entry = dir_entry.path().stem().string();
@@ -70,15 +78,10 @@ Tree DiskUtils::do_probe()
     return delim == std::string_view::npos ? std::stol(entry.data()) : std::stol(entry.substr(0,delim).data());
   };
 
-  auto is_partition = [](const fs::directory_entry& dir_entry)
-  {
-    const auto& entry = dir_entry.path().stem().string();
-    return entry.find('-') != std::string_view::npos;
-  };
 
   Tree tree;
 
-  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_block_disk))
+  for (const auto& entry : fs::directory_iterator{DevSeq} | view::filter(is_block_disk))
   {
     const auto target = fs::weakly_canonical(entry.path());
     const auto seq = get_seq(entry);
@@ -89,11 +92,11 @@ Tree DiskUtils::do_probe()
     Disk disk{target};
     probe_disk(disk);
 
-    tree[disk] = std::vector<Partition>{};
+    tree[disk] = Partitions{};
     seq_path_map[seq] = disk.dev;
   }
 
-  for (const auto& entry : fs::directory_iterator{DevSeq} | std::views::filter(is_partition))
+  for (const auto& entry : fs::directory_iterator{DevSeq} | view::filter(is_partition))
   {
     const auto target = fs::weakly_canonical(entry.path());
     const auto seq = get_seq(entry);
@@ -106,8 +109,10 @@ Tree DiskUtils::do_probe()
     tree[disk_dev].push_back(std::move(part));
   }
 
-  for (auto& [disk, parts] : tree)
-    std::ranges::sort(parts, [](const Partition&a, const Partition& b){ return a.dev < b.dev; });
+  rng::for_each(tree | view::values, [](Partitions& parts)
+  {
+    rng::sort(parts, std::less{}, &Partition::dev);
+  });
 
   return tree;
 }
@@ -233,9 +238,9 @@ std::optional<int64_t> DiskUtils::get_disk_size (const std::string_view dev)
 // TODO do we have std::optional<T&> ?
 std::optional<std::reference_wrapper<const Partition>> DiskUtils::get_partition(const Tree& tree, const std::string_view dev)
 {
-  for (const auto& parts : tree | std::views::values)
+  for (const auto& parts : tree | view::values)
   {
-    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
+    if (auto it = rng::find(parts, dev, &Partition::dev) ; it != rng::cend(parts))
       return *it;
   }
 
@@ -247,7 +252,7 @@ std::string DiskUtils::get_partition_disk (const Tree& tree, const std::string_v
 {
   for (const auto& [disk, parts] : tree)
   {
-    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
+    if (auto it = rng::find(parts, dev, &Partition::dev) ; it != rng::cend(parts))
       return disk.dev;
   }
 
