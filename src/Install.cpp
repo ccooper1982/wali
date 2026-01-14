@@ -1,6 +1,6 @@
 
-#include <wali/DiskUtils.hpp>
-#include <wali/widgets/WidgetData.hpp>
+
+#include "wali/DiskUtils.hpp"
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -13,6 +13,7 @@
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
 #include <wali/widgets/Widgets.hpp>
+#include <wali/widgets/WidgetData.hpp>
 
 
 void Install::install(InstallHandlers handlers, WidgetData data)
@@ -48,6 +49,8 @@ void Install::install(InstallHandlers handlers, WidgetData data)
     // TODO swap, user shell
 
     on_state(InstallState::Running);
+
+    m_tree = DiskUtils::probe();
 
     minimal = exec_stage(&Install::filesystems,   STAGE_FS) &&
               exec_stage(&Install::mount,         STAGE_MOUNT) &&
@@ -162,11 +165,12 @@ bool Install::create_ext4_filesystem(const std::string_view part_dev)
 
 void Install::set_partition_type(const std::string_view part_dev, const std::string_view type)
 {
-  const Tree tree = DiskUtils::probe();
-  const int part_num = DiskUtils::get_partition_part_number(tree, part_dev);
-  const auto parent_dev = DiskUtils::get_partition_disk(tree, part_dev);
+  const int part_num = DiskUtils::get_partition_part_number(m_tree, part_dev);
+  const auto parent_dev = DiskUtils::get_partition_disk(m_tree, part_dev);
 
-  if (SetPartitionType{}(parent_dev, part_num, type))
+  log_info(std::format("Set partition type {} for {}", type, part_dev));
+
+  if (!SetPartitionType{}(parent_dev, part_num, type))
     log_warning(std::format("Set partition type failed on {}", part_dev));
 }
 

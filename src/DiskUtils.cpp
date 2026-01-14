@@ -235,12 +235,11 @@ std::optional<std::reference_wrapper<const Partition>> DiskUtils::get_partition(
 {
   for (const auto& parts : tree | std::views::values)
   {
-    const auto it = std::ranges::find_if(parts, [&](const Partition& part){ return part.dev == dev; });
-    if (it != std::ranges::cend(parts))
+    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
       return *it;
   }
 
-  return std::nullopt;
+  return {};
 }
 
 
@@ -248,8 +247,7 @@ std::string DiskUtils::get_partition_disk (const Tree& tree, const std::string_v
 {
   for (const auto& [disk, parts] : tree)
   {
-    auto part_view = parts | std::views::filter([dev](const Partition& part){ return part.dev == dev; });
-    if (part_view)
+    if (auto it = std::ranges::find(parts, dev, &Partition::dev) ; it != std::ranges::cend(parts))
       return disk.dev;
   }
 
