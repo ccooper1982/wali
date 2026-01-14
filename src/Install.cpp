@@ -474,17 +474,19 @@ bool Install::network()
 
   if (copy_conf)
   {
-    log_info("Installing iws");
+    log_info("Install and enable iwd");
+
     if (install_packages({"iwd"}) && enable_service({"iwd.service"}))
     {
       const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
                                                                           LiveIwdConfigPath.string(),
                                                                           TargetIwdConfigPath.string());
-
       log_info("Copy iwd config");
       if (ReadCommand::execute_read(cmd_string) != CmdSuccess)
         log_warning("Failed to copy iwd config files");
     }
+    else
+      log_warning("iwd package or service enable failed");
   }
 
   if (ntp)
@@ -511,7 +513,7 @@ bool Install::video()
 // general
 bool Install::enable_service(const std::vector<std::string_view> services)
 {
-  bool enabled_all{};
+  bool enabled_all{true};
 
   for (const auto& svc : services)
   {

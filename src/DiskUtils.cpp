@@ -124,7 +124,6 @@ void DiskUtils::probe_disk(Disk& disk)
   if (const auto size_opt = get_disk_size(disk.dev); size_opt)
     disk.size = *size_opt;
 
-
   Probe probe{disk.dev};
 
   if (!probe.valid())
@@ -133,25 +132,18 @@ void DiskUtils::probe_disk(Disk& disk)
     return;
   }
 
-  blkid_partlist ls;
-  if (ls = blkid_probe_get_partitions(probe.pr); ls == nullptr)
+  if (blkid_partlist ls = blkid_probe_get_partitions(probe.pr); ls == nullptr)
   {
     // warning because /dev/loop0 has no partition table
     PLOGW << "probe_disk failed for: " << disk.dev;
-    return;
   }
-
-  const auto part_table = blkid_partlist_get_table(ls);
-
-  if (!part_table)
+  else if (const auto part_table = blkid_partlist_get_table(ls); !part_table)
+    PLOGE << "Failed to get partition table: " << disk.dev;
+  else
   {
-    // this a warning because /dev/loop0 doesn't have partitions
-    PLOGW << "Failed to get partition table: " << disk.dev;
-    return;
+    const char * part_table_type =  blkid_parttable_get_type(part_table);
+    disk.is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
   }
-
-  const char * part_table_type =  blkid_parttable_get_type(part_table);
-  disk.is_gpt = part_table_type ? std::string_view{part_table_type} == "gpt" : false;
 }
 
 

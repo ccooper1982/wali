@@ -16,7 +16,7 @@ public:
   NetworkWidget();
 
   NetworkData get_data() const override { return m_data; }
-  bool is_valid() const override { return !m_data.hostname.empty(); }
+  bool is_valid() const override;
 
 private:
   WLineEdit * m_hostname;

@@ -98,12 +98,9 @@ PartitionsWidget::PartitionsWidget()
   auto lbl_home = home_layout->addWidget(make_wt<WLabel>("Home"));
   lbl_home->setWidth(100);
   m_home = home_layout->addWidget(make_wt<WComboBox>());
-  //m_boot->changed().connect(this, &PartitionsWidget::calculate_sizes);
   m_home->addItem("Use remaining");
   m_home->addItem("Do nothing");
   home_layout->addStretch(1);
-
-  // m_create_remaining = remaining_layout->addWidget(make_wt<WCheckBox>("Create partition for remaining space"));
 
   layout->addWidget(make_wt<WText>(waffle_warning));
 
