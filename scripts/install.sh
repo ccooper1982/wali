@@ -14,6 +14,7 @@ tar -xf wali-bin_$VERSION.tar.gz -C /usr/local/bin
 # Install
 mount -o remount,size=600M /run/archiso/cowspace
 
+pacman-key --init
 pacman -Sy --noconfirm archlinux-keyring
 pacman -Q wt || pacman -Sy --noconfirm wt
 pacman -Q lshw || pacman -Sy --noconfirm lshw
