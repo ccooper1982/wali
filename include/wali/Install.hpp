@@ -88,6 +88,8 @@ private:
 
   // network
   bool network();
+  bool setup_iwd();
+  bool setup_networkd();
 
   // video
   bool video();
@@ -95,7 +97,9 @@ private:
   // services
   bool enable_service(const std::vector<std::string_view> services);
 
-private:
+  // general
+  static std::size_t count_files (const fs::path& dir, const std::vector<std::string_view> ext);
+
   // functions to call plog, then call a handler for the UI
   void log_stage_start(const std::string_view stage)
   {

@@ -11,6 +11,9 @@
 
 
 namespace fs = std::filesystem;
+namespace rng = std::ranges;
+namespace view = std::views;
+
 
 inline static const fs::path InstallLogPath {"/var/log/ali/install.log"};
 inline static const fs::path RootMnt{"/mnt"};

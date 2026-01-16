@@ -11,6 +11,7 @@
 #include <Wt/WPushButton.h>
 #include <Wt/WServer.h>
 #include <Wt/WSignal.h>
+#include <Wt/WStringStream.h>
 #include <Wt/WTextArea.h>
 #include <functional>
 #include <future>
@@ -25,6 +26,10 @@ struct Widgets;
 
 struct StageLog : public WContainerWidget
 {
+  // static const constexpr auto AutoScroll = R"(
+  //   textArea.scrollTop = document.getElementById('stage_log').scrollHeight;
+  // )";
+
   StageLog(const std::string_view name, const bool collapsed = true)
   {
     // layout?
@@ -34,8 +39,10 @@ struct StageLog : public WContainerWidget
     m_panel->setCollapsed(collapsed);
 
     m_text = m_panel->setCentralWidget(make_wt<WTextArea>());
+    // m_text->setId("stage_log");
     m_text->setReadOnly(true);
     m_text->setStyleClass("stage_log");
+    // WApplication::instance()->doJavaScript(AutoScroll);
 
     m_log.reserve(100);
   }

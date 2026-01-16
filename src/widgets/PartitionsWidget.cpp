@@ -23,13 +23,18 @@
 static const constexpr auto waffle_info = R"(
   This will delete all partitions and create new partitions as configured.
   <br/>
-  If
+  To create a dedicated partition for /home, set "Home" to "Use remaining".
   <ul>
     <li>
-      <b>Boot:</b> 1024MB is preferred
+      <b>Boot:</b> 1GB is preferred
     </li>
     <li>
-      <b>Root:</b> At least 24GB
+      <b>Root:</b> At least 32GB
+    </li>
+    <li>
+      <b>Home:</b> At least 64GB.
+                   To use a dedicated partition, select "Use remaining". Otherwise
+                   /home must mount to the root partition.
     </li>
   </ul>
   )";

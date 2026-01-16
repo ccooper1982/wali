@@ -1,10 +1,13 @@
 
 
 #include "wali/DiskUtils.hpp"
+#include <algorithm>
+#include <array>
 #include <cstring>
 #include <filesystem>
 #include <format>
 #include <iterator>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <sys/mount.h>
@@ -96,7 +99,6 @@ bool Install::filesystems()
 
   const auto wiped_boot_root = wipe_fs(data.boot_dev) &&
                                wipe_fs(data.root_dev);
-
 
   if (wiped_boot_root)
   {
@@ -463,8 +465,6 @@ bool Install::localise()
 bool Install::network()
 {
   static const fs::path HostnamePath{"/etc/hostname"};
-  static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
-  static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
 
   const auto [hostname, ntp, copy_conf] = m_data.network;
 
@@ -474,29 +474,68 @@ bool Install::network()
 
   if (copy_conf)
   {
-    log_info("Install and enable iwd");
-
-    if (install_packages({"iwd"}) && enable_service({"iwd.service"}))
-    {
-      const auto cmd_string = std::format("mkdir -p {} && cp -r {}/* {}", TargetIwdConfigPath.string(),
-                                                                          LiveIwdConfigPath.string(),
-                                                                          TargetIwdConfigPath.string());
-      log_info("Copy iwd config");
-      if (ReadCommand::execute_read(cmd_string) != CmdSuccess)
-        log_warning("Failed to copy iwd config files");
-    }
-    else
-      log_warning("iwd package or service enable failed");
+    setup_iwd();
+    setup_networkd();
   }
 
   if (ntp)
     enable_service({"systemd-timesyncd.service"});
 
-  enable_service({"systemd-networkd.service", "systemd-resolved.service"});
-
   return true;
 }
 
+bool Install::setup_iwd()
+{
+  // iwd config: https://wiki.archlinux.org/title/Iwd#Network_configuration
+  static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
+  static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
+
+  log_info("Install and enable iwd");
+
+  bool ok{};
+
+  if (install_packages({"iwd"}) && enable_service({"iwd.service"}))
+  {
+    static const std::vector<std::string_view> Extensions = {".psk", ".open", ".8021x"};
+
+    log_info("Copy iwd config");
+
+    const auto src = LiveIwdConfigPath.string();
+    const auto dest = TargetIwdConfigPath.string();
+    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+
+    if (ReadCommand::execute_read(cmd) != CmdSuccess)
+      log_warning("Failed to copy iwd configs");
+    else if (count_files(LiveIwdConfigPath, Extensions) != 1)
+      log_warning("More than one wifi config, cannot set auto connect");
+    else
+      ok = true;
+  }
+  else
+    log_warning("iwd package or service enable failed");
+
+  return ok;
+}
+
+bool Install::setup_networkd()
+{
+  static const fs::path LiveConfigPath {"/etc/systemd/network"};
+  static const fs::path TargetConfigPath {RootMnt / "etc/systemd/network"};
+
+  const auto src = LiveConfigPath.string();
+  const auto dest = TargetConfigPath.string();
+  const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+
+  log_info("Copy networkd config");
+
+  bool ok{};
+  if (ReadCommand::execute_read(cmd) != CmdSuccess)
+    PLOGW << "Failed to copy systemd-network configs";
+  else
+    ok = enable_service({"systemd-networkd.service", "systemd-resolved.service"});
+
+  return ok;
+}
 
 // video
 bool Install::video()
@@ -527,4 +566,19 @@ bool Install::enable_service(const std::vector<std::string_view> services)
   }
 
   return enabled_all;
+}
+
+std::size_t Install::count_files (const fs::path& dir, const std::vector<std::string_view> ext)
+{
+  std::size_t count{};
+
+  auto has_ext = [&](const fs::directory_entry& entry)
+  {
+    return rng::contains(ext, entry.path().extension());
+  };
+
+  for ([[maybe_unused]] const auto& entry : fs::directory_iterator{dir} | view::filter(has_ext))
+    ++count;
+
+  return count;
 }

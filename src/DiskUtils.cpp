@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <exception>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -16,9 +15,6 @@
 
 
 static const std::string EfiPartitionType {"c12a7328-f81f-11d2-ba4b-00a0c93ec93b"};
-
-namespace rng = std::ranges;
-namespace view = std::views;
 
 struct Probe
 {
