@@ -1,4 +1,5 @@
 #include "wali/Common.hpp"
+#include <functional>
 #include <mutex>
 #include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/InstallWidget.hpp>
@@ -57,28 +58,24 @@ void InstallWidget::install ()
   {
     m_log = 0;
     m_install_btn->disable();
-    m_stage_logs[m_log]->start();
+    m_stage_logs[0]->start();
 
     const auto sessionId = WApplication::instance()->sessionId();
 
     m_install_future = std::async(std::launch::async, [this, sessionId]
     {
-      auto stage_change = [this, sessionId](const std::string name, const StageStatus state)
-      {
+      auto stage_change = [this, sessionId](const std::string name, const StageStatus state) {
         on_stage_end(name, state, sessionId);
       };
 
-      auto log = [this, sessionId](const std::string msg, const InstallLogLevel level)
-      {
+      auto log = [this, sessionId](const std::string msg, const InstallLogLevel level) {
         on_log(msg, level, sessionId);
       };
 
-      auto complete = [this, sessionId](const InstallState state)
-      {
+      auto complete = [this, sessionId](const InstallState state) {
         on_install_status(state, sessionId);
       };
 
-      PLOGW << "Calling Install::install()";
       m_install.install(  { .stage_change = stage_change,
                             .log = log,
                             .complete = complete
