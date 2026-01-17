@@ -221,7 +221,7 @@ bool Install::do_mount(const std::string_view dev, const std::string_view path)
 // pacman
 bool Install::pacstrap()
 {
-  static const PackageSet Packages =
+  static PackageSet packages =
   {
     "base",
     "archlinux-keyring",
@@ -229,14 +229,15 @@ bool Install::pacstrap()
     "linux-firmware",
     "sudo",
     "reflector",      // pacman mirrors list
-    "gpm",            // laptop touchpad support
-    "e2fsprogs",      // useful
-    "less",           // useful
+    "gpm"             // laptop touchpad support
   };
+
+  if (const auto vendor = GetCpuVendor{}(); vendor != CpuVendor::None)
+    packages.insert(vendor == CpuVendor::Amd ? "amd-ucode" : "intel-ucode");
 
   std::stringstream cmd_string;
   cmd_string << "pacstrap -K " <<  RootMnt.string() << ' ';
-  cmd_string << flatten(Packages);
+  cmd_string << flatten(packages);
 
   const int stat = ReadCommand::execute_read(cmd_string.str(), [this](const std::string_view m)
   {

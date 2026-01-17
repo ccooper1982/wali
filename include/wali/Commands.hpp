@@ -272,7 +272,7 @@ struct PlatformSizeValid : public ReadCommand
 
 struct GetCpuVendor : public ReadCommand
 {
-  std::tuple<bool, CpuVendor> operator()()
+  CpuVendor operator()()
   {
     CpuVendor vendor = CpuVendor::None;
 
@@ -284,14 +284,14 @@ struct GetCpuVendor : public ReadCommand
         vendor = CpuVendor::Intel;
     });
 
-    return {stat == CmdSuccess, vendor};
+    return stat == CmdSuccess ? vendor : CpuVendor::None;
   }
 };
 
 
 struct ProgramExists : public ReadCommand
 {
-  std::tuple<int, bool> operator()(const std::string_view program)
+  bool operator()(const std::string_view program)
   {
     bool exists{false};
     const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
@@ -299,7 +299,7 @@ struct ProgramExists : public ReadCommand
       exists = !line.empty() ;
     });
 
-    return {stat, exists};
+    return stat == CmdSuccess && exists;
   }
 };
 

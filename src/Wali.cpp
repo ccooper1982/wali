@@ -2,6 +2,7 @@
 #include <Wt/WEnvironment.h>
 #include <Wt/WText.h>
 #include <Wt/WVBoxLayout.h>
+#include <algorithm>
 #include <math.h>
 
 #include <Wt/WApplication.h>
@@ -41,18 +42,10 @@ static void init_logger ()
 
 static bool check_programs_exist()
 {
-  static const std::vector<std::string> Programs =
+  ProgramExists check;
+  for (const auto& prog : {"lshw"})
   {
-   "sgdisk"
-    #ifdef WALI_PROD
-      ,"pacstrap", "genfstab", "arch-chroot", "lshw"
-    #endif
-  };
-
-  ProgramExists command;
-  for (const auto& prog : Programs)
-  {
-    if (const auto [stat, exists] = command(prog); stat != CmdSuccess)
+    if (!check(prog))
       return false;
   }
 
@@ -67,9 +60,7 @@ static bool sync_system_clock()
 
 static std::string startup_checks()
 {
-  if (const auto [ok, vendor] = GetCpuVendor{}(); !ok)
-    return "CPU vendor not Intel/AMD, or not found";
-  else if (!check_programs_exist()) // TODO show the missing command(s)
+  if (!check_programs_exist()) // TODO show the missing command(s)
     return "Not all required commands exist";
   else if (!PlatformSizeValid{}())
     return "Platform size not found or not 64bit";
