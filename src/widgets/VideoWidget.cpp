@@ -110,7 +110,7 @@ VideoWidget::VideoWidget()
   m_group_company->setSelectedButtonIndex(0);
   m_group_company->checkedChanged().connect(this, [this](WRadioButton * btn)
   {
-    set_driver(btn);
+    set_selected_driver(btn);
   });
 
   layout_none->addStretch(1);
@@ -131,7 +131,7 @@ VideoWidget::VideoWidget()
   m_waffle = layout->addWidget(make_wt<WText>());
 
   init_combos();
-  set_driver();
+  set_default_driver();
 
   layout_company->addStretch(1);
   layout->addStretch(1);
@@ -150,9 +150,33 @@ void VideoWidget::init_combos()
   add(IntelDriverMap, m_intel_driver);
 }
 
-void VideoWidget::set_driver(WRadioButton * btn)
+void VideoWidget::set_default_driver()
 {
-  const auto& selected = btn->text().toUTF8();
+  switch (GetGpuVendor{}())
+  {
+    case GpuVendor::Amd:
+      m_group_company->setSelectedButtonIndex(1);
+    break;
+
+    case GpuVendor::Nvidia:
+      m_group_company->setSelectedButtonIndex(2);
+    break;
+
+    case GpuVendor::Intel:
+      m_group_company->setSelectedButtonIndex(3);
+    break;
+
+    default:
+      m_group_company->setSelectedButtonIndex(0);
+    break;
+  }
+
+  set_selected_driver(m_group_company->checkedButton());
+}
+
+void VideoWidget::set_waffle()
+{
+  const auto& selected = m_group_company->checkedButton()->text().toUTF8();
 
   std::string_view waffle{none_waffle};
 
@@ -164,39 +188,9 @@ void VideoWidget::set_driver(WRadioButton * btn)
     waffle = intel_waffle;
 
   m_waffle->setText(waffle.data());
-
-  set_active(btn);
 }
 
-void VideoWidget::set_driver()
-{
-  switch (GetGpuVendor{}())
-  {
-    case GpuVendor::Amd:
-      m_group_company->setSelectedButtonIndex(1);
-      m_waffle->setText(amd_waffle);
-    break;
-
-    case GpuVendor::Nvidia:
-      m_group_company->setSelectedButtonIndex(2);
-      m_waffle->setText(nvidia_waffle);
-    break;
-
-    case GpuVendor::Intel:
-      m_group_company->setSelectedButtonIndex(3);
-      m_waffle->setText(intel_waffle);
-    break;
-
-    default:
-      m_group_company->setSelectedButtonIndex(0);
-      m_waffle->setText(none_waffle);
-    break;
-  }
-
-  set_active(m_group_company->checkedButton());
-}
-
-void VideoWidget::set_active(WRadioButton * btn)
+void VideoWidget::set_selected_driver(WRadioButton * btn)
 {
   WApplication::instance()->deferRendering();
 
@@ -205,16 +199,18 @@ void VideoWidget::set_active(WRadioButton * btn)
   m_intel_driver->disable();
 
   const auto& selected = btn->text().toUTF8();
+
   if (selected == "AMD")
     m_amd_driver->enable();
-  if (selected == "Nvidia")
+  else if (selected == "Nvidia")
     m_nvidia_driver->enable();
   else if (selected == "Intel")
     m_intel_driver->enable();
 
+  set_waffle();
+
   WApplication::instance()->resumeRendering();
 }
-
 
 VideoData VideoWidget::get_data() const
 {
@@ -246,26 +242,17 @@ VideoData VideoWidget::get_data() const
 
 bool VideoWidget::is_valid() const
 {
-  if (m_group_company->selectedButtonIndex() == 0)
+  if (const auto index = m_group_company->selectedButtonIndex(); index == 0)
     return true;
-
-  switch (m_group_company->selectedButtonIndex())
+  else if (index == 1)
+    return !m_amd_driver->currentText().empty();
+  else if (index == 2)
+    return !m_nvidia_driver->currentText().empty();
+  else if (index == 3)
+    return !m_intel_driver->currentText().empty();
+  else
   {
-    case 1:
-      return !m_amd_driver->currentText().empty();
-    break;
-
-    case 2:
-      return !m_nvidia_driver->currentText().empty();
-    break;
-
-    case 3:
-      return !m_intel_driver->currentText().empty();
-    break;
-
-    default:
-      PLOGE << "VideoWidget::is_valid() : shouldn't reach here";
-      return false;
-    break;
+    PLOGE << "VideoWidget::is_valid() : shouldn't reach here";
+    return false;
   }
 }

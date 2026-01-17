@@ -21,9 +21,9 @@ public:
 
 private:
   void init_combos();
-  void set_driver(WRadioButton * btn);
-  void set_driver();
-  void set_active(WRadioButton * btn);
+  void set_default_driver();
+  void set_selected_driver(WRadioButton * btn);
+  void set_waffle();
 
 private:
   std::shared_ptr<WButtonGroup> m_group_company;
