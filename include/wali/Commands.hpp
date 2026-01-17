@@ -356,12 +356,6 @@ struct CreateFilesystem : public ReadCommand
 {
   bool operator()(const std::string_view dev)
   {
-    // const auto stat = execute_read(std::format("mkfs.{} {}", cmd, dev), [](const std::string_view m)
-    // {
-    //   PLOGI << m;
-    // });
-    // PLOGE << "stat=" << stat;
-    // return stat == CmdSuccess;
     return execute_read(std::format("mkfs.{} {}", cmd, dev)) == CmdSuccess;
   }
 };
@@ -371,15 +365,24 @@ using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
 
 
 // partitions
+struct ClearPartitions : public ReadCommand
+{
+  bool operator()(const std::string_view dev)
+  {
+    const auto ok = execute_read(std::format("sgdisk --clear {}", dev)) == CmdSuccess;
+    if (ok)
+    {
+      PLOGE << "Failed to delete partitions: " << dev;
+    }
+    return ok;
+  }
+};
+
 struct CreatePartitionTable : public ReadCommand
 {
   bool operator()(const std::string_view disk, OutputHandler handler)
   {
-    if (execute_read(std::format("wipefs -a {}", disk)) != CmdSuccess)
-    {
-      PLOGE << "Failed to wipe device " << disk;
-      return false;
-    }
+    ClearPartitions{}(disk);
 
     // this forces the label creation, whilst sgdisk --label does not
     return execute_read(std::format("echo 'label: gpt' | sfdisk {}", disk), std::move(handler)) == CmdSuccess;
@@ -396,6 +399,8 @@ struct CreatePartition : public ReadCommand
 
   bool operator()(const std::string_view disk, const std::uint16_t part_num, OutputHandler handler)
   {
+    // note: sgdisk on Arch returns 0 for success (https://man.archlinux.org/man/sgdisk.8.en),
+    //       whilst other sources say 1 is success (https://linux.die.net/man/8/sgdisk)
     // <part_num>:start:<part_size>
     //  start is default (first available sector)
     //  part_size is default (remaining space)
