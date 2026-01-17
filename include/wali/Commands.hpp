@@ -370,7 +370,7 @@ struct ClearPartitions : public ReadCommand
   bool operator()(const std::string_view dev)
   {
     const auto ok = execute_read(std::format("sgdisk --clear {}", dev)) == CmdSuccess;
-    if (ok)
+    if (!ok)
     {
       PLOGE << "Failed to delete partitions: " << dev;
     }
