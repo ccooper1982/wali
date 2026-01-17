@@ -19,6 +19,8 @@ pacman -Sy --noconfirm archlinux-keyring
 pacman -Q wt || pacman -Sy --noconfirm wt
 pacman -Q lshw || pacman -Sy --noconfirm lshw
 
+pacman-key --init
+
 echo
 echo "--------------"
 echo Change directory to $INSTALL_DIR
