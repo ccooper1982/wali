@@ -89,7 +89,7 @@ void MountsWidget::refresh_data()
 
     for(size_t i = 0 ; i < parts.size() ; ++i)
     {
-      PLOGW << parts[i].dev << "=" << format_size(parts[i].size);
+      PLOGI << parts[i].dev << " = " << format_size(parts[i].size);
       m_table->elementAt(r,0)->addNew<WText>(parts[i].dev);
       m_table->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
       m_table->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));

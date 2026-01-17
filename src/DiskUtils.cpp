@@ -147,8 +147,6 @@ bool DiskUtils::probe_partition(Partition& partition)
 {
   static const unsigned SectorsPerPartSize = 512;
 
-  PLOGW << "probe_partition() " << partition.dev;
-
   Probe probe (partition.dev);
 
   if (!probe.valid())

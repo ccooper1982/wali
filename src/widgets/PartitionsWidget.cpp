@@ -186,8 +186,8 @@ void PartitionsWidget::create()
         const int64_t boot_size = std::strtoll(m_boot->currentText().toUTF8().data(), nullptr, 10);
         const int64_t root_size = gb_to_mb(std::strtoll(m_root->text().toUTF8().data(), nullptr, 10));
 
-        PLOGW << "Boot: " << m_boot->currentText().toUTF8().data() << "MB, " << boot_size << "MB";
-        PLOGW << "Root: " << m_root->text().toUTF8().data() << "GB, " << root_size << "MB";
+        PLOGI << "Boot: " << m_boot->currentText().toUTF8().data() << "MB, " << boot_size << "MB";
+        PLOGI << "Root: " << m_root->text().toUTF8().data() << "GB, " << root_size << "MB";
 
         CreatePartition{}(disk, 1, boot_size, log);
         CreatePartition{}(disk, 2, root_size, log);
