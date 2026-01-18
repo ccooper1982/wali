@@ -43,13 +43,14 @@ std::unique_ptr<T> make_wt (Args...args)
 
 
 template<typename WidgetT, typename ...WidgetArgs>
-WidgetT* add_form_pair (WVBoxLayout * parent_layout, const std::string_view label_text, WidgetArgs&&... widget_args)
+WidgetT* add_form_pair (WVBoxLayout * parent_layout, const std::string_view label_text, const int label_width, WidgetArgs&&... widget_args)
 {
   auto layout = parent_layout->addLayout(make_wt<WHBoxLayout>());
 
   auto label = layout->addWidget(make_wt<WLabel>(label_text.data()));
   auto widget = layout->addWidget(make_wt<WidgetT>(widget_args...));
 
+  label->setWidth(label_width);
   label->setBuddy(widget);
   label->setStyleClass("form_label");
 

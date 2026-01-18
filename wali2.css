@@ -1,0 +1,128 @@
+a:link {
+    color: white;
+    text-decoration: none;
+}
+a:visited {
+    color: white;
+}
+a:hover {
+    color: lightblue;
+}
+a:active {
+    color: white;
+}
+
+body {
+    background-color: #393f4d;
+    font:
+        14px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 0px;
+    color: white;
+}
+
+h2 {
+    background-color: #193f5d;
+    padding: 5px;
+}
+
+h3 {
+    background-color: #193f5d;
+    padding: 5px;
+}
+
+div.home_north {
+    background-color: #295f9d;
+    color: white;
+    height: 100px;
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+div.nav_bar {
+    background-color: #193f7d;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+input[type="text"] {
+    min-width: 150px;
+    font-family: sans-serif, arial;
+    font-size: 12px;
+}
+
+input.partition_size {
+    min-width: 50px;
+    max-width: 50px;
+}
+
+button {
+    appearance: none;
+    background-color: #ac8818;
+    border: 1px solid rgba(27, 31, 35, 0.15);
+    border-radius: 6px;
+    box-shadow:
+        rgba(27, 31, 35, 0.04) 0 1px 0,
+        rgba(255, 255, 255, 0.25) 0 1px 0 inset;
+    box-sizing: border-box;
+    color: white;
+    cursor: pointer;
+    display: inline-block;
+    font-family:
+        -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20px;
+    list-style: none;
+    padding: 6px 10px;
+    position: relative;
+    transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    vertical-align: middle;
+    white-space: nowrap;
+    word-wrap: break-word;
+}
+
+button:hover {
+    background-color: steelblue;
+    text-decoration: none;
+    transition-duration: 0s;
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+button:disabled {
+    background-color: #595f6d;
+    border-color: rgba(27, 31, 35, 0.15);
+    color: #959da5;
+    cursor: default;
+}
+
+button:active {
+    background-color: steelblue;
+    box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
+    transition: none 0s;
+}
+
+button:focus {
+    outline: 1px transparent;
+}
+
+button:before {
+    display: none;
+}
+
+button:-webkit-details-marker {
+    display: none;
+}

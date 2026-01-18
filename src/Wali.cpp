@@ -289,7 +289,6 @@ public:
 
     root()->setMargin(0);
     root()->setPadding(0);
-    // root()->setContentAlignment(AlignmentFlag::Center);
 
     auto layout = root()->setLayout(make_wt<WVBoxLayout>());
     layout->setSpacing(0);

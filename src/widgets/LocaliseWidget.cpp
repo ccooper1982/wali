@@ -6,7 +6,7 @@ LocaliseWidget::LocaliseWidget()
   auto layout = setLayout(make_wt<WVBoxLayout>());
 
   // timezones
-  m_timezones = add_form_pair<WComboBox>(layout, "Timezone");
+  m_timezones = add_form_pair<WComboBox>(layout, "Timezone", 100);
   m_timezones->setStyleClass("localise");
   m_timezones->setNoSelectionEnabled(true);
 
@@ -15,7 +15,7 @@ LocaliseWidget::LocaliseWidget()
   for_each(zones, [this](const auto zone){ m_timezones->addItem(zone); });
 
   // locales
-  m_locales = add_form_pair<WComboBox>(layout, "Locale");
+  m_locales = add_form_pair<WComboBox>(layout, "Locale", 100);
   m_locales->setStyleClass("localise");
   m_locales->setNoSelectionEnabled(true);
 
@@ -24,7 +24,7 @@ LocaliseWidget::LocaliseWidget()
   for_each(locales, [this](const auto zone){ m_locales->addItem(zone); });
 
   // terminal key map
-  m_keymap = add_form_pair<WComboBox>(layout, "Keymap");
+  m_keymap = add_form_pair<WComboBox>(layout, "Keymap", 100);
   m_keymap->setStyleClass("localise");
   m_keymap->setNoSelectionEnabled(true);
 

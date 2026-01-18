@@ -19,7 +19,7 @@ else
 
     mkdir -p release/wali/wwwroot
 
-    cp wali.css wt_config.xml collapse.gif release/wali/wwwroot
+    cp -r wwwroot/* release/wali
     cp build/wali scripts/start.sh scripts/install.sh release/wali
 
     cd release

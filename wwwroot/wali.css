@@ -14,6 +14,7 @@ a:active {
 
 body {
     background-color: #393f4d;
+    /*background-image: url("background.jpg");*/
     font:
         14px arial,
         sans-serif;
@@ -97,9 +98,6 @@ button:hover {
     background-color: steelblue;
     text-decoration: none;
     transition-duration: 0s;
-    color: white;
-    font-weight: 700;
-    font-size: 14px;
 }
 
 button:disabled {
@@ -176,4 +174,40 @@ div.msg_info {
     background-color: white;
     padding: 10px;
     border-left: 10px solid #3030aa;
+}
+
+select {
+    height: 20px;
+    font:
+        12px arial,
+        sans-serif;
+}
+
+select.localise {
+    height: 20px;
+    width: 180px;
+    font:
+        12px arial,
+        sans-serif;
+}
+
+select.packages_confirmed {
+    font-family: sans-serif, arial;
+    font-size: 12px;
+}
+
+textarea.stage_log {
+    width: 100%;
+    box-sizing: border-box;
+    height: 100px;
+    font: 10px monospace;
+}
+
+span.install_status_ready {
+    color: black;
+    padding: 20px;
+    background-color: white;
+    font: 16px monospace;
+    text-align: center;
+    border: 5px solid seagreen;
 }

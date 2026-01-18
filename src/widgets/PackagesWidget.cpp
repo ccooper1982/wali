@@ -1,7 +1,13 @@
+#include <Wt/WGlobal.h>
+#include <Wt/WHBoxLayout.h>
 #include <wali/widgets/PackagesWidget.hpp>
 
-static constexpr const auto IntroText = "Enter package names, separated by a space.<br/>"
-                                        "Packages that don't exist, will remain in the textbox.";
+static constexpr const auto IntroText = R"(
+  <ul>
+    <li>Enter package names, separated by a space</li>
+    <li>Packages that don't exist, will remain in the textbox</li>
+  </ul>
+  )";
 
 enum class Level
 {
@@ -14,9 +20,12 @@ enum class Level
 PackagesWidget::PackagesWidget()
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
+  layout->setSpacing(10);
   layout->addWidget(make_wt<Wt::WText>(IntroText));
 
-  auto layout_search = layout->addLayout(make_wt<WHBoxLayout>());
+  auto search_cont = layout->addWidget(make_wt<WContainerWidget>());
+  auto layout_search = search_cont->setLayout(make_wt<WHBoxLayout>());
+
   m_line_packages = layout_search->addWidget(make_wt<WLineEdit>(), 1);
   m_line_packages->setStyleClass("packages");
   m_line_packages->setAttributeValue("maxlength", "100");
@@ -29,16 +38,16 @@ PackagesWidget::PackagesWidget()
   m_btn_search->setStyleClass("packages");
 
   // list of packages to install, control buttons
-  auto layout_results = layout->addLayout(make_wt<WHBoxLayout>());
+  auto results_cont = layout->addWidget(make_wt<WContainerWidget>());
+  auto layout_results = results_cont->setLayout(make_wt<WHBoxLayout>());
 
-  m_list_confirmed = layout_results->addWidget(make_wt<WSelectionBox>(), 2);
+  m_list_confirmed = layout_results->addWidget(make_wt<WSelectionBox>(), 1);
   m_list_confirmed->setStyleClass("packages_confirmed");
   m_list_confirmed->setVerticalSize(10);
   m_list_confirmed->setHeight(200);
   m_list_confirmed->setSelectionMode(SelectionMode::Extended);
 
   auto layout_control = layout_results->addLayout(make_wt<WVBoxLayout>());
-
   auto btn_rmv = layout_control->addWidget(make_wt<WPushButton>("Remove"));
   auto btn_clear = layout_control->addWidget(make_wt<WPushButton>("Clear"));
   layout_control->addStretch(1);
