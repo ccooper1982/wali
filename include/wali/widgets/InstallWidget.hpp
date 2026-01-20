@@ -71,12 +71,12 @@ struct StageLog : public WContainerWidget
 };
 
 
-class InstallWidget : public WaliWidget<void>
+class InstallWidget : public WaliWidget
 {
   using StageFunc = std::function<bool()>;
 
 public:
-  InstallWidget(Widgets * widgets) ;
+  InstallWidget(WidgetDataPtr data) ;
 
   Signal<InstallState>& install_state()
   {

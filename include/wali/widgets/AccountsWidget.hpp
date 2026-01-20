@@ -9,16 +9,15 @@
 #include <wali/widgets/WaliWidget.hpp>
 
 
-class AccountWidget : public WaliWidget<AccountsData>
+class AccountWidget : public WaliWidget
 {
 public:
-  AccountWidget ();
+  AccountWidget (WidgetDataPtr data);
 
+  bool check_validity() const;
+
+private:
   void update_data();
-
-  AccountsData get_data() const override { return m_data; }
-
-  bool is_valid() const override;
 
 private:
   Wt::WLineEdit * m_root_password,
@@ -26,7 +25,6 @@ private:
                 * m_user_password;
   Wt::WCheckBox * m_user_sudo;
   MessageWidget * m_messages;
-  AccountsData m_data;
 };
 
 

@@ -1,13 +1,12 @@
 #include "wali/Common.hpp"
+#include "wali/widgets/WaliWidget.hpp"
 #include <functional>
 #include <mutex>
 #include <wali/widgets/WidgetData.hpp>
 #include <wali/widgets/InstallWidget.hpp>
-#include <wali/widgets/ValidateWidgets.hpp>
-#include <wali/widgets/Widgets.hpp>
 
 
-InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
+InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
 
@@ -17,8 +16,8 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
   m_install_btn->clicked().connect([this]()
   {
-    if (is_config_valid())
-      install();
+    // if (is_config_valid())
+    //   install();
   });
 
   m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
@@ -80,7 +79,7 @@ void InstallWidget::install ()
                             .log = log,
                             .complete = complete
                           },
-                          m_widgets->get_data());
+                          m_data);
                         });
   }
   catch (const std::exception& ex)
@@ -93,24 +92,25 @@ void InstallWidget::install ()
 
 bool InstallWidget::is_config_valid()
 {
-  PLOGW << "is_config_valid()";
+  return false;
+  // PLOGW << "is_config_valid()";
 
-  const auto& err_stage = validate_widgets(m_widgets->get_all());
-  if (err_stage)
-  {
-    PLOGW << "is_config_valid(): problem";
-    m_install_status->setText(std::format("Problem in: {}", *err_stage));
-    m_install_status->setStyleClass("install_status_ready_err");
-  }
-  else
-  {
-    PLOGW << "is_config_valid(): ok";
+  // const auto& err_stage = validate_widgets(m_widgets->get_all());
+  // if (err_stage)
+  // {
+  //   PLOGW << "is_config_valid(): problem";
+  //   m_install_status->setText(std::format("Problem in: {}", *err_stage));
+  //   m_install_status->setStyleClass("install_status_ready_err");
+  // }
+  // else
+  // {
+  //   PLOGW << "is_config_valid(): ok";
 
-    m_install_status->setText("Ready to install");
-    m_install_status->setStyleClass("install_status_ready");
-  }
+  //   m_install_status->setText("Ready to install");
+  //   m_install_status->setStyleClass("install_status_ready");
+  // }
 
-  return !err_stage.has_value();
+  // return !err_stage.has_value();
 }
 
 void InstallWidget::on_log(const std::string msg, const InstallLogLevel level, const std::string sid)

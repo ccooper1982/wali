@@ -1,3 +1,4 @@
+#include "wali/widgets/WaliWidget.hpp"
 #include <Wt/WCheckBox.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WGlobal.h>
@@ -58,7 +59,7 @@ static const int64_t BootSizeMin = mb_to_b(512);
 static const int64_t RootSizeMin = gb_to_b(5);
 
 
-PartitionsWidget::PartitionsWidget()
+PartitionsWidget::PartitionsWidget(WidgetDataPtr data) : WaliWidget(data, "Partitions")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
   layout->setSpacing(20);

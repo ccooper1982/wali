@@ -1,11 +1,12 @@
 #ifndef WALI_INTROWIDGET_H
 #define WALI_INTROWIDGET_H
 
+#include "wali/widgets/WidgetData.hpp"
 #include <Wt/WVBoxLayout.h>
 #include <wali/widgets/WaliWidget.hpp>
-#include <wali/widgets/MessagesWidget.hpp>
+#include <wali/widgets/Common.hpp>
 
-class IntroductionWidget : public WaliWidget<void>
+class IntroductionWidget : public WaliWidget
 {
   static constexpr auto text = R"(
     <h1>Web Arch Linux Installer</h1>
@@ -23,10 +24,10 @@ class IntroductionWidget : public WaliWidget<void>
     )";
 
 public:
-  IntroductionWidget()
+  IntroductionWidget(WidgetDataPtr data) : WaliWidget(data, "Introduction")
   {
     auto layout = setLayout(make_wt<WVBoxLayout>());
-    layout->addWidget(make_wt<Wt::WText>(text));
+    layout->addWidget(make_wt<WText>(text));
     layout->addStretch(1);
 
     // TODO show version

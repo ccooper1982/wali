@@ -2,7 +2,8 @@
 #include "wali/widgets/AccountsWidget.hpp"
 #include "wali/widgets/LocaliselWidget.hpp"
 #include "wali/widgets/PackagesWidget.hpp"
-#include "wali/widgets/PartitionsWidget.hpp"
+#include "wali/widgets/WaliWidget.hpp"
+#include "wali/widgets/WidgetData.hpp"
 #include <Wt/WAnchor.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WEnvironment.h>
@@ -12,8 +13,11 @@
 #include <Wt/WHBoxLayout.h>
 #include <Wt/WLength.h>
 #include <Wt/WLink.h>
+#include <Wt/WSignal.h>
 #include <Wt/WText.h>
 #include <algorithm>
+#include <concepts>
+#include <ios>
 #include <math.h>
 
 #include <Wt/WApplication.h>
@@ -23,9 +27,11 @@
 #include <Wt/WEvent.h>
 #include <Wt/WServer.h>
 #include <Wt/WStackedWidget.h>
+#include <memory>
 #include <plog/Init.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <wali/Commands.hpp>
@@ -166,20 +172,6 @@ static std::string startup_checks()
 //   }
 // };
 
-static const int StackMenuIndex {1};
-
-class FilesystemWidget : public WContainerWidget
-{
-public:
-  inline static const constexpr auto Name = "Filesystems";
-
-  FilesystemWidget()
-  {
-    setObjectName(Name);
-
-    addWidget(make_wt<WText>("Do filesystem stuff"));
-  }
-};
 
 class NavBar : public WContainerWidget
 {
@@ -206,12 +198,15 @@ private:
 };
 
 
-
 inline static const constexpr std::string_view Names[] =
 {
   "Filesystems", "Network", "Accounts",
   "Locale", "Video", "Packages"
 };
+
+
+static WidgetDataPtr data;
+
 
 class WaliApplication : public Wt::WApplication
 {
@@ -249,15 +244,18 @@ class WaliApplication : public Wt::WApplication
       }
     }
 
-    auto btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 2, 1);
-    btn_install->resize(100, 40);
-    btn_install->disable();
-    // btn_install->clicked().connect([this](){ on_install_btn(); });
+    m_btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 2, 1);
+    m_btn_install->resize(100, 40);
+    m_btn_install->disable();
+    m_btn_install->clicked().connect([=]()
+    {
+      stack->disable();
+    });
 
-    // doesn't work, something else must have focus
+    // TODO investigate: doesn't work, something else must have focus
     // cont->keyPressed().connect([=](WKeyEvent ke)
     // {
-    //   PLOGW << "yo";
+    //   PLOGW << "oi oi";
     //   if (ke.key() == Key::Left)
     //     stack->setCurrentIndex(0);
     // });
@@ -268,14 +266,51 @@ class WaliApplication : public Wt::WApplication
   std::unique_ptr<WStackedWidget> create_stack ()
   {
     auto stack = make_wt<WStackedWidget>();
+    m_stack = stack.get();
+
+    auto add_page = [this]<typename W>() requires (std::derived_from<W, WaliWidget>)
+    {
+      auto widget = m_stack->addWidget(make_wt<W>(data));
+
+      auto wali_widget = dynamic_cast<WaliWidget *>(widget);
+      wali_widget->addWidget(make_wt<W>(data));
+      wali_widget->data_valid().connect([this](const bool v)
+      {
+        on_validity(v);
+      });
+    };
+
     stack->addWidget(create_home_widget(stack.get()));
-    stack->addWidget(make_wt<MountsWidget>());
-    stack->addWidget(make_wt<NetworkWidget>());
-    stack->addWidget(make_wt<AccountWidget>());
-    stack->addWidget(make_wt<LocaliseWidget>());
-    stack->addWidget(make_wt<VideoWidget>());
-    stack->addWidget(make_wt<PackagesWidget>());
+    // ugly syntax to call the generic lambda because operator() is templated
+    add_page.operator()<MountsWidget>();
+    add_page.operator()<NetworkWidget>();
+    add_page.operator()<AccountWidget>();
+    add_page.operator()<LocaliseWidget>();
+    add_page.operator()<VideoWidget>();
+    add_page.operator()<PackagesWidget>();
+
     return stack;
+  }
+
+  void on_validity(const bool valid)
+  {
+    const auto& children = m_stack->children();
+
+    const auto it = rng::find_if(children, [](const WWidget * w)
+    {
+      if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
+      {
+        PLOGW << w->objectName() << " : " << std::boolalpha << wali_widget->is_data_valid();
+        return !wali_widget->is_data_valid();
+      }
+      else
+      {
+        PLOGW << "Not a wali widget: " << w->objectName();
+        return false;
+      }
+    });
+
+    m_btn_install->setEnabled(it == rng::cend(children));
   }
 
 public:
@@ -286,6 +321,8 @@ public:
     useStyleSheet("wali.css");
 
     enableUpdates(true);
+
+    data = std::make_shared<WidgetData>();
 
     root()->setMargin(0);
     root()->setPadding(0);
@@ -311,10 +348,8 @@ public:
 
     stack->setMargin(0);
     stack->setPadding(0);
-    // stack->setContentAlignment(AlignmentFlag::Center);
     stack->currentWidgetChanged().connect([=](WWidget * w)
     {
-      PLOGI << "index = " << stack->currentIndex();
       nav->show_link(w->objectName() != "Home");
     });
 
@@ -368,14 +403,10 @@ public:
     // }
   }
 
-  ~WaliApplication()
-  {
-    if (m_widgets)
-      delete m_widgets;
-  }
 
 private:
-  Widgets * m_widgets{};
+  WStackedWidget * m_stack{};
+  WPushButton * m_btn_install{};
 };
 
 
@@ -387,23 +418,18 @@ static std::unique_ptr<WApplication> create_app(const WEnvironment& env)
 
 // TODO quite sure there should be a way to get this from WServer / WEnvironment _prior_
 //      to create_app() being called
-static std::tuple<std::string_view, std::string_view> get_server_host(const int argc, char ** argv)
+static std::pair<std::string_view, std::string_view> get_server_host(const int argc, char ** argv)
 {
+  using namespace std::string_view_literals;
+
   std::vector<std::string_view> args(argv, argv+argc);
 
-  const auto it_address = std::find_if(std::cbegin(args), std::cend(args), [](const std::string_view arg)
-  {
-    return arg == "--http-address";
-  });
+  const auto it_address = rng::find(args, "--http-address"sv);
+  const auto it_port = rng::find(args, "--http-port"sv);
 
-  const auto it_port = std::find_if(std::cbegin(args), std::cend(args), [](const std::string_view arg)
-  {
-    return arg == "--http-port";
-  });
-
-  // shouldn't happen because it suggests server won't reach this point
-  if (it_address == std::cend(args) || it_port == std::cend(args) ||
-      it_address+1 == std::cend(args) || it_port+1 == std::cend(args))
+  // +1 because the value is after the switch
+  if (it_address == rng::end(args) || it_port == rng::end(args) ||
+      it_address+1 == rng::end(args) || it_port+1 == rng::end(args))
     return {};
   else
     return {*(it_address+1), *(it_port+1)};

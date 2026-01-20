@@ -57,5 +57,6 @@ struct WidgetData
   VideoData video;
 };
 
+using WidgetDataPtr = std::shared_ptr<WidgetData>;
 
 #endif

@@ -1,7 +1,7 @@
 #include <wali/widgets/AccountsWidget.hpp>
 
 
-AccountWidget::AccountWidget ()
+AccountWidget::AccountWidget(WidgetDataPtr data) : WaliWidget(data, "Accounts")
 {
   auto messages = make_wt<MessageWidget>();
   messages->setWidth(600);
@@ -14,7 +14,6 @@ AccountWidget::AccountWidget ()
   cont_layout->addWidget(make_wt<WLabel>("<h2>Root</h2>"));
   m_root_password = add_form_pair<WLineEdit>(cont_layout, "Password", 100, "arch");
   m_root_password->changed().connect(this, &AccountWidget::update_data);
-  m_data.root_pass = m_root_password->text().toUTF8();
 
   cont_layout->addWidget(make_wt<WLabel>("<h2>User</h2>"));
   m_user_username = add_form_pair<WLineEdit>(cont_layout, "Username", 100);
@@ -36,25 +35,25 @@ AccountWidget::AccountWidget ()
     update_data();
   });
 
-
   layout->addWidget(std::move(messages));
-
   layout->addStretch(1);
-}
 
+  update_data();
+}
 
 void AccountWidget::update_data()
 {
-  m_data.root_pass = m_root_password->text().toUTF8();
-  m_data.user_username = m_user_username->text().toUTF8();
-  m_data.user_pass = m_user_password->text().toUTF8();
-  m_data.user_sudo = m_user_sudo->isChecked();
+  m_data->accounts.root_pass = m_root_password->text().toUTF8();
+  m_data->accounts.user_username = m_user_username->text().toUTF8();
+  m_data->accounts.user_pass = m_user_password->text().toUTF8();
+  m_data->accounts.user_sudo = m_user_sudo->isChecked();
+
+  set_valid(check_validity());
 }
 
-
-bool AccountWidget::is_valid() const
+bool AccountWidget::check_validity() const
 {
-  return  !m_data.root_pass.empty() &&
-          !m_data.user_username.empty() &&
-          !m_data.user_pass.empty();
+    return  !m_data->accounts.root_pass.empty() &&
+            !m_data->accounts.user_username.empty() &&
+            !m_data->accounts.user_pass.empty();
 }

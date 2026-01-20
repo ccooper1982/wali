@@ -17,7 +17,7 @@ enum class Level
 };
 
 
-PackagesWidget::PackagesWidget()
+PackagesWidget::PackagesWidget(WidgetDataPtr data) : WaliWidget(data, "Packages")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
   layout->setSpacing(10);
@@ -64,13 +64,13 @@ PackagesWidget::PackagesWidget()
 
     for_each(selected, [this](const auto i)
     {
-      data.additional.erase(m_list_confirmed->itemText(i).toUTF8());
+      m_data->packages.additional.erase(m_list_confirmed->itemText(i).toUTF8());
     });
 
     // repopulate list with what remains
     m_list_confirmed->clear();
 
-    for_each(data.additional, [this](const auto name)
+    for_each(m_data->packages.additional, [this](const auto name)
     {
       m_list_confirmed->addItem(name);
     });
@@ -78,11 +78,14 @@ PackagesWidget::PackagesWidget()
 
   btn_clear->clicked().connect([this]
   {
-    data.additional.clear();
+    m_data->packages.additional.clear();
     m_list_confirmed->clear();
   });
 
   layout->addStretch(1);
+
+  // this can't be invalid, ignore packages that are not found
+  set_valid();
 }
 
 
@@ -106,7 +109,7 @@ void PackagesWidget::search ()
 
     const std::string package (std::string_view{it});
 
-    if (m_packages_pending.contains(package) || m_packages_confirmed.contains(package) || data.additional.contains(package))
+    if (m_packages_pending.contains(package) || m_packages_confirmed.contains(package) || m_data->packages.additional.contains(package))
       continue;
 
     Http::Client * client = addChild(make_wt<Http::Client>());
@@ -159,7 +162,7 @@ void PackagesWidget::on_response(std::error_code rsp_err, const Http::Message& r
       m_packages_pending.erase(name);
 
       m_list_confirmed->addItem(name);
-      data.additional.emplace(name);
+      m_data->packages.additional.emplace(name);
     }
   }
 

@@ -51,7 +51,7 @@ class Install final
 {
 public:
 
-  void install(InstallHandlers handlers, WidgetData data);
+  void install(InstallHandlers handlers, WidgetDataPtr data);
 
 private:
 
@@ -141,7 +141,7 @@ private:
   OnStageChange m_stage_change;
   OnInstallComplete m_install_state;
   OnLog m_log;
-  WidgetData m_data;
+  WidgetDataPtr m_data;
   Tree m_tree;
 };
 

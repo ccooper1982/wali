@@ -92,6 +92,7 @@ button {
     vertical-align: middle;
     white-space: nowrap;
     word-wrap: break-word;
+    max-width: 100px;
 }
 
 button:hover {
@@ -167,6 +168,39 @@ div.msg_warning {
     background-color: white;
     padding: 10px;
     border-left: 10px solid darkgoldenrod;
+}
+
+div.partitions_dialog_title {
+    background-color: steelblue;
+    border: solid steelblue;
+    color: white;
+    font:
+        18px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 0px;
+}
+
+div.partitions_dialog_contents {
+    background-color: white;
+    border: solid steelblue;
+    font:
+        14px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 0px;
+    color: black;
+}
+
+div.partitions_dialog_foot {
+    background-color: #3672a4;
+    /*border: solid steelblue;*/
+    color: black;
+    font:
+        14px arial,
+        sans-serif;
+    margin: 0px;
+    padding: 10px;
 }
 
 div.msg_info {

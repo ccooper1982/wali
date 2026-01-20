@@ -1,6 +1,7 @@
 #ifndef WALI_PARTITIONSWIDGET_H
 #define WALI_PARTITIONSWIDGET_H
 
+#include "wali/widgets/WidgetData.hpp"
 #include <Wt/WCheckBox.h>
 #include <Wt/WContainerWidget.h>
 #include <Wt/WGlobal.h>
@@ -11,10 +12,10 @@
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 
-class PartitionsWidget  : public WaliWidget<void>
+class PartitionsWidget  : public WaliWidget
 {
 public:
-  PartitionsWidget();
+  PartitionsWidget(WidgetDataPtr data);
 
   bool is_changed() const { return m_changed; };
 

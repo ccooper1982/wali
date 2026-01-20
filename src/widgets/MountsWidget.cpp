@@ -1,5 +1,6 @@
 
 #include "wali/DiskUtils.hpp"
+#include "wali/widgets/WaliWidget.hpp"
 #include <Wt/WApplication.h>
 #include <Wt/WDialog.h>
 #include <Wt/WGlobal.h>
@@ -10,19 +11,20 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-MountsWidget::MountsWidget()
+MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
   m_partitions = std::make_shared<Partitions>();
 
   m_table = layout->addWidget(make_wt<WTable>());
+  m_table->setStyleClass("table_partitions");
 
   auto btn_manage = layout->addWidget(make_wt<WPushButton>("Manage Partitions"), 0, Wt::AlignmentFlag::Center);
   btn_manage->setWidth(160);
   btn_manage->clicked().connect(this, [=,this]()
   {
     auto dialog = btn_manage->addChild(make_wt<WDialog>("Partitions"));
-    auto partitions = dialog->contents()->addWidget(make_wt<PartitionsWidget>());
+    auto partitions = dialog->contents()->addWidget(make_wt<PartitionsWidget>(m_data));
     auto btn_close = dialog->footer()->addWidget(make_wt<WPushButton>("Close"));
 
     dialog->rejectWhenEscapePressed();
@@ -50,12 +52,11 @@ MountsWidget::MountsWidget()
   m_root = layout->addWidget(make_wt<RootPartitionWidget>(m_partitions, [this]{validate_selection();}));
   m_home = layout->addWidget(make_wt<HomePartitionWidget>(m_partitions, [this]{validate_selection();}));
 
-  refresh_data();
-
   // TODO bootloader
 
   m_messages = layout->addWidget(make_wt<MessageWidget>());
-  validate_selection();
+
+  refresh_data();
 
   layout->addStretch(1);
 }
@@ -73,7 +74,7 @@ void MountsWidget::refresh_data()
   m_table->elementAt(0, 0)->addNew<Wt::WText>("Device");
   m_table->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
   m_table->elementAt(0, 2)->addNew<Wt::WText>("Size");
-  m_table->setStyleClass("table_partitions");
+
 
   size_t r{1}; // 1 because of the header row
 
@@ -102,9 +103,9 @@ void MountsWidget::refresh_data()
   m_root->refresh_partitions();
   m_home->refresh_partitions();
 
-  WApplication::instance()->triggerUpdate();
+  validate_selection();
 
-  m_table->addStyleClass("table");
+  WApplication::instance()->triggerUpdate();
 }
 
 void MountsWidget::validate_selection()
@@ -128,23 +129,25 @@ void MountsWidget::validate_selection()
     if (home_dev == boot_dev || home_dev == root_dev)
       m_messages->add("/home is mounted to root or boot partition", MessageWidget::Level::Error);
   }
+
+  set_valid(!m_messages->has_errors());
+  set_data();
 }
 
 
-MountData MountsWidget::get_data() const
+void MountsWidget::set_data()
 {
-  const auto root_dev = m_root->get_device();
-  const auto root_fs = m_root->get_fs();
-  const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
-  const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
+  // const auto root_dev = m_root->get_device();
+  // const auto root_fs = m_root->get_fs();
+  // const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
+  // const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
 
-  return {
-            .boot_dev = m_boot->get_device(),
-            .boot_fs = m_boot->get_fs(),
-            .root_dev = root_dev,
-            .root_fs = root_fs,
-            .home_dev = home_dev,
-            .home_fs = home_fs,
-            .home_target = m_home->get_mount_target()
-         };
+  // auto& data = m_data->mounts;
+  // data.boot_dev = m_boot->get_device();
+  // data.boot_fs = m_boot->get_fs();
+  // data.root_dev = root_dev;
+  // data.root_fs = root_fs;
+  // data.home_dev = home_dev;
+  // data.home_fs = home_fs;
+  // data.home_target = m_home->get_mount_target();
 }

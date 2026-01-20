@@ -2,7 +2,6 @@
 
 #include "wali/DiskUtils.hpp"
 #include <algorithm>
-#include <array>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -19,12 +18,12 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-void Install::install(InstallHandlers handlers, WidgetData data)
+void Install::install(InstallHandlers handlers, WidgetDataPtr data)
 {
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
-  m_data = std::move(data);
+  m_data = data;
 
   auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
@@ -90,7 +89,7 @@ void Install::install(InstallHandlers handlers, WidgetData data)
 
 bool Install::filesystems()
 {
-  const MountData& data = m_data.mounts;
+  const MountData& data = m_data->mounts;
 
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
@@ -126,7 +125,7 @@ bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
-  const MountData& data = m_data.mounts;
+  const MountData& data = m_data->mounts;
 
   if (data.home_target == HomeMountTarget::Existing)
   {
@@ -179,7 +178,7 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
 // mount
 bool Install::mount()
 {
-  const MountData data = m_data.mounts;
+  const MountData data = m_data->mounts;
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
@@ -253,7 +252,7 @@ bool Install::pacstrap()
 bool Install::packages()
 {
   log_info("Install additional packages");
-  install_packages(m_data.packages.additional);
+  install_packages(m_data->packages.additional);
   return true;
 }
 
@@ -296,7 +295,7 @@ bool Install::fstab ()
 // accounts
 bool Install::root_account()
 {
-  const auto& root_password = m_data.accounts.root_pass;
+  const auto& root_password = m_data->accounts.root_pass;
 
   bool set{};
   if (root_password.empty())
@@ -309,9 +308,9 @@ bool Install::root_account()
 
 bool Install::user_account()
 {
-  const auto& user = m_data.accounts.user_username;
-  const auto& password = m_data.accounts.user_pass;
-  const auto user_sudo = m_data.accounts.user_sudo;
+  const auto& user = m_data->accounts.user_username;
+  const auto& password = m_data->accounts.user_pass;
+  const auto user_sudo = m_data->accounts.user_sudo;
 
   if (user.empty())
   {
@@ -418,7 +417,7 @@ bool Install::localise()
   static const fs::path LocaleConf{"/etc/locale.conf"};
   static const fs::path TerminalConf{"/etc/vconsole.conf"};
 
-  const auto& [zone, locale, keymap] = m_data.localise;
+  const auto& [zone, locale, keymap] = m_data->localise;
 
   if (!locale.empty())
   {
@@ -467,7 +466,7 @@ bool Install::network()
 {
   static const fs::path HostnamePath{"/etc/hostname"};
 
-  const auto [hostname, ntp, copy_conf] = m_data.network;
+  const auto [hostname, ntp, copy_conf] = m_data->network;
 
   log_info("Set hostname");
   if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
@@ -543,7 +542,7 @@ bool Install::video()
 {
   log_info("Installing video drivers");
 
-  if (!install_packages(m_data.video.drivers))
+  if (!install_packages(m_data->video.drivers))
     log_warning("Failed to install GPU drivers");
 
   return true;
