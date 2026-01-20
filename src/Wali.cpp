@@ -273,7 +273,6 @@ class WaliApplication : public Wt::WApplication
       auto widget = m_stack->addWidget(make_wt<W>(data));
 
       auto wali_widget = dynamic_cast<WaliWidget *>(widget);
-      wali_widget->addWidget(make_wt<W>(data));
       wali_widget->data_valid().connect([this](const bool v)
       {
         on_validity(v);
