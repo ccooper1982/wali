@@ -295,21 +295,15 @@ class WaliApplication : public Wt::WApplication
   {
     const auto& children = m_stack->children();
 
-    const auto it = rng::find_if(children, [](const WWidget * w)
+    const auto invalid_count = rng::count_if(children, [](const WWidget * w)
     {
       if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
-      {
-        PLOGW << w->objectName() << " : " << std::boolalpha << wali_widget->is_data_valid();
         return !wali_widget->is_data_valid();
-      }
       else
-      {
-        PLOGW << "Not a wali widget: " << w->objectName();
         return false;
-      }
     });
 
-    m_btn_install->setEnabled(it == rng::cend(children));
+    m_btn_install->setEnabled(invalid_count == 0);
   }
 
 public:
