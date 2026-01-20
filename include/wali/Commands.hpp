@@ -320,7 +320,7 @@ struct GetGpuVendor : public ReadCommand
 
   GpuVendor operator()()
   {
-    const auto stat = execute_read("lshw -C display | grep 'vendor: '", [&](const std::string_view m)
+    const auto stat = execute_read("lspci | grep -E 'VGA|Display'", [&](const std::string_view m)
     {
       if (!m.empty())
       {
@@ -330,6 +330,8 @@ struct GetGpuVendor : public ReadCommand
         n_intel += ::strcasestr(m.data(), "intel") ? 1 : 0;
       }
     });
+
+    PLOGW << "GetGpuVendor()";
 
     if (stat == CmdSuccess && n_amd + n_nvidia + n_vm + n_intel == 1)
     {
@@ -342,6 +344,8 @@ struct GetGpuVendor : public ReadCommand
       else
         vendor = GpuVendor::Vm;
     }
+
+    PLOGI << "GPU Vendor: " << (int)vendor;
 
     return vendor;
   }
