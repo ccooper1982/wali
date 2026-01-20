@@ -34,7 +34,7 @@ h3 {
 }
 
 div.home_north {
-    background-color: #295f9d;
+    background-color: #194f8d;
     color: white;
     height: 100px;
     font-size: 24px;
@@ -45,7 +45,7 @@ div.home_north {
 }
 
 div.nav_bar {
-    background-color: #193f7d;
+    background-color: #092f5d;
     color: white;
     display: flex;
     justify-content: center;
@@ -230,18 +230,110 @@ select.packages_confirmed {
     font-size: 12px;
 }
 
-textarea.stage_log {
-    width: 100%;
-    box-sizing: border-box;
-    height: 100px;
-    font: 10px monospace;
+/* Install Widget */
+span.install_status_ready {
+    color: white;
+    padding: 20px;
+    background-color: #191f3d;
+    font: 16px monospace;
+    text-align: center;
 }
 
-span.install_status_ready {
+span.install_status_ready_err {
+    color: white;
+    padding: 20px;
+    background-color: red;
+    font: 16px monospace;
+    text-align: center;
+    border: 5px solid red;
+}
+
+span.install_status_running {
     color: black;
     padding: 20px;
     background-color: white;
     font: 16px monospace;
     text-align: center;
-    border: 5px solid seagreen;
+    border: 5px solid #998400;
+}
+
+span.install_status_fail {
+    color: white;
+    padding: 20px;
+    background-color: red;
+    font: 16px monospace;
+    text-align: center;
+}
+
+span.install_status_complete {
+    color: white;
+    padding: 20px;
+    background-color: seagreen;
+    font: 16px monospace;
+    text-align: center;
+}
+
+span.install_status_partial {
+    color: white;
+    padding: 20px;
+    background-color: #998400;
+    font: 16px monospace;
+    text-align: center;
+}
+
+span.install_status_bootable {
+    color: white;
+    padding: 20px;
+    background-color: #998400;
+    font: 16px monospace;
+    text-align: center;
+}
+
+textarea.stage_log {
+    width: 100%;
+    box-sizing: border-box;
+    height: 100px;
+    font: 10px monospace;
+    border: 1px solid;
+    background-color: #a5a5b0;
+    color: black;
+}
+
+.Wt-panel {
+    /*     border: 1px solid #597fdd; */
+    background: #193f5d none repeat scroll 0%;
+    width: auto;
+    margin: 2px;
+}
+
+.Wt-panel .titlebar {
+    padding: 5px 5px 3px;
+    background: #193f5d;
+    color: #ffffff;
+    font-size: 10pt;
+}
+
+.Wt-panel .body {
+    /* background: #FFFFFF; */
+    padding: 4px 6px 4px;
+    -webkit-backface-visibility: hidden; /* !flicker on Chrome */
+    backface-visibility: hidden; /* warning from zed without this*/
+    clear: left;
+}
+
+.Wt-collapse-button {
+    display: block;
+    flex: none;
+    align-self: center;
+    width: 16px;
+    height: 16px;
+    float: left;
+    background-image: url(collapse.gif);
+    background-repeat: no-repeat;
+    background-position: right center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.Wt-collapsed .Wt-collapse-button {
+    transform: rotate(-90deg);
 }

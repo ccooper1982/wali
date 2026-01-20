@@ -42,6 +42,8 @@
 
 
 static plog::ColorConsoleAppender<WaliFormatter> consoleAppender;
+static WidgetDataPtr data;
+
 
 static void init_logger ()
 {
@@ -49,26 +51,9 @@ static void init_logger ()
 
   if (!init)
   {
-    #ifdef WALI_DEBUG
-      plog::init(plog::verbose, &consoleAppender);
-    #else
-      plog::init(plog::info, &consoleAppender);
-    #endif
+    plog::init(plog::info, &consoleAppender);
+    init = true;
   }
-
-  init = true;
-}
-
-static bool check_programs_exist()
-{
-  ProgramExists check;
-  for (const auto& prog : {"lshw"})
-  {
-    if (!check(prog))
-      return false;
-  }
-
-  return true;
 }
 
 static bool sync_system_clock()
@@ -79,98 +64,13 @@ static bool sync_system_clock()
 
 static std::string startup_checks()
 {
-  if (!check_programs_exist()) // TODO show the missing command(s)
-    return "Not all required commands exist";
-  else if (!PlatformSizeValid{}())
+  if (!PlatformSizeValid{}())
     return "Platform size not found or not 64bit";
-  // else if (!check(check_connection))
-  //   return fail("No active internet connection");
   else if (!sync_system_clock())
     return "Sync clock with timedatectl failed";
   else
     return "";
 }
-
-
-// class MenuWidget : public WContainerWidget
-// {
-//   inline static const constexpr std::string_view Names[] =
-//   {
-//     "Filesystems", "Network", "Accounts",
-//     "Locale", "Video", "Packages"
-//   };
-
-// public:
-//   MenuWidget()
-//   {
-//     resize(600, WLength::Auto);
-
-//     auto btns_layout = setLayout(make_wt<WGridLayout>());
-
-//     btns_layout->setVerticalSpacing(18);
-//     btns_layout->setHorizontalSpacing(18);
-
-//     for (int r = 0 ; r < 2 ; ++r)
-//     {
-//       for (int c = 0 ; c < 3 ; ++c)
-//       {
-//         auto btn = btns_layout->addWidget(make_wt<WPushButton>(Names[c+(r*3)].data()), r, c);
-//         btn->setMinimumSize(100, 40);
-//         btn->setMaximumSize(100, 40);
-//         btn->clicked().connect([this](){ on_config_btn(); });
-//       }
-//     }
-
-//     auto btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 1, 1);
-//     btn_install->resize(100, 40);
-//     btn_install->disable();
-//     btn_install->clicked().connect([this](){ on_install_btn(); });
-//   }
-
-//   // Wt::Event<std::string_view> on_menu_click() { };
-
-// private:
-
-//   void on_config_btn ()
-//   {
-//     // show the widget
-//   }
-
-//   void on_install_btn ()
-//   {
-//     // show the install widget
-//   }
-// };
-
-
-// class HomeWidget : public WContainerWidget
-// {
-// public:
-
-//   HomeWidget()
-//   {
-//     setContentAlignment(AlignmentFlag::Center);
-//     setMargin(0);
-//     setPadding(0);
-
-//     auto layout = setLayout(make_wt<WBorderLayout>());
-//     layout->setContentsMargins(0,0,0,0);
-
-//     auto north_cont = layout->addWidget(make_wt<WContainerWidget>(), LayoutPosition::North);
-//     auto west_cont = layout->addWidget(make_wt<WContainerWidget>(), LayoutPosition::West);
-//     auto central_cont = layout->addWidget(make_wt<WStackedWidget>(), LayoutPosition::Center);
-//     auto east_cont = layout->addWidget(make_wt<WContainerWidget>(), LayoutPosition::East);
-//     auto south_cont = layout->addWidget(make_wt<WContainerWidget>(), LayoutPosition::South);
-
-//     //central_cont->setContentAlignment(AlignmentFlag::Center);
-//     //central_cont->resize(600, WLength::Auto);
-
-//     north_cont->setStyleClass("home_north");
-//     north_cont->setVerticalAlignment(AlignmentFlag::Middle);
-//     north_cont->addWidget(make_wt<WText>("Web Arch Linux Installer"));
-//     south_cont->addWidget(make_wt<WText>(""));
-//   }
-// };
 
 
 class NavBar : public WContainerWidget
@@ -203,9 +103,6 @@ inline static const constexpr std::string_view Names[] =
   "Filesystems", "Network", "Accounts",
   "Locale", "Video", "Packages"
 };
-
-
-static WidgetDataPtr data;
 
 
 class WaliApplication : public Wt::WApplication
@@ -247,9 +144,20 @@ class WaliApplication : public Wt::WApplication
     m_btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 2, 1);
     m_btn_install->resize(100, 40);
     m_btn_install->disable();
-    m_btn_install->clicked().connect([=]()
+    m_btn_install->clicked().connect([=, this]()
     {
-      stack->disable();
+      m_nav_bar->disable();
+      m_nav_bar->hide();
+
+      // recrusively disable all except InstallWidget
+      rng::for_each(stack->children(), [=](WWidget * w)
+      {
+        if (w->objectName() != "Install")
+          w->disable();
+      });
+
+      // InstallWidget is the last in stack
+      stack->setCurrentIndex(stack->count()-1);
     });
 
     // TODO investigate: doesn't work, something else must have focus
@@ -287,6 +195,7 @@ class WaliApplication : public Wt::WApplication
     add_page.operator()<LocaliseWidget>();
     add_page.operator()<VideoWidget>();
     add_page.operator()<PackagesWidget>();
+    add_page.operator()<InstallWidget>();
 
     return stack;
   }
@@ -310,96 +219,60 @@ public:
   WaliApplication(const Wt::WEnvironment& env) : WApplication(env)
   {
     setTitle("wali");
-
     useStyleSheet("wali.css");
 
-    enableUpdates(true);
-
-    data = std::make_shared<WidgetData>();
-
-    root()->setMargin(0);
-    root()->setPadding(0);
-
     auto layout = root()->setLayout(make_wt<WVBoxLayout>());
-    layout->setSpacing(0);
-    layout->setContentsMargins(0,0,0,0);
 
-
-    auto header = layout->addWidget(make_wt<WContainerWidget>());
-    auto title = layout->addWidget(make_wt<WContainerWidget>(), 0, AlignmentFlag::Center);
-    auto stack = layout->addWidget(create_stack(), 1, AlignmentFlag::Center);
-    layout->addStretch(2);
-
-    header->setStyleClass("home_north");
-    header->addWidget(make_wt<WText>("Web Arch Linux Installer"));
-
-    title->setStyleClass("nav_bar");
-    title->setHeight(50);
-    // title->setPadding(20, Side::Bottom);
-
-    auto nav = title->addWidget(make_wt<NavBar>(stack));
-
-    stack->setMargin(0);
-    stack->setPadding(0);
-    stack->currentWidgetChanged().connect([=](WWidget * w)
+    if (const auto err = startup_checks() ; !err.empty())
     {
-      nav->show_link(w->objectName() != "Home");
-    });
+      PLOGE << err;
+      layout->addWidget(make_wt<WText>(std::format("<h1>Startup checks failed</h1> <br/> <h2>{}</h2>", err)));
+      layout->addStretch(1);
+    }
+    else
+    {
+      enableUpdates(true);
 
-    // auto hbox = root()->setLayout(make_wt<Wt::WHBoxLayout>());
-    // hbox->setSpacing(0);
-    // hbox->setContentsMargins(0, 0, 0, 0);
+      data = std::make_shared<WidgetData>();
 
-    // if (const auto err = startup_checks(); !err.empty())
-    // {
-    //   hbox->addWidget(make_wt<WText>(std::format("<h1>Startup checks failed</h1> <br/> <h2>{}</h2>", err)));
-    //   hbox->addStretch(1);
-    // }
-    // else
-    // {
-    //   m_widgets = new Widgets;
+      root()->setMargin(0);
+      root()->setPadding(0);
 
-    //   // menu on left, selected menu displays on right
-    //   auto lhs = hbox->addWidget(make_wt<WContainerWidget>());
-    //   auto rhs = hbox->addLayout(make_wt<WVBoxLayout>());
+      layout->setContentsMargins(0,0,0,0);
+      layout->setSpacing(0);
 
-    //   lhs->setStyleClass("menu");
-    //   rhs->setSpacing(0);
+      auto header = layout->addWidget(make_wt<WContainerWidget>());
+      auto title = layout->addWidget(make_wt<WContainerWidget>(), 0, AlignmentFlag::Center);
+      // auto waffle = layout->addWidget(make_wt<WText>(intro_waffle), 0, AlignmentFlag::Center);
+      // waffle->setWidth(600);
 
-    //   // auto wali_widget_text = rhs->addWidget(make_wt<WText>("hello"));
-    //   // wali_widget_text->setStyleClass("page_title");
-    //   // wali_widget_text->setInline(true);
+      layout->addSpacing(50);
+      auto stack = layout->addWidget(create_stack(), 1, AlignmentFlag::Center);
+      layout->addStretch(2);
 
-    //   auto wali_widgets = rhs->addWidget(make_wt<WStackedWidget>());
-    //   hbox->addStretch(1);
+      header->setStyleClass("home_north");
+      header->addWidget(make_wt<WText>("Web Arch Linux Installer"));
 
-    //   wali_widgets->setStyleClass("menu_content");
-    //   wali_widgets->setPadding(0);
+      title->setStyleClass("nav_bar");
+      title->setHeight(50);
+      // title->setPadding(20, Side::Bottom);
 
-    //   auto menu = lhs->addNew<WMenu>(wali_widgets);
-    //   menu->setStyleClass("menu");
+      m_nav_bar = title->addWidget(make_wt<NavBar>(stack));
 
-    //   m_widgets->create_home_widget(menu);
-    //   m_widgets->get_install()->install_state().connect([menu](InstallState state)
-    //   {
-    //     if (state == InstallState::Fail || state == InstallState::Partial)
-    //     {
-    //       menu->enable();
-    //       menu->show();
-    //     }
-    //     else
-    //     {
-    //       menu->disable();
-    //       menu->hide();
-    //     }
-    //   });
-    // }
+      stack->setMargin(0);
+      stack->setPadding(0);
+      stack->currentWidgetChanged().connect([this](WWidget * w)
+      {
+        m_nav_bar->show_link(w->objectName() != "Home");
+      });
+    }
   }
 
 
 private:
   WStackedWidget * m_stack{};
   WPushButton * m_btn_install{};
+  NavBar * m_nav_bar{};
 };
 
 

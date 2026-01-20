@@ -39,9 +39,9 @@ struct StageLog : public WContainerWidget
     m_panel->setCollapsed(collapsed);
 
     m_text = m_panel->setCentralWidget(make_wt<WTextArea>());
-    // m_text->setId("stage_log");
     m_text->setReadOnly(true);
     m_text->setStyleClass("stage_log");
+    // m_text->setId("stage_log");
     // WApplication::instance()->doJavaScript(AutoScroll);
 
     m_log.reserve(100);
@@ -85,7 +85,6 @@ public:
 
 private:
 
-  bool is_config_valid();
   void install ();
 
 private:
@@ -94,11 +93,7 @@ private:
   void on_install_status(const InstallState state, const std::string sid);
   inline void on_log(const std::string msg, const InstallLogLevel level, const std::string sid);
 
-  void set_install_status(const std::string_view stat, const std::string_view css_class)
-  {
-    m_install_status->setText(stat.data());
-    m_install_status->setStyleClass(css_class.data());
-  }
+  void set_install_status(const std::string_view stat, const std::string_view css_class);
 
 private:
   Install m_install;
