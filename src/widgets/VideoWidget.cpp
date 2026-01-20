@@ -220,33 +220,35 @@ void VideoWidget::set_selected_driver(WRadioButton * btn)
   WApplication::instance()->resumeRendering();
 }
 
-// VideoData VideoWidget::get_data() const
-// {
-//   const auto& selected = m_group_company->checkedButton()->text().toUTF8();
 
-//   WString name;
+void VideoWidget::set_data()
+{
+  const auto& selected = m_group_company->checkedButton()->text().toUTF8();
 
-//   if (selected == "AMD")
-//   {
-//     name = m_amd_driver->currentText();
-//     return { .drivers = AmdDriverMap.at(name.toUTF8()) };
-//   }
-//   else if (selected == "Nvidia")
-//   {
-//     name = m_nvidia_driver->currentText();
-//     return { .drivers = NvidiaDriverMap.at(name.toUTF8()) };
-//   }
-//   else if (selected == "Intel")
-//   {
-//     name = m_intel_driver->currentText();
-//     return { .drivers = IntelDriverMap.at(name.toUTF8()) };
-//   }
-//   else
-//   {
-//     PLOGE << "VideoWidget::get_data() should not be here";
-//     return {};
-//   }
-// }
+  WString name;
+
+  if (selected == "AMD")
+  {
+    name = m_amd_driver->currentText();
+    m_data->video.drivers = AmdDriverMap.at(name.toUTF8());
+  }
+  else if (selected == "Nvidia")
+  {
+    name = m_nvidia_driver->currentText();
+    m_data->video.drivers = NvidiaDriverMap.at(name.toUTF8());
+  }
+  else if (selected == "Intel")
+  {
+    name = m_intel_driver->currentText();
+    m_data->video.drivers = IntelDriverMap.at(name.toUTF8());
+  }
+  else
+  {
+    PLOGE << "VideoWidget::get_data() should not be here";
+    m_data->video.drivers.clear();
+  }
+}
+
 
 bool VideoWidget::check_validity() const
 {

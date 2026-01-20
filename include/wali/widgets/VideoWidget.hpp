@@ -22,6 +22,7 @@ private:
   void set_selected_driver(WRadioButton * btn);
   void set_waffle();
   bool check_validity() const;
+  void set_data();
 
 private:
   std::shared_ptr<WButtonGroup> m_group_company;
