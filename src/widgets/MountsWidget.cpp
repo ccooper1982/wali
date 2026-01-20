@@ -19,7 +19,7 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
   m_table = layout->addWidget(make_wt<WTable>());
   m_table->setStyleClass("table_partitions");
 
-  auto btn_manage = layout->addWidget(make_wt<WPushButton>("Manage Partitions"), 0, Wt::AlignmentFlag::Center);
+  auto btn_manage = layout->addWidget(make_wt<WPushButton>("Manage"), 0, Wt::AlignmentFlag::Center);
   btn_manage->setWidth(160);
   btn_manage->clicked().connect(this, [=,this]()
   {
@@ -137,17 +137,17 @@ void MountsWidget::validate_selection()
 
 void MountsWidget::set_data()
 {
-  // const auto root_dev = m_root->get_device();
-  // const auto root_fs = m_root->get_fs();
-  // const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
-  // const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
+  const auto root_dev = m_root->get_device();
+  const auto root_fs = m_root->get_fs();
+  const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
+  const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
 
-  // auto& data = m_data->mounts;
-  // data.boot_dev = m_boot->get_device();
-  // data.boot_fs = m_boot->get_fs();
-  // data.root_dev = root_dev;
-  // data.root_fs = root_fs;
-  // data.home_dev = home_dev;
-  // data.home_fs = home_fs;
-  // data.home_target = m_home->get_mount_target();
+  auto& data = m_data->mounts;
+  data.boot_dev = m_boot->get_device();
+  data.boot_fs = m_boot->get_fs();
+  data.root_dev = root_dev;
+  data.root_fs = root_fs;
+  data.home_dev = home_dev;
+  data.home_fs = home_fs;
+  data.home_target = m_home->get_mount_target();
 }
