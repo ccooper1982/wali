@@ -13,7 +13,7 @@ a:active {
 }
 
 body {
-    background-color: #393f4d;
+    background-color: #0c1824;
     /*background-image: url("background.jpg");*/
     font:
         14px arial,
@@ -34,7 +34,7 @@ h3 {
 }
 
 div.home_north {
-    background-color: #194f8d;
+    background-color: #152e45;
     color: white;
     height: 100px;
     font-size: 24px;
@@ -45,7 +45,7 @@ div.home_north {
 }
 
 div.nav_bar {
-    background-color: #092f5d;
+    background-color: #416c91;
     color: white;
     display: flex;
     justify-content: center;
@@ -66,7 +66,7 @@ input.partition_size {
 
 button {
     appearance: none;
-    background-color: #ac8818;
+    background-color: #294c6a;
     border: 1px solid rgba(27, 31, 35, 0.15);
     border-radius: 6px;
     box-shadow:
@@ -234,7 +234,7 @@ select.packages_confirmed {
 span.install_status_ready {
     color: white;
     padding: 20px;
-    background-color: #191f3d;
+    background-color: #416c91;
     font: 16px monospace;
     text-align: center;
 }
