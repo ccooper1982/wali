@@ -1,25 +1,17 @@
-#include "wali/Install.hpp"
-#include "wali/widgets/AccountsWidget.hpp"
-#include "wali/widgets/LocaliselWidget.hpp"
-#include "wali/widgets/PackagesWidget.hpp"
-#include "wali/widgets/WaliWidget.hpp"
-#include "wali/widgets/WidgetData.hpp"
+#include <algorithm>
+#include <concepts>
+#include <ranges>
+#include <string>
+#include <string_view>
+
 #include <Wt/WAnchor.h>
-#include <Wt/WContainerWidget.h>
 #include <Wt/WEnvironment.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WGridLayout.h>
 #include <Wt/WBorderLayout.h>
-#include <Wt/WHBoxLayout.h>
 #include <Wt/WLength.h>
 #include <Wt/WLink.h>
 #include <Wt/WSignal.h>
-#include <Wt/WText.h>
-#include <algorithm>
-#include <concepts>
-#include <ios>
-#include <math.h>
-
 #include <Wt/WApplication.h>
 #include <Wt/WMenu.h>
 #include <Wt/WMenuItem.h>
@@ -27,18 +19,21 @@
 #include <Wt/WEvent.h>
 #include <Wt/WServer.h>
 #include <Wt/WStackedWidget.h>
-#include <memory>
 #include <plog/Init.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
-
-#include <ranges>
-#include <string>
-#include <string_view>
 #include <wali/Commands.hpp>
-#include <wali/DiskUtils.hpp>
 #include <wali/LogFormat.hpp>
 #include <wali/widgets/Common.hpp>
-#include <wali/widgets/Widgets.hpp>
+#include <wali/widgets/AccountsWidget.hpp>
+#include <wali/widgets/InstallWidget.hpp>
+#include <wali/widgets/LocaliselWidget.hpp>
+#include <wali/widgets/MountsWidget.hpp>
+#include <wali/widgets/MountsWidget.hpp>
+#include <wali/widgets/NetworkWidget.hpp>
+#include <wali/widgets/PackagesWidget.hpp>
+#include <wali/widgets/VideoWidget.hpp>
+#include <wali/widgets/WaliWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
 
 
 static plog::ColorConsoleAppender<WaliFormatter> consoleAppender;
@@ -205,9 +200,7 @@ class WaliApplication : public Wt::WApplication
   void on_validity(const bool valid)
   {
     #ifndef WALI_SKIP_VALIDATION
-      const auto& children = m_stack->children();
-
-      const auto invalid_count = rng::count_if(children, [](const WWidget * w)
+      const auto have_invalid = rng::any_of(m_stack->children(), [](const WWidget * w)
       {
         if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
           return !wali_widget->is_data_valid();
@@ -215,7 +208,7 @@ class WaliApplication : public Wt::WApplication
           return false;
       });
 
-      m_btn_install->setEnabled(invalid_count == 0);
+      m_btn_install->setEnabled(!have_invalid);
     #endif
   }
 

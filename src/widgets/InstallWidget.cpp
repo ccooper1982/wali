@@ -1,4 +1,5 @@
 #include "wali/Common.hpp"
+#include "wali/widgets/Common.hpp"
 #include "wali/widgets/WaliWidget.hpp"
 #include <functional>
 #include <mutex>
@@ -40,18 +41,23 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_install_status->addStyleClass("install_status_partial");
   m_install_status->setStyleClass("install_status_ready");
 
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_FS, false)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_MOUNT)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACSTRAP)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_FSTAB)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_ROOT_ACC)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_BOOT_LOADER)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_USER_ACC)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_LOCALISE)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_VIDEO)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_NETWORK)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACKAGES)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_UNMOUNT)));
+  auto create_log = [](const std::string_view name, const std::size_t size = 100)
+  {
+    return make_wt<StageLog>(name, true, size);
+  };
+
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FS)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_MOUNT)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACSTRAP, 25'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FSTAB)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_ROOT_ACC)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_BOOT_LOADER, 2'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_USER_ACC)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 5'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
 
   layout->addStretch(1);
 

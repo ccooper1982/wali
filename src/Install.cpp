@@ -14,7 +14,6 @@
 #include <wali/Commands.hpp>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
-#include <wali/widgets/Widgets.hpp>
 #include <wali/widgets/WidgetData.hpp>
 
 

@@ -30,7 +30,7 @@ struct StageLog : public WContainerWidget
   //   textArea.scrollTop = document.getElementById('stage_log').scrollHeight;
   // )";
 
-  StageLog(const std::string_view name, const bool collapsed = true)
+  StageLog(const std::string_view name, const bool collapsed, const std::size_t init_size)
   {
     // layout?
     m_panel = addWidget(make_wt<WPanel>());
@@ -44,7 +44,7 @@ struct StageLog : public WContainerWidget
     // m_text->setId("stage_log");
     // WApplication::instance()->doJavaScript(AutoScroll);
 
-    m_log.reserve(100);
+    m_log.reserve(init_size);
   }
 
   void add(const std::string_view msg, const InstallLogLevel level)
