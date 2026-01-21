@@ -143,7 +143,9 @@ class WaliApplication : public Wt::WApplication
 
     m_btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 2, 1);
     m_btn_install->resize(100, 40);
-    m_btn_install->disable();
+    #ifndef WALI_SKIP_VALIDATION
+      m_btn_install->disable();
+    #endif
     m_btn_install->clicked().connect([=, this]()
     {
       m_nav_bar->disable();
@@ -202,17 +204,19 @@ class WaliApplication : public Wt::WApplication
 
   void on_validity(const bool valid)
   {
-    const auto& children = m_stack->children();
+    #ifndef WALI_SKIP_VALIDATION
+      const auto& children = m_stack->children();
 
-    const auto invalid_count = rng::count_if(children, [](const WWidget * w)
-    {
-      if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
-        return !wali_widget->is_data_valid();
-      else
-        return false;
-    });
+      const auto invalid_count = rng::count_if(children, [](const WWidget * w)
+      {
+        if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
+          return !wali_widget->is_data_valid();
+        else
+          return false;
+      });
 
-    m_btn_install->setEnabled(invalid_count == 0);
+      m_btn_install->setEnabled(invalid_count == 0);
+    #endif
   }
 
 public:

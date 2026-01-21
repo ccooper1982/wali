@@ -2,7 +2,7 @@
 
 VERSION=v0.6
 
-meson configure --buildtype=release build
+meson configure -Dskip_validation=false -Ddisable_install=false --buildtype=release build
 
 if [ $? -ne 0 ]; then
     exit 1
@@ -19,7 +19,7 @@ else
 
     mkdir -p release/wali/wwwroot
 
-    cp -r wwwroot/* release/wali
+    cp -r wwwroot release/wali
     cp build/wali scripts/start.sh scripts/install.sh release/wali
 
     cd release

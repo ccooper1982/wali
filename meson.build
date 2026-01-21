@@ -6,6 +6,14 @@ project(
   default_options: ['cpp_std=c++26'],
 ) # TODO warning_level/werror
 
+if (get_option('skip_validation'))
+  add_project_arguments('-DWALI_SKIP_VALIDATION', language: 'cpp')
+endif
+
+if (get_option('disable_install'))
+  add_project_arguments('-DWALI_DISABLE_INSTALL', language: 'cpp')
+endif
+
 # plog logging library
 subproject('sergiusthebest-plog')
 plog_dep = dependency('plog') #header only, but points meson to the include dir

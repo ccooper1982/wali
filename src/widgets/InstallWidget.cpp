@@ -18,7 +18,11 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
   m_install_btn->clicked().connect([this]()
   {
-    install();
+    #ifndef WALI_DISABLE_INSTALL
+      install();
+    #else
+      m_install_status->setText("Install disabled");
+    #endif
   });
 
   m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));

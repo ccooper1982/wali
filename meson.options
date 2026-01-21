@@ -1,0 +1,2 @@
+option('skip_validation', type : 'boolean', value:true, description : 'Enable Install button without validation')
+option('disable_install', type : 'boolean', value:false, description : 'Prevent install process')
