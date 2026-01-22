@@ -1,5 +1,5 @@
 #include <wali/widgets/NetworkWidget.hpp>
-
+#include <Wt/WCheckBox.h>
 
 NetworkWidget::NetworkWidget(WidgetDataPtr data) : WaliWidget(data, "Network")
 {

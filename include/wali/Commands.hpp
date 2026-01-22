@@ -1,12 +1,18 @@
 #ifndef WALI_COMMANDS_H
 #define WALI_COMMANDS_H
 
+#include <algorithm>
+#include <cctype>
 #include <cstdint>
+#include <cwctype>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <functional>
+#include <ios>
 #include <optional>
+#include <ranges>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -247,62 +253,6 @@ struct GetKeyMaps : public ReadCommand
   }
 };
 
-// general
-struct PlatformSizeValid : public ReadCommand
-{
-  bool operator()()
-  {
-    static const std::filesystem::path file {"/sys/firmware/efi/fw_platform_size"};
-
-    int size{0};
-
-    if (std::filesystem::exists(file) && std::filesystem::file_size(file))
-    {
-      std::string str;
-      // should only ever be one line in this file
-      std::ifstream stream{file};
-      if (std::getline(stream, str); !str.empty())
-        size = std::stoi(str);
-    }
-
-    return size == 64;
-  }
-};
-
-
-struct GetCpuVendor : public ReadCommand
-{
-  CpuVendor operator()()
-  {
-    CpuVendor vendor = CpuVendor::None;
-
-    const auto stat = execute_read_line("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
-    {
-      if (line.find("AMD") != std::string::npos)
-        vendor = CpuVendor::Amd;
-      else if (line.find("Intel") != std::string::npos)
-        vendor = CpuVendor::Intel;
-    });
-
-    return stat == CmdSuccess ? vendor : CpuVendor::None;
-  }
-};
-
-
-struct ProgramExists : public ReadCommand
-{
-  bool operator()(const std::string_view program)
-  {
-    bool exists{false};
-    const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
-    {
-      exists = !line.empty() ;
-    });
-
-    return stat == CmdSuccess && exists;
-  }
-};
-
 
 struct Reboot : public ReadCommand
 {
@@ -331,8 +281,6 @@ struct GetGpuVendor : public ReadCommand
       }
     });
 
-    PLOGW << "GetGpuVendor()";
-
     if (stat == CmdSuccess && n_amd + n_nvidia + n_vm + n_intel == 1)
     {
       if (n_amd)
@@ -344,8 +292,6 @@ struct GetGpuVendor : public ReadCommand
       else
         vendor = GpuVendor::Vm;
     }
-
-    PLOGI << "GPU Vendor: " << (int)vendor;
 
     return vendor;
   }
@@ -438,6 +384,101 @@ struct Unmount : public ReadCommand
   }
 };
 
+// general
+struct PlatformSizeValid : public ReadCommand
+{
+  bool operator()()
+  {
+    static const std::filesystem::path file {"/sys/firmware/efi/fw_platform_size"};
+
+    int size{0};
+
+    if (std::filesystem::exists(file) && std::filesystem::file_size(file))
+    {
+      std::string str;
+      // should only ever be one line in this file
+      std::ifstream stream{file};
+      if (std::getline(stream, str); !str.empty())
+        size = std::stoi(str);
+    }
+
+    return size == 64;
+  }
+};
+
+
+struct GetCpuVendor : public ReadCommand
+{
+  CpuVendor operator()()
+  {
+    CpuVendor vendor = CpuVendor::None;
+
+    const auto stat = execute_read_line("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
+    {
+      if (line.find("AMD") != std::string::npos)
+        vendor = CpuVendor::Amd;
+      else if (line.find("Intel") != std::string::npos)
+        vendor = CpuVendor::Intel;
+    });
+
+    return stat == CmdSuccess ? vendor : CpuVendor::None;
+  }
+};
+
+
+struct ProgramExists : public ReadCommand
+{
+  bool operator()(const std::string_view program)
+  {
+    bool exists{false};
+    const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
+    {
+      exists = !line.empty() ;
+    });
+
+    return stat == CmdSuccess && exists;
+  }
+};
+
+
+struct CountPackages : public ReadCommand
+{
+  std::size_t operator()(const fs::path root_dev)
+  {
+    std::size_t n{};
+
+    Chroot{}("pacman -Q | wc -l", [&n](const std::string_view m)
+    {
+      if (!m.empty())
+        n = std::stoul(std::string{m.data(), m.size()});
+    });
+
+    return n;
+  }
+};
+
+
+struct GetDevSpace : public ReadCommand
+{
+  std::pair<std::string, std::string> operator()(const std::string_view dev)
+  {
+    std::string size, used;
+
+    Chroot{}(std::format("df -h --output=size {}", dev), [&](const std::string_view m)
+    {
+      if (static int i{0}; !m.empty() && i++ == 1)
+        size = m;
+    });
+
+    Chroot{}(std::format("df -h --output=used {}", dev), [&](const std::string_view m)
+    {
+      if (static int i{0}; !m.empty() && i++ == 1)
+        used = m;
+    });
+
+    return {size, used};
+  }
+};
 
 
 #endif

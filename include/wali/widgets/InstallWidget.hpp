@@ -21,8 +21,11 @@
 #include <wali/Install.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>
+#include <Wt/WStackedWidget.h>
 
 struct Widgets;
+class SummaryWidget;
+
 
 struct StageLog : public WContainerWidget
 {
@@ -78,13 +81,13 @@ class InstallWidget : public WaliWidget
 public:
   InstallWidget(WidgetDataPtr data) ;
 
-  Signal<InstallState>& install_state()
-  {
-    return m_on_install_state;
-  }
+  void update_data();
+
+  Signal<InstallState>& install_state() { return m_on_install_state; }
 
 private:
 
+  void create_logs(WVBoxLayout * layout);
   void install ();
 
 private:
@@ -107,6 +110,8 @@ private:
   std::size_t m_log{};
   std::mutex m_post_lock;
   std::vector<StageLog*> m_stage_logs;
+  WStackedWidget * m_stack;
+  SummaryWidget * m_summary;
 };
 
 #endif

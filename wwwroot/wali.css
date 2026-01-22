@@ -234,57 +234,34 @@ select.packages_confirmed {
 span.install_status_ready {
     color: white;
     padding: 20px;
-    background-color: #416c91;
     font: 16px monospace;
     text-align: center;
-}
-
-span.install_status_ready_err {
-    color: white;
-    padding: 20px;
-    background-color: red;
-    font: 16px monospace;
-    text-align: center;
-    border: 5px solid red;
 }
 
 span.install_status_running {
-    color: black;
+    color: white;
     padding: 20px;
-    background-color: white;
     font: 16px monospace;
     text-align: center;
-    border: 5px solid #998400;
 }
 
 span.install_status_fail {
-    color: white;
+    color: red;
     padding: 20px;
-    background-color: red;
     font: 16px monospace;
     text-align: center;
 }
 
 span.install_status_complete {
-    color: white;
+    color: seagreen;
     padding: 20px;
-    background-color: seagreen;
     font: 16px monospace;
     text-align: center;
 }
 
 span.install_status_partial {
-    color: white;
+    color: #998400;
     padding: 20px;
-    background-color: #998400;
-    font: 16px monospace;
-    text-align: center;
-}
-
-span.install_status_bootable {
-    color: white;
-    padding: 20px;
-    background-color: #998400;
     font: 16px monospace;
     text-align: center;
 }
@@ -336,4 +313,18 @@ textarea.stage_log {
 
 .Wt-collapsed .Wt-collapse-button {
     transform: rotate(-90deg);
+}
+
+span.install_summary_lbl {
+    /*     background-color: #193f5d; */
+    padding: 8px;
+    font-weight: 600;
+    border-top: 1px solid #294f6d;
+    border-right: 1px solid #294f6d;
+}
+
+span.install_summary_value {
+    /*     background-color: #294f6d; */
+    padding: 8px;
+    border-top: 1px solid #294f6d;
 }

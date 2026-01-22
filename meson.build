@@ -14,6 +14,10 @@ if (get_option('disable_install'))
   add_project_arguments('-DWALI_DISABLE_INSTALL', language: 'cpp')
 endif
 
+if (get_option('fake_data'))
+  add_project_arguments('-DWALI_FAKE_DATA', language: 'cpp')
+endif
+
 # plog logging library
 subproject('sergiusthebest-plog')
 plog_dep = dependency('plog') #header only, but points meson to the include dir

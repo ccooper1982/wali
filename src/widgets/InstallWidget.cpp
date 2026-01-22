@@ -1,10 +1,98 @@
-#include "wali/Common.hpp"
-#include "wali/widgets/Common.hpp"
-#include "wali/widgets/WaliWidget.hpp"
+
 #include <functional>
 #include <mutex>
-#include <wali/widgets/WidgetData.hpp>
+#include <sstream>
+#include <string>
+#include <chrono>
+#include <Wt/WHBoxLayout.h>
+#include <Wt/WGlobal.h>
+#include <Wt/WLength.h>
+#include <Wt/WLineEdit.h>
+#include <Wt/WText.h>
+#include <Wt/WVBoxLayout.h>
+#include <wali/Common.hpp>
+#include <wali/widgets/Common.hpp>
+#include <wali/Install.hpp>
 #include <wali/widgets/InstallWidget.hpp>
+#include <wali/widgets/WaliWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
+
+
+class SummaryWidget : public WContainerWidget
+{
+  // TODO 1. this probably use a table instead of labels
+  //      2. maybe with a model for the data
+  //      3. maybe Install::install() should set package count and disk space in WidgetData
+public:
+  SummaryWidget(WidgetDataPtr data) : m_data(data)
+  {
+    resize(400, WLength::Auto);
+
+    auto layout = setLayout(make_wt<WVBoxLayout>());
+    layout->setSpacing(0);
+    layout->setContentsMargins(0,0,0,0);
+
+    auto add_pair = [=](const std::string_view label, const std::string_view val = "")
+    {
+      auto pair_layout = layout->addLayout(make_wt<WHBoxLayout>());
+      pair_layout->setSpacing(0);
+
+      auto lbl_widget = pair_layout->addWidget(make_wt<WLabel>(label.data()), 0, Wt::AlignmentFlag::Middle);
+      auto lbl_value = pair_layout->addWidget(make_wt<WLabel>(val.data()), 1, Wt::AlignmentFlag::Middle);
+
+      lbl_widget->setWidth(120);
+      lbl_widget->setStyleClass("install_summary_lbl");
+      lbl_value->setStyleClass("install_summary_value");
+
+      return lbl_value;
+    };
+
+    m_root = add_pair("Root Password");
+    m_user_username = add_pair("Username");
+    m_user_password = add_pair("Password");
+    m_packages = add_pair("Packages");
+    m_duration = add_pair("Duration");
+    m_root_dev_space = add_pair("Root");
+
+    layout->addStretch(1);
+  }
+
+  void update_data()
+  {
+    auto duration_string = [](const std::chrono::seconds d)
+    {
+      namespace chrono = std::chrono;
+
+      const auto m = chrono::duration_cast<chrono::minutes>(d);
+      const auto s = d - chrono::duration_cast<chrono::seconds>(m);
+
+      std::ostringstream ss;
+      ss << m << ' ' << s;
+      return ss.str();
+    };
+
+    m_root->setText(m_data->accounts.root_pass);
+    m_user_username->setText(m_data->accounts.user_username);
+    m_user_password->setText(m_data->accounts.user_pass);
+    m_packages->setText(std::to_string(m_data->summary.package_count));
+    m_duration->setText(duration_string(m_data->summary.duration));
+    m_root_dev_space->setText(std::format("{} / {}", m_data->summary.root_used, m_data->summary.root_size));
+  }
+
+  void set_duration()
+  {
+
+  }
+
+private:
+  WidgetDataPtr m_data;
+  WLabel *  m_root,
+         *  m_user_username,
+         *  m_user_password,
+         *  m_packages,
+         *  m_duration,
+         *  m_root_dev_space;
+};
 
 
 InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
@@ -12,6 +100,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   resize(800, WLength::Auto);
 
   auto layout = setLayout(make_wt<WVBoxLayout>());
+  layout->setContentsMargins(10,0,0,0);
 
   // buttons
   auto controls_layout = layout->addLayout(make_wt<WHBoxLayout>());
@@ -33,7 +122,10 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   controls_layout->addStretch(1);
 
   // status text and logs
-  m_install_status = layout->addWidget(make_wt<WText>());
+  // TODO move status into summary
+  //      check we need all these styles
+  m_install_status = layout->addWidget(make_wt<WText>(),  0, AlignmentFlag::Center);
+  m_install_status->setWidth(400);
   m_install_status->addStyleClass("install_status_ready");
   m_install_status->addStyleClass("install_status_running");
   m_install_status->addStyleClass("install_status_fail");
@@ -41,6 +133,25 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_install_status->addStyleClass("install_status_partial");
   m_install_status->setStyleClass("install_status_ready");
 
+  m_stack = layout->addWidget(make_wt<WStackedWidget>(), 1, AlignmentFlag::Center);
+
+  auto logs_cont = m_stack->addWidget(make_wt<WContainerWidget>());
+  logs_cont->setWidth(600);
+
+  m_summary = m_stack->addWidget(make_wt<SummaryWidget>(data));
+
+  auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
+  create_logs(log_layout);
+
+  // m_stack->setCurrentIndex(1); // TODO TEMP TEST
+
+  layout->addStretch(1);
+
+  set_valid();
+}
+
+void InstallWidget::create_logs(WVBoxLayout * layout)
+{
   auto create_log = [](const std::string_view name, const std::size_t size = 100)
   {
     return make_wt<StageLog>(name, true, size);
@@ -58,11 +169,15 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 5'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
-
   layout->addStretch(1);
-
-  set_valid();
 }
+
+
+void InstallWidget::update_data()
+{
+  m_summary->update_data();
+}
+
 
 void InstallWidget::install ()
 {
@@ -192,6 +307,12 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
     set_install_status(status, css_class);
 
     m_install_btn->setEnabled(allow_install);
+
+    if (state == InstallState::Complete)
+    {
+      update_data();
+      m_stack->setCurrentIndex(1);
+    }
 
     WApplication::instance()->triggerUpdate();
 

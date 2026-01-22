@@ -2,6 +2,7 @@
 
 #include "wali/DiskUtils.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -19,6 +20,9 @@
 
 void Install::install(InstallHandlers handlers, WidgetDataPtr data)
 {
+  namespace chrono = std::chrono;
+  using clock = chrono::steady_clock;
+
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
@@ -43,46 +47,58 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
     return state == StageStatus::Complete;
   };
 
-  bool minimal{}, extra{};
+  InstallState state = InstallState::Fail;
+  auto start = clock::now();
 
   try
   {
     // TODO swap, user shell
-
     on_state(InstallState::Running);
 
     m_tree = DiskUtils::probe();
 
-    minimal = exec_stage(&Install::filesystems,   STAGE_FS) &&
-              exec_stage(&Install::mount,         STAGE_MOUNT) &&
-              exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-              exec_stage(&Install::fstab,         STAGE_FSTAB) &&
-              exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
-              exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
+    bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
+                    exec_stage(&Install::mount,         STAGE_MOUNT) &&
+                    exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
+                    exec_stage(&Install::fstab,         STAGE_FSTAB) &&
+                    exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
+                    exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
+
+    state = minimal ? InstallState::Partial : InstallState::Fail;
 
     if (minimal)
     {
       on_state(InstallState::Bootable);
 
-      extra = exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
-              exec_stage(&Install::localise,      STAGE_LOCALISE) &&
-              exec_stage(&Install::video,         STAGE_VIDEO) &&
-              exec_stage(&Install::network,       STAGE_NETWORK) &&
-              exec_stage(&Install::packages,      STAGE_PACKAGES);
+      bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
+                    exec_stage(&Install::localise,      STAGE_LOCALISE) &&
+                    exec_stage(&Install::video,         STAGE_VIDEO) &&
+                    exec_stage(&Install::network,       STAGE_NETWORK) &&
+                    exec_stage(&Install::packages,      STAGE_PACKAGES);
+
+      state = extra ? InstallState::Complete : InstallState::Partial;
     }
   }
   catch (const std::exception& ex)
   {
     log_error(std::format("Unknown error: {}", ex.what()));
+    state = InstallState::Fail;
   }
+
+  if (state != InstallState::Fail)
+  {
+    const auto [size, used] = GetDevSpace{}(m_data->mounts.root_dev);
+    m_data->summary.root_size = size;
+    m_data->summary.root_used = used;
+    m_data->summary.package_count = CountPackages{}(m_data->mounts.root_dev);
+  }
+
+  m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
 
   // we always want to do this, and ignore any errors
   exec_stage(&Install::unmount, STAGE_UNMOUNT);
 
-  if (extra)
-    on_state(InstallState::Complete);
-  else
-    on_state(minimal ? InstallState::Partial : InstallState::Fail);
+  on_state(state);
 }
 
 
@@ -127,13 +143,9 @@ bool Install::create_home_filesystem()
   const MountData& data = m_data->mounts;
 
   if (data.home_target == HomeMountTarget::Existing)
-  {
     log_info(std::format("/home -> {}", data.home_dev));
-  }
-  else if(data.home_dev == data.root_dev)
-  {
-    log_info(std::format("/home -> {} with {}", data.home_dev, data.home_fs));
-  }
+  else if(data.home_target == HomeMountTarget::Root)
+    log_info(std::format("/home -> {} with {}", data.root_dev, data.root_fs));
   else
   {
     // new partition
@@ -187,7 +199,7 @@ bool Install::mount()
   {
     mounted_boot = do_mount(data.boot_dev, EfiMnt.string());
 
-    if (data.home_dev != data.root_dev)
+    if (data.home_target != HomeMountTarget::Root)
       mounted_home = do_mount(data.home_dev, HomeMnt.string());
   }
 

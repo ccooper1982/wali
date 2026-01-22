@@ -1,3 +1,4 @@
+#include "wali/Common.hpp"
 #include <algorithm>
 #include <concepts>
 #include <ranges>
@@ -146,11 +147,16 @@ class WaliApplication : public Wt::WApplication
       m_nav_bar->disable();
       m_nav_bar->hide();
 
-      // recrusively disable all except InstallWidget
+      // recursively disable all except InstallWidget
       rng::for_each(stack->children(), [=](WWidget * w)
       {
         if (w->objectName() != "Install")
           w->disable();
+
+        // if (w->objectName() == "Install")
+        //   dynamic_cast<InstallWidget*>(w)->update_data();
+        // else
+        //   w->disable();
       });
 
       // InstallWidget is the last in stack
@@ -262,6 +268,20 @@ public:
       {
         m_nav_bar->show_link(w->objectName() != "Home");
       });
+
+      #ifdef WALI_FAKE_DATA
+        data->mounts.boot_dev = "/dev/sda1";
+        data->mounts.root_dev = "/dev/sda2";
+        data->mounts.boot_fs = "vfat";
+        data->mounts.root_fs = "ext4";
+        data->mounts.home_target = HomeMountTarget::Root;
+        data->accounts.user_username = "fake";
+        data->accounts.user_pass = "nessie";
+
+        #ifdef WALI_SKIP_VALIDATION
+          m_btn_install->setEnabled(true);
+        #endif
+      #endif
     }
   }
 

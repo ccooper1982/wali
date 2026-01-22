@@ -2,37 +2,15 @@
 #define WALI_WIDGETSCOMMON_H
 
 
-#include <Wt/WGlobal.h>
-#include <variant>
-#include <Wt/WCheckBox.h>
-#include <Wt/WComboBox.h>
-#include <Wt/WContainerWidget.h>
 #include <Wt/WHBoxLayout.h>
-#include <Wt/WVBoxLayout.h>
-#include <Wt/WGridLayout.h>
+#include <Wt/WGlobal.h>
 #include <Wt/WLabel.h>
 #include <Wt/WLineEdit.h>
 #include <Wt/WText.h>
+#include <Wt/WVBoxLayout.h>
 #include <wali/widgets/WaliWidget.hpp>
 
 using namespace Wt;
-
-class IntroductionWidget;
-class MountsWidget;
-class NetworkWidget;
-class AccountWidget;
-class LocaliseWidget;
-class InstallWidget;
-class PackagesWidget;
-class VideoWidget;
-class PartitionsWidget;
-
-using WidgetVariant = std::variant< IntroductionWidget*, /*PartitionsWidget*,*/
-                                    MountsWidget*, NetworkWidget*,
-                                    AccountWidget*, LocaliseWidget*,
-                                    InstallWidget*, PackagesWidget*,
-                                    VideoWidget*>;
-using WidgetsMap = std::map<std::string, WidgetVariant>;
 
 
 template<typename T, typename ... Args>
