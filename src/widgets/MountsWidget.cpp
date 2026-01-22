@@ -128,6 +128,8 @@ void MountsWidget::validate_selection()
     const auto& home_dev = m_home->get_device();
     if (home_dev == boot_dev || home_dev == root_dev)
       m_messages->add("/home is mounted to root or boot partition", MessageWidget::Level::Error);
+    else if (home_dev.empty())
+      m_messages->add("/home is invalid", MessageWidget::Level::Error);
   }
 
   set_valid(!m_messages->has_errors());
