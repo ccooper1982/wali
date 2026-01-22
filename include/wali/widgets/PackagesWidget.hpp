@@ -18,12 +18,10 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-class PackagesWidget : public WaliWidget<PackagesData>
+class PackagesWidget : public WaliWidget
 {
 public:
-  PackagesWidget();
-
-  PackagesData get_data() const override { return data; }
+  PackagesWidget(WidgetDataPtr data);
 
 private:
   void search ();

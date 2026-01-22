@@ -76,7 +76,7 @@ private:
 };
 
 
-class MountsWidget : public WaliWidget<MountData>
+class MountsWidget : public WaliWidget
 {
   struct BootPartitionWidget : public WContainerWidget
   {
@@ -209,13 +209,10 @@ class MountsWidget : public WaliWidget<MountData>
   };
 
 public:
-  MountsWidget();
+  MountsWidget(WidgetDataPtr data);
 
   void validate_selection();
-
-  MountData get_data() const override;
-
-  bool is_valid() const override { return !m_messages->has_errors(); }
+  void set_data();
 
 private:
   void refresh_data();

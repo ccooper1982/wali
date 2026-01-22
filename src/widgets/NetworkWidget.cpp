@@ -1,7 +1,7 @@
 #include <wali/widgets/NetworkWidget.hpp>
+#include <Wt/WCheckBox.h>
 
-
-NetworkWidget::NetworkWidget()
+NetworkWidget::NetworkWidget(WidgetDataPtr data) : WaliWidget(data, "Network")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
 
@@ -14,7 +14,8 @@ NetworkWidget::NetworkWidget()
   m_hostname = form_layout->addWidget(make_wt<WLineEdit>("archlinux"), 0, 1);
   m_hostname->changed().connect(this, [this]
   {
-    m_data.hostname = m_hostname->text().toUTF8();
+    m_data->network.hostname = m_hostname->text().toUTF8();
+    set_valid(!m_data->network.hostname.empty());
   });
 
 
@@ -23,7 +24,7 @@ NetworkWidget::NetworkWidget()
   m_ntp->setCheckState(Wt::CheckState::Checked);
   m_ntp->changed().connect(this, [this]
   {
-    m_data.ntp = m_ntp->isChecked();
+    m_data->network.ntp = m_ntp->isChecked();
   });
 
   form_layout->addWidget(make_wt<WText>("Copy Wi-Fi Config"), 2, 0);
@@ -31,17 +32,19 @@ NetworkWidget::NetworkWidget()
   m_copy_config->setCheckState(CheckState::Checked);
   m_copy_config->changed().connect(this, [this]
   {
-    m_data.copy_config = m_copy_config->isChecked();
+    m_data->network.copy_config = m_copy_config->isChecked();
   });
 
-  m_data.hostname = m_hostname->text().toUTF8();
-  m_data.ntp = m_ntp->isChecked();
-  m_data.copy_config = m_copy_config->isChecked();
+  m_data->network.hostname = m_hostname->text().toUTF8();
+  m_data->network.ntp = m_ntp->isChecked();
+  m_data->network.copy_config = m_copy_config->isChecked();
 
   layout->addWidget(make_wt<WText>(text), 1);
+
+  set_valid(!m_data->network.hostname.empty());
 }
 
-bool NetworkWidget::is_valid() const
-{
-  return !m_data.hostname.empty();
-}
+// bool NetworkWidget::is_valid() const
+// {
+//   return !m_data.hostname.empty();
+// }

@@ -1,6 +1,7 @@
 #ifndef WALI_WIDGETDATA_H
 #define WALI_WIDGETDATA_H
 
+#include <chrono>
 #include <string>
 #include <wali/Common.hpp>
 
@@ -47,15 +48,25 @@ struct VideoData
   PackageSet drivers;
 };
 
-struct WidgetData
+struct Summary
 {
-  AccountsData accounts;
-  MountData mounts;
-  PackagesData packages;
-  NetworkData network;
-  LocaliseData localise;
-  VideoData video;
+  std::size_t package_count{};
+  std::chrono::seconds duration{};
+  std::string root_size;
+  std::string root_used;
 };
 
+struct WidgetData
+{
+  MountData mounts;
+  AccountsData accounts;
+  LocaliseData localise;
+  PackagesData packages;
+  NetworkData network;
+  VideoData video;
+  Summary summary;
+};
+
+using WidgetDataPtr = std::shared_ptr<WidgetData>;
 
 #endif

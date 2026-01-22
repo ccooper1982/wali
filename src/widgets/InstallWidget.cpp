@@ -1,15 +1,101 @@
-#include "wali/Common.hpp"
+
 #include <functional>
 #include <mutex>
-#include <wali/widgets/WidgetData.hpp>
+#include <sstream>
+#include <string>
+#include <chrono>
+#include <Wt/WHBoxLayout.h>
+#include <Wt/WGlobal.h>
+#include <Wt/WLength.h>
+#include <Wt/WLineEdit.h>
+#include <Wt/WText.h>
+#include <Wt/WVBoxLayout.h>
+#include <wali/Common.hpp>
+#include <wali/widgets/Common.hpp>
+#include <wali/Install.hpp>
 #include <wali/widgets/InstallWidget.hpp>
-#include <wali/widgets/ValidateWidgets.hpp>
-#include <wali/widgets/Widgets.hpp>
+#include <wali/widgets/WaliWidget.hpp>
+#include <wali/widgets/WidgetData.hpp>
 
 
-InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
+class SummaryWidget : public WContainerWidget
 {
+  // TODO 1. this probably use a table instead of labels
+  //      2. maybe with a model for the data
+  //      3. maybe Install::install() should set package count and disk space in WidgetData
+public:
+  SummaryWidget(WidgetDataPtr data) : m_data(data)
+  {
+    resize(400, WLength::Auto);
+
+    auto layout = setLayout(make_wt<WVBoxLayout>());
+    layout->setSpacing(0);
+    layout->setContentsMargins(0,0,0,0);
+
+    auto add_pair = [=](const std::string_view label, const std::string_view val = "")
+    {
+      auto pair_layout = layout->addLayout(make_wt<WHBoxLayout>());
+      pair_layout->setSpacing(0);
+
+      auto lbl_widget = pair_layout->addWidget(make_wt<WLabel>(label.data()), 0, Wt::AlignmentFlag::Middle);
+      auto lbl_value = pair_layout->addWidget(make_wt<WLabel>(val.data()), 1, Wt::AlignmentFlag::Middle);
+
+      lbl_widget->setWidth(120);
+      lbl_widget->setStyleClass("install_summary_lbl");
+      lbl_value->setStyleClass("install_summary_value");
+
+      return lbl_value;
+    };
+
+    m_root = add_pair("Root Password");
+    m_user_username = add_pair("Username");
+    m_user_password = add_pair("Password");
+    m_packages = add_pair("Packages");
+    m_duration = add_pair("Duration");
+    m_root_dev_space = add_pair("Root");
+
+    layout->addStretch(1);
+  }
+
+  void update_data()
+  {
+    auto duration_string = [](const std::chrono::seconds d)
+    {
+      namespace chrono = std::chrono;
+
+      const auto m = chrono::duration_cast<chrono::minutes>(d);
+      const auto s = d - chrono::duration_cast<chrono::seconds>(m);
+
+      std::ostringstream ss;
+      ss << m << ' ' << s;
+      return ss.str();
+    };
+
+    m_root->setText(m_data->accounts.root_pass);
+    m_user_username->setText(m_data->accounts.user_username);
+    m_user_password->setText(m_data->accounts.user_pass);
+    m_packages->setText(std::to_string(m_data->summary.package_count));
+    m_duration->setText(duration_string(m_data->summary.duration));
+    m_root_dev_space->setText(std::format("{} / {}", m_data->summary.root_used, m_data->summary.root_size));
+  }
+
+private:
+  WidgetDataPtr m_data;
+  WLabel *  m_root,
+         *  m_user_username,
+         *  m_user_password,
+         *  m_packages,
+         *  m_duration,
+         *  m_root_dev_space;
+};
+
+
+InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
+{
+  resize(800, WLength::Auto);
+
   auto layout = setLayout(make_wt<WVBoxLayout>());
+  layout->setContentsMargins(10,0,0,0);
 
   // buttons
   auto controls_layout = layout->addLayout(make_wt<WHBoxLayout>());
@@ -17,8 +103,11 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
   m_install_btn->clicked().connect([this]()
   {
-    if (is_config_valid())
+    #ifndef WALI_DISABLE_INSTALL
       install();
+    #else
+      m_install_status->setText("Install disabled");
+    #endif
   });
 
   m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
@@ -28,7 +117,8 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   controls_layout->addStretch(1);
 
   // status text and logs
-  m_install_status = layout->addWidget(make_wt<WText>());
+  m_install_status = layout->addWidget(make_wt<WText>("Ready"),  0, AlignmentFlag::Center);
+  m_install_status->setWidth(400);
   m_install_status->addStyleClass("install_status_ready");
   m_install_status->addStyleClass("install_status_running");
   m_install_status->addStyleClass("install_status_fail");
@@ -36,21 +126,49 @@ InstallWidget::InstallWidget(Widgets * widgets) : m_widgets(widgets)
   m_install_status->addStyleClass("install_status_partial");
   m_install_status->setStyleClass("install_status_ready");
 
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_FS)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_MOUNT)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACSTRAP)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_FSTAB)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_ROOT_ACC)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_BOOT_LOADER)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_USER_ACC)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_LOCALISE)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_VIDEO)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_NETWORK)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_PACKAGES)));
-  m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(STAGE_UNMOUNT)));
+  m_summary = layout->addWidget(make_wt<SummaryWidget>(data),  0, AlignmentFlag::Center);
+  m_summary->hide();
+
+  auto logs_cont = layout->addWidget(make_wt<WContainerWidget>(),  1, AlignmentFlag::Center);
+  logs_cont->setWidth(600);
+
+  auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
+  create_logs(log_layout);
 
   layout->addStretch(1);
+
+  set_valid();
 }
+
+
+void InstallWidget::create_logs(WVBoxLayout * layout)
+{
+  auto create_log = [](const std::string_view name, const std::size_t size = 100)
+  {
+    return make_wt<StageLog>(name, true, size);
+  };
+
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FS)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_MOUNT)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACSTRAP, 25'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FSTAB)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_ROOT_ACC)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_BOOT_LOADER, 2'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_USER_ACC)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 5'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
+  layout->addStretch(1);
+}
+
+
+void InstallWidget::update_data()
+{
+  m_summary->update_data();
+}
+
 
 void InstallWidget::install ()
 {
@@ -80,7 +198,7 @@ void InstallWidget::install ()
                             .log = log,
                             .complete = complete
                           },
-                          m_widgets->get_data());
+                          m_data);
                         });
   }
   catch (const std::exception& ex)
@@ -91,34 +209,17 @@ void InstallWidget::install ()
 }
 
 
-bool InstallWidget::is_config_valid()
+void InstallWidget::set_install_status(const std::string_view stat, const std::string_view css_class)
 {
-  PLOGW << "is_config_valid()";
-
-  const auto& err_stage = validate_widgets(m_widgets->get_all());
-  if (err_stage)
-  {
-    PLOGW << "is_config_valid(): problem";
-    m_install_status->setText(std::format("Problem in: {}", *err_stage));
-    m_install_status->setStyleClass("install_status_ready_err");
-  }
-  else
-  {
-    PLOGW << "is_config_valid(): ok";
-
-    m_install_status->setText("Ready to install");
-    m_install_status->setStyleClass("install_status_ready");
-  }
-
-  return !err_stage.has_value();
+  m_install_status->setText(stat.data());
+  m_install_status->setStyleClass(css_class.data());
 }
+
 
 void InstallWidget::on_log(const std::string msg, const InstallLogLevel level, const std::string sid)
 {
   WServer::instance()->post(sid, [=, this]()
   {
-    std::scoped_lock lck{m_post_lock};
-
     if (m_log < m_stage_logs.size())
     {
       m_stage_logs[m_log]->add(msg, level);
@@ -134,14 +235,10 @@ void InstallWidget::on_stage_end(const std::string name, const StageStatus state
   {
     if (state == StageStatus::Complete)
     {
-      {
-        std::scoped_lock lck{m_post_lock};
+      m_stage_logs[m_log]->end();
 
-        m_stage_logs[m_log]->end();
-
-        if (++m_log < m_stage_logs.size())
-          m_stage_logs[m_log]->start();
-      }
+      if (++m_log < m_stage_logs.size())
+        m_stage_logs[m_log]->start();
 
       WApplication::instance()->triggerUpdate();
     }
@@ -157,12 +254,12 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   switch (state)
   {
   case InstallState::Running:
-    status = "Installing ...";
+    status = "Installing...";
     css_class = "install_status_running";
   break;
 
   case InstallState::Fail:
-    status = "Failed: system is not bootable";
+    status = "Failed: system is not bootable. Check logs.";
     css_class = "install_status_fail";
     allow_install = true;
   break;
@@ -178,7 +275,7 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   break;
 
   case InstallState::Partial:
-    status = "Partial: completed minimal, but a subsequent step failed";
+    status = "Partial: a non-essential step failed. Check logs.";
     css_class = "install_status_partial";
     allow_install = true;
   break;
@@ -191,16 +288,19 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
 
   WServer::instance()->post(sid, [=, this]()
   {
-    std::scoped_lock lck{m_post_lock};
-
+    // the on_install_status() is called from the install thread, but we don't
+    // need to worry about data races: post() serialises widget access
     m_on_install_state(state);
     set_install_status(status, css_class);
 
     m_install_btn->setEnabled(allow_install);
 
-    WApplication::instance()->triggerUpdate();
+    if (state == InstallState::Complete)
+    {
+      update_data();
+      m_summary->show();
+    }
 
-    if ((state == InstallState::Complete || state == InstallState::Fail) && m_install_future.valid())
-      m_install_future.wait(); // wait_for()?
+    WApplication::instance()->triggerUpdate();
   });
 }

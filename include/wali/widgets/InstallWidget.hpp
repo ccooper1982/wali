@@ -21,8 +21,11 @@
 #include <wali/Install.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>
+#include <Wt/WStackedWidget.h>
 
 struct Widgets;
+class SummaryWidget;
+
 
 struct StageLog : public WContainerWidget
 {
@@ -30,7 +33,7 @@ struct StageLog : public WContainerWidget
   //   textArea.scrollTop = document.getElementById('stage_log').scrollHeight;
   // )";
 
-  StageLog(const std::string_view name, const bool collapsed = true)
+  StageLog(const std::string_view name, const bool collapsed, const std::size_t init_size)
   {
     // layout?
     m_panel = addWidget(make_wt<WPanel>());
@@ -39,12 +42,12 @@ struct StageLog : public WContainerWidget
     m_panel->setCollapsed(collapsed);
 
     m_text = m_panel->setCentralWidget(make_wt<WTextArea>());
-    // m_text->setId("stage_log");
     m_text->setReadOnly(true);
     m_text->setStyleClass("stage_log");
+    // m_text->setId("stage_log");
     // WApplication::instance()->doJavaScript(AutoScroll);
 
-    m_log.reserve(100);
+    m_log.reserve(init_size);
   }
 
   void add(const std::string_view msg, const InstallLogLevel level)
@@ -71,21 +74,20 @@ struct StageLog : public WContainerWidget
 };
 
 
-class InstallWidget : public WaliWidget<void>
+class InstallWidget : public WaliWidget
 {
   using StageFunc = std::function<bool()>;
 
 public:
-  InstallWidget(Widgets * widgets) ;
+  InstallWidget(WidgetDataPtr data) ;
 
-  Signal<InstallState>& install_state()
-  {
-    return m_on_install_state;
-  }
+  void update_data();
+
+  Signal<InstallState>& install_state() { return m_on_install_state; }
 
 private:
 
-  bool is_config_valid();
+  void create_logs(WVBoxLayout * layout);
   void install ();
 
 private:
@@ -94,11 +96,7 @@ private:
   void on_install_status(const InstallState state, const std::string sid);
   inline void on_log(const std::string msg, const InstallLogLevel level, const std::string sid);
 
-  void set_install_status(const std::string_view stat, const std::string_view css_class)
-  {
-    m_install_status->setText(stat.data());
-    m_install_status->setStyleClass(css_class.data());
-  }
+  void set_install_status(const std::string_view stat, const std::string_view css_class);
 
 private:
   Install m_install;
@@ -110,8 +108,8 @@ private:
   Signal<InstallState> m_on_install_state;
 
   std::size_t m_log{};
-  std::mutex m_post_lock;
   std::vector<StageLog*> m_stage_logs;
+  SummaryWidget * m_summary;
 };
 
 #endif

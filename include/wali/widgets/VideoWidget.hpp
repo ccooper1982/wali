@@ -11,19 +11,18 @@
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 
-class VideoWidget : public WaliWidget<VideoData>
+class VideoWidget : public WaliWidget
 {
 public:
-  VideoWidget();
-
-  VideoData get_data() const override;
-  bool is_valid() const override;
+  VideoWidget(WidgetDataPtr data);
 
 private:
   void init_combos();
   void set_default_driver();
   void set_selected_driver(WRadioButton * btn);
   void set_waffle();
+  bool check_validity() const;
+  void set_data();
 
 private:
   std::shared_ptr<WButtonGroup> m_group_company;

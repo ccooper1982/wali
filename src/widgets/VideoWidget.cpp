@@ -1,5 +1,6 @@
 #include "wali/Commands.hpp"
 #include "wali/Common.hpp"
+#include "wali/widgets/WaliWidget.hpp"
 #include "wali/widgets/WidgetData.hpp"
 #include <Wt/WApplication.h>
 #include <Wt/WComboBox.h>
@@ -90,7 +91,7 @@ static const std::map<std::string, PackageSet> IntelDriverMap =
 };
 
 
-VideoWidget::VideoWidget()
+VideoWidget::VideoWidget(WidgetDataPtr data) : WaliWidget(data, "Video")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
 
@@ -116,12 +117,15 @@ VideoWidget::VideoWidget()
   layout_none->addStretch(1);
 
   m_amd_driver = layout_amd->addWidget(make_wt<WComboBox>());
+  m_amd_driver->changed().connect([this](){ set_valid(true); });
   layout_amd->addStretch(1);
 
   m_nvidia_driver = layout_nvidia->addWidget(make_wt<WComboBox>());
+  m_nvidia_driver->changed().connect([this](){ set_valid(true); });
   layout_nvidia->addStretch(1);
 
   m_intel_driver = layout_intel->addWidget(make_wt<WComboBox>());
+  m_intel_driver->changed().connect([this](){ set_valid(true); });
   layout_intel->addStretch(1);
 
   m_amd_driver->setNoSelectionEnabled(true);
@@ -135,6 +139,8 @@ VideoWidget::VideoWidget()
 
   layout_company->addStretch(1);
   layout->addStretch(1);
+
+  set_valid(check_validity());
 }
 
 void VideoWidget::init_combos()
@@ -209,10 +215,13 @@ void VideoWidget::set_selected_driver(WRadioButton * btn)
 
   set_waffle();
 
+  set_valid(check_validity());
+
   WApplication::instance()->resumeRendering();
 }
 
-VideoData VideoWidget::get_data() const
+
+void VideoWidget::set_data()
 {
   const auto& selected = m_group_company->checkedButton()->text().toUTF8();
 
@@ -221,26 +230,27 @@ VideoData VideoWidget::get_data() const
   if (selected == "AMD")
   {
     name = m_amd_driver->currentText();
-    return { .drivers = AmdDriverMap.at(name.toUTF8()) };
+    m_data->video.drivers = AmdDriverMap.at(name.toUTF8());
   }
   else if (selected == "Nvidia")
   {
     name = m_nvidia_driver->currentText();
-    return { .drivers = NvidiaDriverMap.at(name.toUTF8()) };
+    m_data->video.drivers = NvidiaDriverMap.at(name.toUTF8());
   }
   else if (selected == "Intel")
   {
     name = m_intel_driver->currentText();
-    return { .drivers = IntelDriverMap.at(name.toUTF8()) };
+    m_data->video.drivers = IntelDriverMap.at(name.toUTF8());
   }
   else
   {
     PLOGE << "VideoWidget::get_data() should not be here";
-    return {};
+    m_data->video.drivers.clear();
   }
 }
 
-bool VideoWidget::is_valid() const
+
+bool VideoWidget::check_validity() const
 {
   if (const auto index = m_group_company->selectedButtonIndex(); index == 0)
     return true;

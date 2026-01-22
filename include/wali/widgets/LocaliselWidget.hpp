@@ -9,34 +9,10 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-class LocaliseWidget : public WaliWidget<LocaliseData>
+class LocaliseWidget : public WaliWidget
 {
-  inline static const std::vector<std::string> PriorityZones =
-  {
-    "Europe/London",  // not really, but convenient for me during testing
-    "US/Central",
-    "US/Eastern",
-    "US/Mountain",
-    "US/Pacific"
-  };
-
-  inline static const std::vector<std::string> PriorityLocales =
-  {
-    "en_GB.UTF-8",  // not really, but convenient for me during testing
-    "en_US.UTF-8",
-  };
-
-  inline static const std::vector<std::string> PriorityKeymaps =
-  {
-    "uk",  // not really, but convenient for me during testing
-    "us",
-  };
-
-
 public:
-  LocaliseWidget();
-
-  LocaliseData get_data() const override;
+  LocaliseWidget(WidgetDataPtr data);
 
 private:
   WComboBox * m_timezones;

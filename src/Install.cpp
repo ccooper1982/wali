@@ -2,7 +2,7 @@
 
 #include "wali/DiskUtils.hpp"
 #include <algorithm>
-#include <array>
+#include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <format>
@@ -15,16 +15,18 @@
 #include <wali/Commands.hpp>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
-#include <wali/widgets/Widgets.hpp>
 #include <wali/widgets/WidgetData.hpp>
 
 
-void Install::install(InstallHandlers handlers, WidgetData data)
+void Install::install(InstallHandlers handlers, WidgetDataPtr data)
 {
+  namespace chrono = std::chrono;
+  using clock = chrono::steady_clock;
+
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
-  m_data = std::move(data);
+  m_data = data;
 
   auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
@@ -45,52 +47,64 @@ void Install::install(InstallHandlers handlers, WidgetData data)
     return state == StageStatus::Complete;
   };
 
-  bool minimal{}, extra{};
+  InstallState state = InstallState::Fail;
+  auto start = clock::now();
 
   try
   {
     // TODO swap, user shell
-
     on_state(InstallState::Running);
 
     m_tree = DiskUtils::probe();
 
-    minimal = exec_stage(&Install::filesystems,   STAGE_FS) &&
-              exec_stage(&Install::mount,         STAGE_MOUNT) &&
-              exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-              exec_stage(&Install::fstab,         STAGE_FSTAB) &&
-              exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
-              exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
+    bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
+                    exec_stage(&Install::mount,         STAGE_MOUNT) &&
+                    exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
+                    exec_stage(&Install::fstab,         STAGE_FSTAB) &&
+                    exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
+                    exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
+
+    state = minimal ? InstallState::Partial : InstallState::Fail;
 
     if (minimal)
     {
       on_state(InstallState::Bootable);
 
-      extra = exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
-              exec_stage(&Install::localise,      STAGE_LOCALISE) &&
-              exec_stage(&Install::video,         STAGE_VIDEO) &&
-              exec_stage(&Install::network,       STAGE_NETWORK) &&
-              exec_stage(&Install::packages,      STAGE_PACKAGES);
+      bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
+                    exec_stage(&Install::localise,      STAGE_LOCALISE) &&
+                    exec_stage(&Install::video,         STAGE_VIDEO) &&
+                    exec_stage(&Install::network,       STAGE_NETWORK) &&
+                    exec_stage(&Install::packages,      STAGE_PACKAGES);
+
+      state = extra ? InstallState::Complete : InstallState::Partial;
     }
   }
   catch (const std::exception& ex)
   {
     log_error(std::format("Unknown error: {}", ex.what()));
+    state = InstallState::Fail;
   }
+
+  if (state != InstallState::Fail)
+  {
+    const auto [size, used] = GetDevSpace{}(m_data->mounts.root_dev);
+    m_data->summary.root_size = size;
+    m_data->summary.root_used = used;
+    m_data->summary.package_count = CountPackages{}(m_data->mounts.root_dev);
+  }
+
+  m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
 
   // we always want to do this, and ignore any errors
   exec_stage(&Install::unmount, STAGE_UNMOUNT);
 
-  if (extra)
-    on_state(InstallState::Complete);
-  else
-    on_state(minimal ? InstallState::Partial : InstallState::Fail);
+  on_state(state);
 }
 
 
 bool Install::filesystems()
 {
-  const MountData& data = m_data.mounts;
+  const MountData& data = m_data->mounts;
 
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
@@ -126,16 +140,12 @@ bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
-  const MountData& data = m_data.mounts;
+  const MountData& data = m_data->mounts;
 
   if (data.home_target == HomeMountTarget::Existing)
-  {
     log_info(std::format("/home -> {}", data.home_dev));
-  }
-  else if(data.home_dev == data.root_dev)
-  {
-    log_info(std::format("/home -> {} with {}", data.home_dev, data.home_fs));
-  }
+  else if(data.home_target == HomeMountTarget::Root)
+    log_info(std::format("/home -> {} with {}", data.root_dev, data.root_fs));
   else
   {
     // new partition
@@ -179,7 +189,7 @@ void Install::set_partition_type(const std::string_view part_dev, const std::str
 // mount
 bool Install::mount()
 {
-  const MountData data = m_data.mounts;
+  const MountData data = m_data->mounts;
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
@@ -189,7 +199,7 @@ bool Install::mount()
   {
     mounted_boot = do_mount(data.boot_dev, EfiMnt.string());
 
-    if (data.home_dev != data.root_dev)
+    if (data.home_target != HomeMountTarget::Root)
       mounted_home = do_mount(data.home_dev, HomeMnt.string());
   }
 
@@ -253,7 +263,7 @@ bool Install::pacstrap()
 bool Install::packages()
 {
   log_info("Install additional packages");
-  install_packages(m_data.packages.additional);
+  install_packages(m_data->packages.additional);
   return true;
 }
 
@@ -296,7 +306,7 @@ bool Install::fstab ()
 // accounts
 bool Install::root_account()
 {
-  const auto& root_password = m_data.accounts.root_pass;
+  const auto& root_password = m_data->accounts.root_pass;
 
   bool set{};
   if (root_password.empty())
@@ -309,9 +319,9 @@ bool Install::root_account()
 
 bool Install::user_account()
 {
-  const auto& user = m_data.accounts.user_username;
-  const auto& password = m_data.accounts.user_pass;
-  const auto user_sudo = m_data.accounts.user_sudo;
+  const auto& user = m_data->accounts.user_username;
+  const auto& password = m_data->accounts.user_pass;
+  const auto user_sudo = m_data->accounts.user_sudo;
 
   if (user.empty())
   {
@@ -418,7 +428,7 @@ bool Install::localise()
   static const fs::path LocaleConf{"/etc/locale.conf"};
   static const fs::path TerminalConf{"/etc/vconsole.conf"};
 
-  const auto& [zone, locale, keymap] = m_data.localise;
+  const auto& [zone, locale, keymap] = m_data->localise;
 
   if (!locale.empty())
   {
@@ -467,7 +477,7 @@ bool Install::network()
 {
   static const fs::path HostnamePath{"/etc/hostname"};
 
-  const auto [hostname, ntp, copy_conf] = m_data.network;
+  const auto [hostname, ntp, copy_conf] = m_data->network;
 
   log_info("Set hostname");
   if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
@@ -543,7 +553,7 @@ bool Install::video()
 {
   log_info("Installing video drivers");
 
-  if (!install_packages(m_data.video.drivers))
+  if (!install_packages(m_data->video.drivers))
     log_warning("Failed to install GPU drivers");
 
   return true;
