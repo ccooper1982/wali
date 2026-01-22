@@ -4,6 +4,8 @@
 - In the live environment, `wali` runs a web server
 - Install Arch from another machine with a web UI
 
+![wali home](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)
+
 # Features
 - Create partitions
 - Select mount points for `/`, `/boot` and `/home`
