@@ -1,8 +1,9 @@
 #!/bin/sh
 
-VERSION=v0.6
+VERSION=v0.7
 
-meson configure -Dskip_validation=false -Ddisable_install=false --buildtype=release build
+# default options should be ok, but be explicit
+meson configure -Dskip_validation=false -Ddisable_install=false -Dfake_data=false --buildtype=release build
 
 if [ $? -ne 0 ]; then
     exit 1
