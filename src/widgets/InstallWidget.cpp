@@ -79,11 +79,6 @@ public:
     m_root_dev_space->setText(std::format("{} / {}", m_data->summary.root_used, m_data->summary.root_size));
   }
 
-  void set_duration()
-  {
-
-  }
-
 private:
   WidgetDataPtr m_data;
   WLabel *  m_root,
@@ -122,9 +117,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   controls_layout->addStretch(1);
 
   // status text and logs
-  // TODO move status into summary
-  //      check we need all these styles
-  m_install_status = layout->addWidget(make_wt<WText>(),  0, AlignmentFlag::Center);
+  m_install_status = layout->addWidget(make_wt<WText>("Ready"),  0, AlignmentFlag::Center);
   m_install_status->setWidth(400);
   m_install_status->addStyleClass("install_status_ready");
   m_install_status->addStyleClass("install_status_running");
@@ -133,22 +126,20 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_install_status->addStyleClass("install_status_partial");
   m_install_status->setStyleClass("install_status_ready");
 
-  m_stack = layout->addWidget(make_wt<WStackedWidget>(), 1, AlignmentFlag::Center);
+  m_summary = layout->addWidget(make_wt<SummaryWidget>(data),  0, AlignmentFlag::Center);
+  m_summary->hide();
 
-  auto logs_cont = m_stack->addWidget(make_wt<WContainerWidget>());
+  auto logs_cont = layout->addWidget(make_wt<WContainerWidget>(),  1, AlignmentFlag::Center);
   logs_cont->setWidth(600);
-
-  m_summary = m_stack->addWidget(make_wt<SummaryWidget>(data));
 
   auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
   create_logs(log_layout);
-
-  // m_stack->setCurrentIndex(1); // TODO TEMP TEST
 
   layout->addStretch(1);
 
   set_valid();
 }
+
 
 void InstallWidget::create_logs(WVBoxLayout * layout)
 {
@@ -217,18 +208,18 @@ void InstallWidget::install ()
   }
 }
 
+
 void InstallWidget::set_install_status(const std::string_view stat, const std::string_view css_class)
 {
   m_install_status->setText(stat.data());
   m_install_status->setStyleClass(css_class.data());
 }
 
+
 void InstallWidget::on_log(const std::string msg, const InstallLogLevel level, const std::string sid)
 {
   WServer::instance()->post(sid, [=, this]()
   {
-    std::scoped_lock lck{m_post_lock};
-
     if (m_log < m_stage_logs.size())
     {
       m_stage_logs[m_log]->add(msg, level);
@@ -244,14 +235,10 @@ void InstallWidget::on_stage_end(const std::string name, const StageStatus state
   {
     if (state == StageStatus::Complete)
     {
-      {
-        std::scoped_lock lck{m_post_lock};
+      m_stage_logs[m_log]->end();
 
-        m_stage_logs[m_log]->end();
-
-        if (++m_log < m_stage_logs.size())
-          m_stage_logs[m_log]->start();
-      }
+      if (++m_log < m_stage_logs.size())
+        m_stage_logs[m_log]->start();
 
       WApplication::instance()->triggerUpdate();
     }
@@ -267,12 +254,12 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   switch (state)
   {
   case InstallState::Running:
-    status = "Installing ...";
+    status = "Installing...";
     css_class = "install_status_running";
   break;
 
   case InstallState::Fail:
-    status = "Failed: system is not bootable";
+    status = "Failed: system is not bootable. Check logs.";
     css_class = "install_status_fail";
     allow_install = true;
   break;
@@ -288,7 +275,7 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   break;
 
   case InstallState::Partial:
-    status = "Partial: completed minimal, but a subsequent step failed";
+    status = "Partial: a non-essential step failed. Check logs.";
     css_class = "install_status_partial";
     allow_install = true;
   break;
@@ -301,8 +288,8 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
 
   WServer::instance()->post(sid, [=, this]()
   {
-    std::scoped_lock lck{m_post_lock};
-
+    // the on_install_status() is called from the install thread, but we don't
+    // need to worry about data races: post() serialises widget access
     m_on_install_state(state);
     set_install_status(status, css_class);
 
@@ -311,12 +298,9 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
     if (state == InstallState::Complete)
     {
       update_data();
-      m_stack->setCurrentIndex(1);
+      m_summary->show();
     }
 
     WApplication::instance()->triggerUpdate();
-
-    if ((state == InstallState::Complete || state == InstallState::Fail) && m_install_future.valid())
-      m_install_future.wait(); // wait_for()?
   });
 }

@@ -1,4 +1,5 @@
 #include "wali/Common.hpp"
+#include "wali/Install.hpp"
 #include <algorithm>
 #include <concepts>
 #include <ranges>
@@ -142,34 +143,11 @@ class WaliApplication : public Wt::WApplication
     #ifndef WALI_SKIP_VALIDATION
       m_btn_install->disable();
     #endif
-    m_btn_install->clicked().connect([=, this]()
+    m_btn_install->clicked().connect([=]()
     {
-      m_nav_bar->disable();
-      m_nav_bar->hide();
-
-      // recursively disable all except InstallWidget
-      rng::for_each(stack->children(), [=](WWidget * w)
-      {
-        if (w->objectName() != "Install")
-          w->disable();
-
-        // if (w->objectName() == "Install")
-        //   dynamic_cast<InstallWidget*>(w)->update_data();
-        // else
-        //   w->disable();
-      });
-
-      // InstallWidget is the last in stack
+      // InstallWidget is last in stack
       stack->setCurrentIndex(stack->count()-1);
     });
-
-    // TODO investigate: doesn't work, something else must have focus
-    // cont->keyPressed().connect([=](WKeyEvent ke)
-    // {
-    //   PLOGW << "oi oi";
-    //   if (ke.key() == Key::Left)
-    //     stack->setCurrentIndex(0);
-    // });
 
     return cont;
   }
@@ -188,6 +166,8 @@ class WaliApplication : public Wt::WApplication
       {
         on_validity(v);
       });
+
+      return widget;
     };
 
     stack->addWidget(create_home_widget(stack.get()));
@@ -198,7 +178,11 @@ class WaliApplication : public Wt::WApplication
     add_page.operator()<LocaliseWidget>();
     add_page.operator()<VideoWidget>();
     add_page.operator()<PackagesWidget>();
-    add_page.operator()<InstallWidget>();
+    m_install_widget = add_page.operator()<InstallWidget>();
+    m_install_widget->install_state().connect([this](InstallState st)
+    {
+      m_nav_bar->setHidden(st == InstallState::Running || st == InstallState::Complete);
+    });
 
     return stack;
   }
@@ -290,6 +274,7 @@ private:
   WStackedWidget * m_stack{};
   WPushButton * m_btn_install{};
   NavBar * m_nav_bar{};
+  InstallWidget * m_install_widget;
 };
 
 

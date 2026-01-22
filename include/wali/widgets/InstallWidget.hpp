@@ -108,9 +108,7 @@ private:
   Signal<InstallState> m_on_install_state;
 
   std::size_t m_log{};
-  std::mutex m_post_lock;
   std::vector<StageLog*> m_stage_logs;
-  WStackedWidget * m_stack;
   SummaryWidget * m_summary;
 };
 

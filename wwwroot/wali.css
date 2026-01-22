@@ -245,6 +245,13 @@ span.install_status_running {
     text-align: center;
 }
 
+span.install_status_bootable {
+    color: white;
+    padding: 20px;
+    font: 16px monospace;
+    text-align: center;
+}
+
 span.install_status_fail {
     color: red;
     padding: 20px;

@@ -441,7 +441,7 @@ struct ProgramExists : public ReadCommand
 };
 
 
-struct CountPackages : public ReadCommand
+struct CountPackages
 {
   std::size_t operator()(const fs::path root_dev)
   {
@@ -458,7 +458,7 @@ struct CountPackages : public ReadCommand
 };
 
 
-struct GetDevSpace : public ReadCommand
+struct GetDevSpace
 {
   std::pair<std::string, std::string> operator()(const std::string_view dev)
   {
