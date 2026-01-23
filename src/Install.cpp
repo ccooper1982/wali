@@ -209,7 +209,7 @@ bool Install::mount()
 
   if (mounted_root)
   {
-    mounted_boot = do_mount(data.boot_dev, EfiMnt.string());
+    mounted_boot = do_mount(data.boot_dev, BootMnt.string());
 
     if (data.home_target != HomeMountTarget::Root)
       mounted_home = do_mount(data.home_dev, HomeMnt.string());
@@ -401,7 +401,7 @@ bool Install::add_to_sudoers (const std::string_view user)
 // boot loader
 bool Install::boot_loader()
 {
-  static const fs::path EfiConfigTargetDir{"/efi/grub"};
+  static const fs::path EfiConfigTargetDir{"/boot/grub"};
   static const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
 
   log_info("Install packages for grub");
@@ -415,7 +415,7 @@ bool Install::boot_loader()
 
   // install
   log_info("Run grub-install");
-  const auto install_cmd = std::format("grub-install --target=x86_64-efi --efi-directory=/efi --boot-directory=/efi --bootloader-id=GRUB");
+  const auto install_cmd = std::format("grub-install --target=x86_64-efi --efi-directory=/boot --boot-directory=/boot --bootloader-id=GRUB");
 
   if (!Chroot{}(install_cmd))
   {
@@ -426,7 +426,7 @@ bool Install::boot_loader()
   // configure
   log_info("Configure grub");
 
-  fs::create_directory(EfiMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/efi/grub
+  fs::create_directory(BootMnt / "grub"); // outside of arch-chroot, so full path required: /mnt/boot/grub
   return Chroot{}(std::format("grub-mkconfig -o {}", EfiConfigTarget.string()));
 }
 

@@ -17,7 +17,7 @@ namespace view = std::views;
 
 inline static const fs::path InstallLogPath {"/var/log/ali/install.log"};
 inline static const fs::path RootMnt{"/mnt"};
-inline static const fs::path EfiMnt{"/mnt/efi"};
+inline static const fs::path BootMnt{"/mnt/boot"};
 inline static const fs::path HomeMnt{"/mnt/home"};
 inline static const fs::path FsTabPath{"/mnt/etc/fstab"};
 
