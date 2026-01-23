@@ -8,9 +8,7 @@
 
 # Features
 - Create partitions
-- Select mount points for `/`, `/boot` and `/home`
 - Copy the live `iwd` config to the installed system
-- Create user account
 - Localise: locale, timezone and keymap
 - Video: Guidance on appropriate video driver
 - Packages: install additional packages
@@ -27,7 +25,9 @@
     - `curl -sfL https://raw.githubusercontent.com/ccooper1982/wali/main/scripts/install.sh | sh`
     - Install location is `/usr/local/bin/wali`
 3. Use `ip addr` to find the appropriate IP address for the web server 
-4. Start: `cd /usr/local/bin/wali && ./start.sh <ip_address> [port]`
+4. Start:
+    - `cd /usr/local/bin/wali`
+    - `./start.sh <ip_address> [port]`
     - Default port is `8080`
 
 ## Other Machine
@@ -42,21 +42,17 @@ sections are self explanatory.
 - If a subsequent stage fails, the system can _probably_ still boot (reported as Partial Success).
    
 ## Partitions
-- In the "Mounts" page, you can click "Manage Partitions" to create partitions
+- In the "Filesystems" page, you can click "Manage Partitions" to create partitions
 - All partitions on the selected device are deleted and new partitions are created
-- A new partition for home can be created (if not then, you will mount `/home` to `/`)
+- A new partition for home can be created (if not then, you will mount `/home` to the root partition)
 
 ## Mounts
 - `boot` and `root` are required, and must be separate partitions
-- `boot` is always a `vfat` filesystem
 - `root` can only be `ext4` (`btrfs` coming soon)
 - `home` can be mounted to:
-    - `/` (default)
+    - Root partition (default)
     - New partition: wipes the filesystem then creates a new filesystem
     - Existing partition: mount only
-
-> [!IMPORTANT]
-> The boot partition is mounted at `/efi`.
 
 ## User
 - A root password is required
