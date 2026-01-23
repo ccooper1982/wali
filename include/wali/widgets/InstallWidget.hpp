@@ -102,7 +102,8 @@ private:
   Install m_install;
   Widgets * m_widgets;
   WPushButton * m_install_btn,
-              * m_reboot_btn;
+              * m_reboot_btn,
+              * m_cancel_btn;
   WText * m_install_status;
   std::future<void> m_install_future;
   Signal<InstallState> m_on_install_state;
@@ -110,6 +111,7 @@ private:
   std::size_t m_log{};
   std::vector<StageLog*> m_stage_logs;
   SummaryWidget * m_summary;
+  std::stop_source m_stop_src;
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 #include <Wt/WSignal.h>
 #include <functional>
+#include <stop_token>
 #include <string_view>
 #include <utility>
 #include <wali/Common.hpp>
@@ -51,7 +52,7 @@ class Install final
 {
 public:
 
-  void install(InstallHandlers handlers, WidgetDataPtr data);
+  void install(InstallHandlers handlers, WidgetDataPtr data, std::stop_token token);
 
 private:
 

@@ -2,6 +2,7 @@
 #include <functional>
 #include <mutex>
 #include <sstream>
+#include <stop_token>
 #include <string>
 #include <chrono>
 #include <Wt/WHBoxLayout.h>
@@ -99,10 +100,16 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
 
   // buttons
   auto controls_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  controls_layout->setSpacing(15);
 
   m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
+  m_cancel_btn = controls_layout->addWidget(make_wt<WPushButton>("Cancel"));
+  m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
+
   m_install_btn->clicked().connect([this]()
   {
+    m_cancel_btn->enable();
+
     #ifndef WALI_DISABLE_INSTALL
       install();
     #else
@@ -110,7 +117,14 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
     #endif
   });
 
-  m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
+  m_cancel_btn->disable();
+  m_cancel_btn->clicked().connect([this]
+  {
+    m_install_status->setText("Cancelling...");
+    m_stop_src.request_stop();
+  });
+
+
   m_reboot_btn->enable();
   m_reboot_btn->clicked().connect([] { Reboot{}(); });
 
@@ -182,15 +196,15 @@ void InstallWidget::install ()
 
     m_install_future = std::async(std::launch::async, [this, sessionId]
     {
-      auto stage_change = [this, sessionId](const std::string name, const StageStatus state) {
+      auto stage_change = [=, this](const std::string name, const StageStatus state) {
         on_stage_end(name, state, sessionId);
       };
 
-      auto log = [this, sessionId](const std::string msg, const InstallLogLevel level) {
+      auto log = [=, this](const std::string msg, const InstallLogLevel level) {
         on_log(msg, level, sessionId);
       };
 
-      auto complete = [this, sessionId](const InstallState state) {
+      auto complete = [=, this](const InstallState state) {
         on_install_status(state, sessionId);
       };
 
@@ -198,7 +212,8 @@ void InstallWidget::install ()
                             .log = log,
                             .complete = complete
                           },
-                          m_data);
+                          m_data,
+                          m_stop_src.get_token());
                         });
   }
   catch (const std::exception& ex)

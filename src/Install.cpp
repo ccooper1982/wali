@@ -18,7 +18,7 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-void Install::install(InstallHandlers handlers, WidgetDataPtr data)
+void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_token token)
 {
   namespace chrono = std::chrono;
   using clock = chrono::steady_clock;
@@ -28,7 +28,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
   m_log = handlers.log;
   m_data = data;
 
-  auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
+  auto exec_stage = [this, token](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
     StageStatus state(StageStatus::Complete);
 
@@ -37,6 +37,12 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
       log_stage_start(stage);
       state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
       log_stage_end(stage, state);
+
+      if (token.stop_requested())
+      {
+        log_info("Stopping...");
+        return false;
+      }
     }
     catch (const std::exception& ex)
     {
