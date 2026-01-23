@@ -15,7 +15,6 @@
 #include <Wt/WTextArea.h>
 #include <functional>
 #include <future>
-#include <mutex>
 #include <wali/Commands.hpp>
 #include <wali/Common.hpp>
 #include <wali/Install.hpp>
@@ -67,6 +66,13 @@ struct StageLog : public WContainerWidget
     m_panel->setCollapsed(true);
   }
 
+  void reset()
+  {
+    m_text->setText("");
+    m_log.clear();
+    m_panel->setCollapsed(true);
+  }
+
   private:
     WPanel * m_panel;
     WTextArea * m_text;
@@ -89,6 +95,7 @@ private:
 
   void create_logs(WVBoxLayout * layout);
   void install ();
+  void cancel();
 
 private:
 

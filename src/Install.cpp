@@ -34,14 +34,16 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     try
     {
-      log_stage_start(stage);
-      state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
-      log_stage_end(stage, state);
-
       if (token.stop_requested())
       {
-        log_info("Stopping...");
+        log_error("Stop requested");
         return false;
+      }
+      else
+      {
+        log_stage_start(stage);
+        state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
+        log_stage_end(stage, state);
       }
     }
     catch (const std::exception& ex)
@@ -50,6 +52,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
       log_stage_end(stage, StageStatus::Fail);
       m_install_state(InstallState::Fail);
     }
+
     return state == StageStatus::Complete;
   };
 
@@ -91,6 +94,9 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     state = InstallState::Fail;
   }
 
+  // if cancelled, we can't be sure of the state
+  state = token.stop_requested() ? InstallState::Fail : state;
+
   if (state != InstallState::Fail)
   {
     const auto [size, used] = GetDevSpace{}(m_data->mounts.root_dev);
@@ -101,7 +107,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
   m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
 
-  // we always want to do this, and ignore any errors
+  // we always want to do this, ignoring any errors
   exec_stage(&Install::unmount, STAGE_UNMOUNT);
 
   on_state(state);

@@ -1,4 +1,6 @@
 
+#include <Wt/WApplication.h>
+#include <algorithm>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -108,6 +110,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
 
   m_install_btn->clicked().connect([this]()
   {
+    rng::for_each(m_stage_logs, [](StageLog * log){ log->reset(); });
     m_cancel_btn->enable();
 
     #ifndef WALI_DISABLE_INSTALL
@@ -120,8 +123,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_cancel_btn->disable();
   m_cancel_btn->clicked().connect([this]
   {
-    m_install_status->setText("Cancelling...");
-    m_stop_src.request_stop();
+    cancel();
   });
 
 
@@ -152,6 +154,14 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   layout->addStretch(1);
 
   set_valid();
+}
+
+
+void InstallWidget::cancel()
+{
+  m_cancel_btn->disable();
+  m_install_status->setText("Cancelling...");
+  m_stop_src.request_stop();
 }
 
 
@@ -263,7 +273,7 @@ void InstallWidget::on_stage_end(const std::string name, const StageStatus state
 
 void InstallWidget::on_install_status(const InstallState state, const std::string sid)
 {
-  bool allow_install{false};
+  bool allow_install{};
   std::string_view status, css_class{"install_status"};
 
   switch (state)
@@ -274,7 +284,8 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   break;
 
   case InstallState::Fail:
-    status = "Failed: system is not bootable. Check logs.";
+    PLOGE << "Stop requested: " << m_stop_src.stop_requested();
+    status  = m_stop_src.stop_requested() ? "Cancelled" : "Failed: system is not bootable. Check logs.";
     css_class = "install_status_fail";
     allow_install = true;
   break;
@@ -314,6 +325,11 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
     {
       update_data();
       m_summary->show();
+    }
+    else if (state == InstallState::Fail && m_stop_src.stop_requested())
+    {
+      m_install_status->setText("Cancelled");
+      m_stop_src = std::stop_source{};
     }
 
     WApplication::instance()->triggerUpdate();
