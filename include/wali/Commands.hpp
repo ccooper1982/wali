@@ -464,17 +464,8 @@ struct GetDevSpace
   {
     std::string size, used;
 
-    Chroot{}(std::format("df -h --output=size {}", dev), [&](const std::string_view m)
-    {
-      if (static int i{0}; !m.empty() && i++ == 1)
-        size = m;
-    });
-
-    Chroot{}(std::format("df -h --output=used {}", dev), [&](const std::string_view m)
-    {
-      if (static int i{0}; !m.empty() && i++ == 1)
-        used = m;
-    });
+    Chroot{}(std::format("df -h --output=size {} | tail -n 1", dev), [&](const auto m){ size = m; });
+    Chroot{}(std::format("df -h --output=used {} | tail -n 1", dev), [&](const auto m){ used = m ;});
 
     return {size, used};
   }
