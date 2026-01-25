@@ -14,9 +14,6 @@
 - Packages: install additional packages
 - Install: stdout displayed in browser
 
-> [!IMPORTANT]
-> Only GRUB is supported. systemd-boot will be added.
-
 # Install
 
 ## Target Machine
