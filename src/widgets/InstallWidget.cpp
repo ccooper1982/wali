@@ -2,7 +2,6 @@
 #include <Wt/WApplication.h>
 #include <algorithm>
 #include <functional>
-#include <mutex>
 #include <sstream>
 #include <stop_token>
 #include <string>
@@ -11,6 +10,7 @@
 #include <Wt/WGlobal.h>
 #include <Wt/WLength.h>
 #include <Wt/WLineEdit.h>
+#include <Wt/WPopupMenu.h>
 #include <Wt/WText.h>
 #include <Wt/WVBoxLayout.h>
 #include <wali/Common.hpp>
@@ -107,6 +107,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_install_btn = controls_layout->addWidget(make_wt<WPushButton>("Install"));
   m_cancel_btn = controls_layout->addWidget(make_wt<WPushButton>("Cancel"));
   m_reboot_btn = controls_layout->addWidget(make_wt<WPushButton>("Reboot"));
+  //m_savelog_btn = controls_layout->addWidget(make_wt<WSplitButton>("Save Log"));
 
   m_install_btn->clicked().connect([this]()
   {
@@ -130,6 +131,15 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_reboot_btn->enable();
   m_reboot_btn->clicked().connect([] { Reboot{}(); });
 
+  // m_savelog_btn->disable();
+  // auto savelog_options = make_wt<WPopupMenu>();
+  // savelog_options->addItem("Save to single file");
+  // savelog_options->addItem("Save file per stage");
+  // savelog_options->itemSelected().connect([this, opts=savelog_options.get()]{ save_log(opts->currentIndex() == 0); });
+
+  // m_savelog_btn->dropDownButton()->setMenu(std::move(savelog_options));
+
+
   controls_layout->addStretch(1);
 
   // status text and logs
@@ -149,7 +159,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   logs_cont->setWidth(600);
 
   auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
-  create_logs(log_layout);
+  create_log_widgets(log_layout);
 
   layout->addStretch(1);
 
@@ -165,7 +175,7 @@ void InstallWidget::cancel()
 }
 
 
-void InstallWidget::create_logs(WVBoxLayout * layout)
+void InstallWidget::create_log_widgets(WVBoxLayout * layout)
 {
   auto create_log = [](const std::string_view name, const std::size_t size = 100)
   {
@@ -232,6 +242,16 @@ void InstallWidget::install ()
     m_install_btn->enable();
   }
 }
+
+
+// void InstallWidget::save_log(const bool single_file)
+// {
+//   static const fs::path SuggestedFileName = "wali_log.txt";
+
+//   PLOGI << "Saving logs to " << (single_file ? " single file" : "multiple files");
+
+//   // TODO send logs in memory to zip
+// }
 
 
 void InstallWidget::set_install_status(const std::string_view stat, const std::string_view css_class)
@@ -331,6 +351,10 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
       m_install_status->setText("Cancelled");
       m_stop_src = std::stop_source{};
     }
+
+    const auto finished = state == InstallState::Complete || state == InstallState::Fail;
+    m_cancel_btn->setDisabled(finished);
+    // m_savelog_btn->setDisabled(finished == false);
 
     WApplication::instance()->triggerUpdate();
   });

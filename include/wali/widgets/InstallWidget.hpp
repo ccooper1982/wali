@@ -11,6 +11,7 @@
 #include <Wt/WPushButton.h>
 #include <Wt/WServer.h>
 #include <Wt/WSignal.h>
+#include <Wt/WSplitButton.h>
 #include <Wt/WStringStream.h>
 #include <Wt/WTextArea.h>
 #include <functional>
@@ -93,7 +94,7 @@ public:
 
 private:
 
-  void create_logs(WVBoxLayout * layout);
+  void create_log_widgets(WVBoxLayout * layout);
   void install ();
   void cancel();
 
@@ -105,12 +106,15 @@ private:
 
   void set_install_status(const std::string_view stat, const std::string_view css_class);
 
+  // void save_log(const bool single_file);
+
 private:
   Install m_install;
   Widgets * m_widgets;
   WPushButton * m_install_btn,
               * m_reboot_btn,
               * m_cancel_btn;
+  // WSplitButton * m_savelog_btn;
   WText * m_install_status;
   std::future<void> m_install_future;
   Signal<InstallState> m_on_install_state;
