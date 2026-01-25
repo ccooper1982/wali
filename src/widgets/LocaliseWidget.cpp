@@ -1,4 +1,5 @@
 #include "wali/widgets/WaliWidget.hpp"
+#include <algorithm>
 #include <wali/widgets/LocaliselWidget.hpp>
 
 
@@ -35,8 +36,8 @@ LocaliseWidget::LocaliseWidget(WidgetDataPtr data) : WaliWidget(data, "Locale")
   m_timezones->changed().connect([this](){ m_data->localise.timezone = m_timezones->currentText().toUTF8(); });
 
   const auto zones = GetTimeZones{}();
-  for_each(PriorityZones, [this](const auto zone){ m_timezones->addItem(zone); });
-  for_each(zones, [this](const auto zone){ m_timezones->addItem(zone); });
+  rng::for_each(PriorityZones, [this](const auto zone){ m_timezones->addItem(zone); });
+  rng::for_each(zones, [this](const auto zone){ m_timezones->addItem(zone); });
 
   // locales
   m_locales = add_form_pair<WComboBox>(layout, "Locale", 100);
@@ -45,8 +46,8 @@ LocaliseWidget::LocaliseWidget(WidgetDataPtr data) : WaliWidget(data, "Locale")
   m_locales->changed().connect([this](){ m_data->localise.locale = m_locales->currentText().toUTF8(); });
 
   const auto locales = GetLocales{}();
-  for_each(PriorityLocales, [this](const auto locale){ m_locales->addItem(locale); });
-  for_each(locales, [this](const auto zone){ m_locales->addItem(zone); });
+  rng::for_each(PriorityLocales, [this](const auto locale){ m_locales->addItem(locale); });
+  rng::for_each(locales, [this](const auto zone){ m_locales->addItem(zone); });
 
   // terminal key map
   m_keymap = add_form_pair<WComboBox>(layout, "Keymap", 100);
@@ -55,8 +56,8 @@ LocaliseWidget::LocaliseWidget(WidgetDataPtr data) : WaliWidget(data, "Locale")
   m_keymap->changed().connect([this](){ m_data->localise.keymap = m_keymap->currentText().toUTF8(); });
 
   const auto keys = GetKeyMaps{}();
-  for_each(PriorityKeymaps, [this](const auto zone){ m_keymap->addItem(zone); });
-  for_each(keys, [this](const auto key){ m_keymap->addItem(key); });
+  rng::for_each(PriorityKeymaps, [this](const auto zone){ m_keymap->addItem(zone); });
+  rng::for_each(keys, [this](const auto key){ m_keymap->addItem(key); });
 
   layout->addStretch(1);
 

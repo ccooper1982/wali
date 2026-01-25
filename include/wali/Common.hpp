@@ -65,15 +65,6 @@ static inline std::string format_size(const int64_t size)
   return std::format("{:.1f} {}", display_size, sizeNames[i]);
 }
 
-template<class C, typename F>
-void for_each (C& c, F f) requires rng::constant_range<C> || rng::range<C>
-{
-  if constexpr (rng::constant_range<C>)
-    std::for_each(std::cbegin(c), std::cend(c), std::forward<F>(f));
-  else
-    std::for_each(std::begin(c), std::end(c), std::forward<F>(f));
-}
-
 template<class C>
 std::string flatten(const C& c, const char sep = ' ')
   requires  rng::range<C> &&

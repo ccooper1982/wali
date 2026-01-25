@@ -2,6 +2,7 @@
 #define WALI_MOUNTSWIDGET_H
 
 #include <Wt/WCheckBox.h>
+#include <algorithm>
 #include <functional>
 #include <memory>
 
@@ -42,7 +43,7 @@ struct DeviceFilesytemWidget : public WContainerWidget
       layout->addWidget(make_wt<Wt::WText>("Filesystem"));
       m_fs = layout->addWidget(make_wt<Wt::WComboBox>());
 
-      for_each(filesystems, [this](const auto& fs) { m_fs->addItem(fs.data()); });
+      rng::for_each(filesystems, [this](const auto& fs) { m_fs->addItem(fs.data()); });
 
       if (!enable_fs)
         m_fs->disable();
@@ -68,7 +69,7 @@ struct DeviceFilesytemWidget : public WContainerWidget
   void refresh_partitions()
   {
     m_device->clear();
-    for_each(*m_parts, [this](const Partition& part) { m_device->addItem(part.dev); });
+    rng::for_each(*m_parts, [this](const Partition& part) { m_device->addItem(part.dev); });
   }
 
 private:
