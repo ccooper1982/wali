@@ -67,12 +67,12 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     m_tree = DiskUtils::probe();
 
-    bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
-                    exec_stage(&Install::mount,         STAGE_MOUNT) &&
-                    exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-                    exec_stage(&Install::fstab,         STAGE_FSTAB) &&
-                    exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
-                    exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
+    const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
+                          exec_stage(&Install::mount,         STAGE_MOUNT) &&
+                          exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
+                          exec_stage(&Install::fstab,         STAGE_FSTAB) &&
+                          exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
+                          exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
 
     state = minimal ? InstallState::Partial : InstallState::Fail;
 
@@ -80,11 +80,12 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     {
       on_state(InstallState::Bootable);
 
-      bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
-                    exec_stage(&Install::localise,      STAGE_LOCALISE) &&
-                    exec_stage(&Install::video,         STAGE_VIDEO) &&
-                    exec_stage(&Install::network,       STAGE_NETWORK) &&
-                    exec_stage(&Install::packages,      STAGE_PACKAGES);
+      const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
+                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
+                          exec_stage(&Install::video,         STAGE_VIDEO) &&
+                          exec_stage(&Install::network,       STAGE_NETWORK) &&
+                          exec_stage(&Install::swap,          STAGE_SWAP) &&
+                          exec_stage(&Install::packages,      STAGE_PACKAGES);
 
       state = extra ? InstallState::Complete : InstallState::Partial;
     }
@@ -104,9 +105,8 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     m_data->summary.root_size = size;
     m_data->summary.root_used = used;
     m_data->summary.package_count = CountPackages{}(m_data->mounts.root_dev);
+    m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
   }
-
-  m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
 
   // we always want to do this, ignoring any errors
   exec_stage(&Install::unmount, STAGE_UNMOUNT);
@@ -387,7 +387,7 @@ bool Install::add_to_sudoers (const std::string_view user)
 
   {
     std::ofstream sudoers_stream{sudoers_file};
-    sudoers_stream << std::format("{} ALL=(ALL) ALL", user);
+    sudoers_stream << std::format("{} ALL=(ALL) ALL\n", user);
   }
 
   std::error_code ec;
@@ -636,6 +636,38 @@ bool Install::setup_networkd()
 
   return ok;
 }
+
+
+// sawp
+bool Install::swap()
+{
+  static const fs::path ZramConfig {RootMnt / "etc/systemd/zram-generator.conf"};
+
+  if (!m_data->mounts.zram)
+    return true;
+
+  log_info("Install zram generator");
+
+  if (!install_packages({"zram-generator"}))
+    return false;
+
+  log_info("Create zram config");
+  {
+    std::ofstream cfg_file{ZramConfig, std::ios_base::out | std::ios_base::trunc};
+    cfg_file << "[zram0]\n";
+    cfg_file << "zram-size = min(ram / 4, 4096)\n"; // 25% of ram or 4GB
+    cfg_file << "compression-algorithm = zstd\n";   // sensible
+  }
+
+  if (!fs::exists(ZramConfig) || fs::file_size(ZramConfig) == 0)
+    log_error("Failed to create zram config") ;
+
+  if (!enable_service({"systemd-zram-setup@zram0.service"}))
+    log_warning("Failed to enable zram service");
+
+  return true;
+}
+
 
 // video
 bool Install::video()

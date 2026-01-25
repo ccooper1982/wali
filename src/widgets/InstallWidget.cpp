@@ -66,6 +66,7 @@ public:
     {
       namespace chrono = std::chrono;
 
+      // assume install is within 1 hour
       const auto m = chrono::duration_cast<chrono::minutes>(d);
       const auto s = d - chrono::duration_cast<chrono::seconds>(m);
 
@@ -192,6 +193,7 @@ void InstallWidget::create_log_widgets(WVBoxLayout * layout)
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_SWAP)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 5'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
   layout->addStretch(1);

@@ -36,6 +36,7 @@ struct MountData
   std::string home_fs;
   HomeMountTarget home_target;
   Bootloader boot_loader;
+  bool zram{true};
 };
 
 struct PackagesData

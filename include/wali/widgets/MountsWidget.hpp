@@ -1,6 +1,7 @@
 #ifndef WALI_MOUNTSWIDGET_H
 #define WALI_MOUNTSWIDGET_H
 
+#include <Wt/WCheckBox.h>
 #include <functional>
 #include <memory>
 
@@ -132,7 +133,7 @@ class MountsWidget : public WaliWidget
 
       layout->addWidget(make_wt<Wt::WText>("<h3>Home</h3>"));
 
-      m_btn_to_root = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to /"));
+      m_btn_to_root = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to root partition"));
 
       m_btn_to_new = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to new partition"));
       m_devfs_to_new = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate, StringViewVec{"ext4"}));
@@ -226,6 +227,7 @@ private:
   RootPartitionWidget * m_root;
   HomePartitionWidget * m_home;
   WComboBox * m_boot_loader;
+  WCheckBox * m_zram;
   MessageWidget * m_messages;
   Tree m_tree;
   std::shared_ptr<Partitions> m_partitions;

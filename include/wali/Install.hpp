@@ -94,6 +94,8 @@ private:
   bool setup_iwd();
   bool setup_networkd();
 
+  bool swap();
+
   // video
   bool video();
 

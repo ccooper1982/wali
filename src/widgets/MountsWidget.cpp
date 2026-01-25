@@ -2,6 +2,7 @@
 #include "wali/DiskUtils.hpp"
 #include "wali/widgets/WaliWidget.hpp"
 #include <Wt/WApplication.h>
+#include <Wt/WCheckBox.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WDialog.h>
 #include <Wt/WGlobal.h>
@@ -62,6 +63,19 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
   m_boot_loader->setWidth(150);
   m_boot_loader->addItem("systemd-boot");
   m_boot_loader->addItem("grub");
+  m_boot_loader->changed().connect([this]
+  {
+    m_data->mounts.boot_loader = m_boot_loader->currentIndex() == 0 ? Bootloader::SystemdBoot : Bootloader::Grub;
+  });
+
+  layout->addWidget(make_wt<WText>("<h3>Swap</h3>"));
+  m_zram = layout->addWidget(make_wt<WCheckBox>("zram"));
+  m_zram->changed().connect([this]
+  {
+    m_data->mounts.zram = m_zram->isChecked();
+  });
+  m_zram->setChecked(true);
+  m_data->mounts.zram = true;
 
   layout->addSpacing(20);
 
