@@ -83,6 +83,8 @@ private:
 
   // bootloader
   bool boot_loader();
+  bool boot_loader_grub();
+  bool boot_loader_sysdboot();
 
   // locisation
   bool localise();

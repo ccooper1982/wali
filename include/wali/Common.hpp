@@ -54,13 +54,6 @@ enum class CpuVendor
   Intel
 };
 
-enum class HomeMountTarget
-{
-  Root,     // /home mounted to /
-  New,      // /home mounted to new partition (wipe, create fs)
-  Existing  // /home mounted to existing partition (don't wipe or create fs)
-};
-
 static inline std::string format_size(const int64_t size)
 {
   static const char *sizeNames[] = {"B", "KB", "MB", "GB", "TB", "PB"};

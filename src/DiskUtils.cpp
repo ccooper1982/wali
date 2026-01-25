@@ -255,6 +255,25 @@ int DiskUtils::get_partition_part_number (const Tree& tree, const std::string_vi
 }
 
 
+std::string DiskUtils::get_partition_uuid(const Tree& tree, const std::string_view dev)
+{
+  std::string uuid;
+
+  Probe probe{dev, BLKID_PARTS_ENTRY_DETAILS, BLKID_SUBLKS_UUID};
+  auto pr = probe.pr;
+
+  if (const int r = blkid_do_fullprobe(pr) ; r == BLKID_PROBE_ERROR)
+    PLOGE << "Fullprobe failed: " << strerror(r);
+  else if (const char * value{}; blkid_probe_has_value(pr, "UUID"))
+  {
+    if (blkid_probe_lookup_value(pr, "UUID", &value, nullptr); value)
+      uuid = value;
+  }
+
+  return uuid;
+}
+
+
 bool DiskUtils::is_mounted(const std::string_view path_or_dev, const bool is_dev)
 {
   bool mounted = false;

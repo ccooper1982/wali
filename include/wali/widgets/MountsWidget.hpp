@@ -28,6 +28,7 @@ struct DeviceFilesytemWidget : public WContainerWidget
     : m_parts(parts)
   {
     auto layout = setLayout(make_wt<Wt::WHBoxLayout>());
+    layout->setContentsMargins(0,0,0,0);
 
     layout->addWidget(make_wt<WText>("Device"));
     m_device = layout->addWidget(make_wt<WComboBox>());
@@ -83,6 +84,7 @@ class MountsWidget : public WaliWidget
     BootPartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
+      layout->setContentsMargins(0,0,0,0);
 
       layout->addWidget(make_wt<Wt::WText>("<h3>Boot</h3>"));
 
@@ -106,6 +108,7 @@ class MountsWidget : public WaliWidget
     RootPartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
+      layout->setContentsMargins(0,0,0,0);
 
       layout->addWidget(make_wt<Wt::WText>("<h3>Root</h3>"));
 
@@ -125,6 +128,7 @@ class MountsWidget : public WaliWidget
     HomePartitionWidget(const std::shared_ptr<Partitions> parts, Validate validate)
     {
       auto layout = setLayout(make_wt<WVBoxLayout>());
+      layout->setContentsMargins(0,0,0,0);
 
       layout->addWidget(make_wt<Wt::WText>("<h3>Home</h3>"));
 
@@ -221,6 +225,7 @@ private:
   BootPartitionWidget * m_boot;
   RootPartitionWidget * m_root;
   HomePartitionWidget * m_home;
+  WComboBox * m_boot_loader;
   MessageWidget * m_messages;
   Tree m_tree;
   std::shared_ptr<Partitions> m_partitions;

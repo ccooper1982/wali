@@ -31,9 +31,10 @@ struct Partition
   std::string dev;        // /dev/sda1, /dev/nvme0n1p3, etc
   std::string fs_type;    // ext4, vfat, etc
   std::string type_uuid;  // partition type UUID (useful to identify EFI)
+  std::string part_uuid;
   int64_t size{};
   int part_number{};      // partition number
-  bool is_efi{};          // if part type UUID is for EFI
+  bool is_efi{};          // true if type_uuid is for EFI
   bool is_fat32{};        // if fs_type is VFAT and version is FAT32
   bool is_mounted{};
 };
@@ -73,6 +74,7 @@ public:
   static std::optional<int64_t> get_disk_size (const std::string_view dev);
   static int get_partition_part_number (const Tree& tree, const std::string_view dev);
   static std::string get_partition_disk (const Tree& tree, const std::string_view dev);
+  static std::string get_partition_uuid(const Tree& tree, const std::string_view dev);
 
   static bool is_path_mounted(const std::string_view path);
   static bool is_dev_mounted(const std::string_view path);

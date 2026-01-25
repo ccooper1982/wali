@@ -258,7 +258,7 @@ struct Reboot : public ReadCommand
 {
   bool operator()()
   {
-    return execute_read("reboot -f") == CmdSuccess;
+    return execute_read("reboot -i --no-wall") == CmdSuccess;
   }
 };
 

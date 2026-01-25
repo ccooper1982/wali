@@ -312,7 +312,7 @@ textarea.stage_log {
     width: 16px;
     height: 16px;
     float: left;
-    background-image: url(collapse.gif);
+    background-image: url(collapse.png);
     background-repeat: no-repeat;
     background-position: right center;
     transition: transform 0.3s ease-in-out;

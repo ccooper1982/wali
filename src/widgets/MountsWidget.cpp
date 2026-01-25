@@ -2,6 +2,7 @@
 #include "wali/DiskUtils.hpp"
 #include "wali/widgets/WaliWidget.hpp"
 #include <Wt/WApplication.h>
+#include <Wt/WComboBox.h>
 #include <Wt/WDialog.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WPushButton.h>
@@ -14,6 +15,9 @@
 MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
+  layout->setContentsMargins(0,9,0,9);
+  layout->setSpacing(10);
+
   m_partitions = std::make_shared<Partitions>();
 
   m_table = layout->addWidget(make_wt<WTable>());
@@ -48,11 +52,18 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
     dialog->show();
   });
 
+
   m_boot = layout->addWidget(make_wt<BootPartitionWidget>(m_partitions, [this]{validate_selection();}));
   m_root = layout->addWidget(make_wt<RootPartitionWidget>(m_partitions, [this]{validate_selection();}));
   m_home = layout->addWidget(make_wt<HomePartitionWidget>(m_partitions, [this]{validate_selection();}));
 
-  // TODO bootloader
+  layout->addWidget(make_wt<WText>("<h3>Boot loader</h3>"));
+  m_boot_loader = layout->addWidget(make_wt<WComboBox>());
+  m_boot_loader->setWidth(150);
+  m_boot_loader->addItem("systemd-boot");
+  m_boot_loader->addItem("grub");
+
+  layout->addSpacing(20);
 
   m_messages = layout->addWidget(make_wt<MessageWidget>());
 
@@ -60,6 +71,7 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 
   layout->addStretch(1);
 }
+
 
 void MountsWidget::refresh_data()
 {
@@ -108,6 +120,7 @@ void MountsWidget::refresh_data()
   WApplication::instance()->triggerUpdate();
 }
 
+
 void MountsWidget::validate_selection()
 {
   const auto& boot_dev = m_boot->get_device();
@@ -152,4 +165,5 @@ void MountsWidget::set_data()
   data.home_dev = home_dev;
   data.home_fs = home_fs;
   data.home_target = m_home->get_mount_target();
+  data.boot_loader = m_boot_loader->currentIndex() == 0 ? Bootloader::SystemdBoot : Bootloader::Grub;
 }

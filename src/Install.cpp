@@ -6,6 +6,7 @@
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <iterator>
 #include <ranges>
 #include <string>
@@ -401,6 +402,15 @@ bool Install::add_to_sudoers (const std::string_view user)
 // boot loader
 bool Install::boot_loader()
 {
+  if (m_data->mounts.boot_loader == Bootloader::Grub)
+    return boot_loader_grub();
+  else
+    return boot_loader_sysdboot();
+}
+
+
+bool Install::boot_loader_grub()
+{
   static const fs::path EfiConfigTargetDir{"/boot/grub"};
   static const fs::path EfiConfigTarget{EfiConfigTargetDir  / "grub.cfg"};
 
@@ -430,6 +440,73 @@ bool Install::boot_loader()
   return Chroot{}(std::format("grub-mkconfig -o {}", EfiConfigTarget.string()));
 }
 
+
+bool Install::boot_loader_sysdboot()
+{
+  static const fs::path LoaderConfig {BootMnt / "loader/loader.conf"};
+  static const fs::path EntriesFile {BootMnt / "loader/entries/arch.conf"};
+  static const auto LoaderConfigContent = "default  arch.conf\n"
+                                          "timeout  4\n"
+                                          "console-mode max\n"
+                                          "editor   no\n";
+
+  static const auto EntryContent = "title   Arch Linux\n"
+                                   "linux   /vmlinuz-linux\n"
+                                   "initrd  /initramfs-linux.img\n";
+
+  log_info("Run bootctl");
+
+  const auto root_uuid = DiskUtils::get_partition_uuid(m_tree, m_data->mounts.root_dev);
+  if (root_uuid.empty())
+  {
+    log_error("Failed to get boot partition UUID");
+    return false;
+  }
+
+  // this installs the boot manager to /mnt/boot/EFI/[systemd,BOOT]
+  if (!Chroot{}("bootctl install"))
+  {
+    log_error("bootctl failed to install the boot manager");
+    return false;
+  }
+
+  bool ok{};
+
+  log_info("Create loader config");
+
+  fs::create_directory (LoaderConfig.parent_path());
+  fs::create_directory (EntriesFile.parent_path());
+
+  {
+    if (std::ofstream loader_stream{LoaderConfig}; !loader_stream)
+    {
+      log_error("Failed to open loader config");
+      return false;
+    }
+    else if (loader_stream << LoaderConfigContent; !loader_stream)
+    {
+      log_error("Failed to write to loader config");
+      return false;
+    }
+  }
+
+  log_info("Create entry file");
+
+  if (std::ofstream entry_stream{EntriesFile}; !entry_stream)
+    log_error("Failed to open loader config");
+  else
+  {
+    entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " rw\n";
+    entry_stream.close();
+
+    if (!Chroot{}("bootctl install"))
+      log_error("bootctl failed to parse config");
+    else
+      ok = true;
+  }
+
+  return ok;
+}
 
 
 // localise

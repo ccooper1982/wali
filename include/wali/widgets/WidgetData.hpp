@@ -5,6 +5,19 @@
 #include <string>
 #include <wali/Common.hpp>
 
+enum class HomeMountTarget
+{
+  Root,     // /home mounted to root partition
+  New,      // /home mounted to new partition (wipe, create fs)
+  Existing  // /home mounted to existing partition (don't wipe or create fs)
+};
+
+enum class Bootloader
+{
+  SystemdBoot,
+  Grub
+};
+
 struct AccountsData
 {
   std::string root_pass;
@@ -22,6 +35,7 @@ struct MountData
   std::string home_dev;
   std::string home_fs;
   HomeMountTarget home_target;
+  Bootloader boot_loader;
 };
 
 struct PackagesData
