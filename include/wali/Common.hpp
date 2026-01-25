@@ -66,9 +66,9 @@ static inline std::string format_size(const int64_t size)
 }
 
 template<class C, typename F>
-void for_each (C& c, F f) requires std::ranges::constant_range<C> || std::ranges::range<C>
+void for_each (C& c, F f) requires rng::constant_range<C> || rng::range<C>
 {
-  if constexpr (std::ranges::constant_range<C>)
+  if constexpr (rng::constant_range<C>)
     std::for_each(std::cbegin(c), std::cend(c), std::forward<F>(f));
   else
     std::for_each(std::begin(c), std::end(c), std::forward<F>(f));
@@ -76,7 +76,7 @@ void for_each (C& c, F f) requires std::ranges::constant_range<C> || std::ranges
 
 template<class C>
 std::string flatten(const C& c, const char sep = ' ')
-  requires  std::ranges::range<C> &&
+  requires  rng::range<C> &&
             std::convertible_to<typename C::value_type, std::string_view>
 {
   std::stringstream ss;
