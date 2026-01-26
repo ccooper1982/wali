@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/emweb/wt.git
+revision = 4.12.1
+depth = 1
+
+[provide]
+wt_dep = wt, wthttp

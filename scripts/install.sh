@@ -11,16 +11,8 @@ curl -OL https://github.com/ccooper1982/wali/releases/download/$VERSION/wali-bin
 # Extract
 tar -xf wali-bin_$VERSION.tar.gz -C /usr/local/bin
 
-# Install
-mount -o remount,size=600M /run/archiso/cowspace
-
-# accurate time required for package verification
+# wali does this but lets ensure time is accurate before we start
 timedatectl
-
-pacman-key --init
-#pacman-key --refresh-keys
-pacman -Sy --noconfirm archlinux-keyring
-pacman -Q wt || pacman -Sy --noconfirm wt
 
 echo
 echo "--------------"
