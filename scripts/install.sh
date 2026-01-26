@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+# wali does this but lets ensure time is accurate before we do anything
+timedatectl
+
 # Download tar from GitHub
 VERSION=v0.8
 INSTALL_DIR=/usr/local/bin/wali
@@ -11,8 +14,6 @@ curl -OL https://github.com/ccooper1982/wali/releases/download/$VERSION/wali-bin
 # Extract
 tar -xf wali-bin_$VERSION.tar.gz -C /usr/local/bin
 
-# wali does this but lets ensure time is accurate before we start
-timedatectl
 
 echo
 echo "--------------"

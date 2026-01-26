@@ -58,9 +58,8 @@ sections are self explanatory.
 
 # Details
 - The web server is integrated into [`webtoolkit`](https://github.com/emweb/wt), a C++ web framework (the web equivalent of Qt)
-- The install script increases the copy-on-write (`cow`) space from 250M to 600M
-- This allows space for `webtoolkit` and its dependencies
-
+- The install script syncs the time then downloads and extracts `wali`
+- `wali` is linked statically to `wt`, as is `wt` to `boost`, so no additional dependencies are required
 
 # Build
 - TODO
