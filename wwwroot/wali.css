@@ -157,17 +157,17 @@ tr.partition {
 }
 
 div.msg_error {
-    color: red;
+    color: #a01010;
     background-color: white;
     padding: 10px;
     border-left: 10px solid #801010;
 }
 
 div.msg_warning {
-    color: yellow;
+    color: #c8960b;
     background-color: white;
     padding: 10px;
-    border-left: 10px solid darkgoldenrod;
+    border-left: 10px solid #b8860b;
 }
 
 div.partitions_dialog_title {
