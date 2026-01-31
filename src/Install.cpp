@@ -69,6 +69,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
                           exec_stage(&Install::mount,         STAGE_MOUNT) &&
+                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
                           exec_stage(&Install::fstab,         STAGE_FSTAB) &&
                           exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
@@ -81,7 +82,6 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
       on_state(InstallState::Bootable);
 
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
-                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::video,         STAGE_VIDEO) &&
                           exec_stage(&Install::network,       STAGE_NETWORK) &&
                           exec_stage(&Install::swap,          STAGE_SWAP) &&
@@ -122,25 +122,37 @@ bool Install::filesystems()
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
 
-  bool boot_root_valid{false}, home_valid{true};
+  if (!(wipe_fs(data.boot_dev) && wipe_fs(data.root_dev)))
+    return false;
 
-  const auto wiped_boot_root = wipe_fs(data.boot_dev) &&
-                               wipe_fs(data.root_dev);
+  bool volumes_created{true};
 
-  if (wiped_boot_root)
+  const bool fs_created = create_boot_filesystem() && create_root_filesystem() && create_home_filesystem();
+
+  if (fs_created)
   {
-    boot_root_valid = create_boot_filesystem(data.boot_dev) &&
-                      create_ext4_filesystem(data.root_dev);
+    // need to mount devices to create subvolumes
+    bool mounted_home{true}, mounted_root{true};
 
-    if (boot_root_valid)
+    if (data.root_fs == "btrfs")
     {
-      set_partition_type(data.boot_dev, PartTypeEfi);
-      set_partition_type(data.root_dev, PartTypeRoot);
-      home_valid = create_home_filesystem();
+      mounted_root = Mount{}(data.root_dev, RootMnt.string());
+      volumes_created = mounted_root && create_btrfs_subvolume(RootMnt, "@");
     }
+
+    if (data.home_target != HomeMountTarget::Root)
+      mounted_home = Mount{}(data.home_dev, HomeMnt.string());
+
+    // don't create subvolume, we assume it already exists (and is name @home)
+    // TODO this shouldn't assume existing subvol is @home
+    if (data.home_fs == "btrfs" && mounted_home && data.home_target != HomeMountTarget::Existing)
+      volumes_created &= create_btrfs_subvolume(HomeMnt, "@home");
+
+    if (mounted_root)
+      unmount(); // recursive
   }
 
-  return boot_root_valid && home_valid;
+  return fs_created && volumes_created;
 }
 
 bool Install::wipe_fs(const std::string_view dev)
@@ -149,11 +161,35 @@ bool Install::wipe_fs(const std::string_view dev)
   return ReadCommand::execute_read(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
 }
 
+bool Install::create_boot_filesystem()
+{
+  const MountData& data = m_data->mounts;
+
+  log_info(std::format("Create vfat32 on {}", data.boot_dev));
+
+  set_partition_type(data.boot_dev, PartTypeEfi);
+  return CreateFilesystem::vfat32(data.boot_dev);
+}
+
+bool Install::create_root_filesystem()
+{
+  const MountData& data = m_data->mounts;
+
+  set_partition_type(data.root_dev, PartTypeRoot);
+
+  if (data.root_fs == "ext4")
+    return create_ext4_filesystem(data.root_dev);
+  else
+    return create_btrfs_filesystem(data.root_dev) ;
+}
+
 bool Install::create_home_filesystem()
 {
   bool home_valid{true};
 
   const MountData& data = m_data->mounts;
+  const auto home_dev = data.home_dev;
+  const auto home_fs = data.home_fs;
 
   if (data.home_target == HomeMountTarget::Existing)
     log_info(std::format("/home -> {}", data.home_dev));
@@ -162,41 +198,48 @@ bool Install::create_home_filesystem()
   else
   {
     // new partition
-    const auto home_dev = data.home_dev;
-    const auto home_fs = data.home_fs;
-
     log_info(std::format("/home -> {} with {}", home_dev, home_fs));
 
-    home_valid = wipe_fs(home_dev) && create_ext4_filesystem(home_dev);
+    if (!wipe_fs(home_dev))
+      return false;
 
-    if (home_valid)
-      set_partition_type(home_dev, PartTypeHome);
+    home_valid = home_fs == "ext4" ?  create_ext4_filesystem(home_dev) :
+                                      create_btrfs_filesystem(home_dev);
+
+    set_partition_type(home_dev, PartTypeHome);
   }
 
   return home_valid;
 }
 
-bool Install::create_boot_filesystem(const std::string_view part_dev)
+bool Install::create_ext4_filesystem(const std::string_view dev)
 {
-  log_info(std::format("Create vfat32 on {}", part_dev));
-  return CreateVfat32Filesystem{}(part_dev);
+  log_info(std::format("Create ext4 on {}", dev));
+  return CreateFilesystem::ext4(dev);
 }
 
-bool Install::create_ext4_filesystem(const std::string_view part_dev)
+bool Install::create_btrfs_filesystem(const std::string_view dev)
 {
-  log_info(std::format("Create ext4 on {}", part_dev));
-  return CreateExt4Filesystem{}(part_dev);
+  log_info(std::format("Create btrfs on {}", dev));
+  return CreateFilesystem::btrfs(dev);
 }
 
-void Install::set_partition_type(const std::string_view part_dev, const std::string_view type)
+bool Install::create_btrfs_subvolume(const fs::path mount_point, const std::string_view name)
 {
-  const int part_num = DiskUtils::get_partition_part_number(m_tree, part_dev);
-  const auto parent_dev = DiskUtils::get_partition_disk(m_tree, part_dev);
+  const auto path = (mount_point / name).string();
 
-  log_info(std::format("Set partition type {} for {}", type, part_dev));
+  log_info(std::format("Create btrfs subvolume {}", path));
+  return CreateBtrfsSubVolume{}(path);
+}
 
-  if (!SetPartitionType{}(parent_dev, part_num, type))
-    log_warning(std::format("Set partition type failed on {}", part_dev));
+void Install::set_partition_type(const std::string_view dev, const std::string_view type)
+{
+  const int part_num = DiskUtils::get_partition_part_number(m_tree, dev);
+  const auto parent_dev = DiskUtils::get_partition_disk(m_tree, dev);
+
+  log_info(std::format("Set partition type {} for {}", type, dev));
+
+  log_warning_if(SetPartitionType{}(parent_dev, part_num, type), std::format("Set partition type failed on {}", dev));
 }
 
 // mount
@@ -206,14 +249,22 @@ bool Install::mount()
 
   bool mounted_root{}, mounted_boot{}, mounted_home{true};
 
-  mounted_root = do_mount(data.root_dev, RootMnt.string());
+  const std::string_view root_opts = data.root_fs == "btrfs" ? "subvol=@" : "";
+  mounted_root = do_mount(data.root_dev, RootMnt.string(), root_opts);
 
   if (mounted_root)
   {
     mounted_boot = do_mount(data.boot_dev, BootMnt.string());
 
-    if (data.home_target != HomeMountTarget::Root)
-      mounted_home = do_mount(data.home_dev, HomeMnt.string());
+    // for btrfs, we need an entry in fstab for @home subvolume, so we still mount
+    // even if home is on the root partition
+    if (data.home_target != HomeMountTarget::Root || data.home_fs == "btrfs")
+    {
+      // TODO this is incomplete: if existing partition is btrfs, we're assuming there's @home
+      //      subvolume
+      const auto home_opts = data.home_fs == "btrfs" ? "subvol=@home" : "" ;
+      mounted_home = do_mount(data.home_dev, HomeMnt.string(), home_opts);
+    }
   }
 
   return mounted_root && mounted_boot && mounted_home;
@@ -225,19 +276,10 @@ bool Install::unmount()
   return Unmount{}(RootMnt.string(), true);
 }
 
-
-bool Install::do_mount(const std::string_view dev, const std::string_view path)
+bool Install::do_mount(const std::string_view dev, const std::string_view path, const std::string_view opts)
 {
-  log_info(std::format("Mount {} onto {}", path, dev));
-
-  std::error_code ec;
-  if (fs::create_directory(path, ec); ec)
-  {
-    log_error(std::format("do_mount(): failed creating directory: {} - {}", path, ec.message()));
-    return false;
-  }
-
-  return Mount{}(dev, path);
+  log_info(std::format("Mount {} onto {} {}", path, dev, opts.empty() ? "" : std::format("with options {}", opts)));
+  return Mount{}(dev, path, opts);
 }
 
 
@@ -293,8 +335,7 @@ bool Install::install_packages(const PackageSet& packages)
     log_info(m);
   });
 
-  if (!ok)
-    log_error("pacman failed to install package(s)");
+  log_error_if(ok, "pacman failed to install package(s)");
 
   return ok;
 }
@@ -309,9 +350,8 @@ bool Install::fstab ()
 
   log_info(cmd_string);
 
-  const auto stat = ReadCommand::execute_read(cmd_string);;
-  if (stat != CmdSuccess)
-    log_error(std::format("genfstab failed: {}", ::strerror(stat)));
+  const auto stat = ReadCommand::execute_read(cmd_string);
+  log_error_if(stat != CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
 
   return stat == CmdSuccess;
 }
@@ -496,13 +536,15 @@ bool Install::boot_loader_sysdboot()
     log_error("Failed to open loader config");
   else
   {
-    entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " rw\n";
+    std::string_view root_flags;
+
+    if (m_data->mounts.root_fs == "btrfs")
+      root_flags = "rootflags=subvol=@";
+
+    entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " " << root_flags << " rw\n";
     entry_stream.close();
 
-    if (!Chroot{}("bootctl install"))
-      log_error("bootctl failed to parse config");
-    else
-      ok = true;
+    ok = log_error_if(Chroot{}("bootctl install"), "bootctl failed to parse config");
   }
 
   return ok;
@@ -569,8 +611,7 @@ bool Install::network()
   const auto [hostname, ntp, copy_conf] = m_data->network;
 
   log_info("Set hostname");
-  if (!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string() )))
-    log_warning("Failed to create /etc/hostname");
+  log_warning_if(ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string())), "Failed to create /etc/hostname");
 
   if (copy_conf)
   {
@@ -592,29 +633,21 @@ bool Install::setup_iwd()
 
   log_info("Install and enable iwd");
 
-  bool ok{};
-
-  if (install_packages({"iwd"}) && enable_service({"iwd.service"}))
+  if (!(install_packages({"iwd"}) && enable_service({"iwd.service"})))
   {
-    static const std::vector<std::string_view> Extensions = {".psk", ".open", ".8021x"};
-
-    log_info("Copy iwd config");
-
-    const auto src = LiveIwdConfigPath.string();
-    const auto dest = TargetIwdConfigPath.string();
-    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
-
-    if (ReadCommand::execute_read(cmd) != CmdSuccess)
-      log_warning("Failed to copy iwd configs");
-    else if (count_files(LiveIwdConfigPath, Extensions) != 1)
-      log_warning("More than one wifi config, cannot set auto connect");
-    else
-      ok = true;
-  }
-  else
     log_warning("iwd package or service enable failed");
+    return false;
+  }
 
-  return ok;
+  log_info("Copy iwd config");
+
+  const auto src = LiveIwdConfigPath.string();
+  const auto dest = TargetIwdConfigPath.string();
+  const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+
+  log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy iwd configs");
+
+  return true;
 }
 
 bool Install::setup_networkd()
@@ -628,13 +661,9 @@ bool Install::setup_networkd()
 
   log_info("Copy networkd config");
 
-  bool ok{};
-  if (ReadCommand::execute_read(cmd) != CmdSuccess)
-    PLOGW << "Failed to copy systemd-network configs";
-  else
-    ok = enable_service({"systemd-networkd.service", "systemd-resolved.service"});
+  log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
 
-  return ok;
+  return enable_service({"systemd-networkd.service", "systemd-resolved.service"});
 }
 
 
@@ -652,6 +681,7 @@ bool Install::swap()
     return false;
 
   log_info("Create zram config");
+
   {
     std::ofstream cfg_file{ZramConfig, std::ios_base::out | std::ios_base::trunc};
     cfg_file << "[zram0]\n";
@@ -659,11 +689,9 @@ bool Install::swap()
     cfg_file << "compression-algorithm = zstd\n";   // sensible
   }
 
-  if (!fs::exists(ZramConfig) || fs::file_size(ZramConfig) == 0)
-    log_error("Failed to create zram config") ;
+  log_error_if(fs::exists(ZramConfig) && fs::file_size(ZramConfig), "Failed to create zram config");
 
-  if (!enable_service({"systemd-zram-setup@zram0.service"}))
-    log_warning("Failed to enable zram service");
+  enable_service({"systemd-zram-setup@zram0.service"});
 
   return true;
 }
@@ -672,7 +700,7 @@ bool Install::swap()
 // video
 bool Install::video()
 {
-  log_info("Installing video drivers");
+  log_info("Install video drivers");
 
   if (!install_packages(m_data->video.drivers))
     log_warning("Failed to install GPU drivers");

@@ -298,21 +298,49 @@ struct GetGpuVendor : public ReadCommand
 };
 
 // filesystems
-inline const constexpr char ext4[] = "ext4";
-inline const constexpr char vfat32[] = "vfat -F 32";
 
-template<const char * cmd>
 struct CreateFilesystem : public ReadCommand
 {
-  bool operator()(const std::string_view dev)
+  static bool vfat32 (const std::string_view dev)
   {
-    return execute_read(std::format("mkfs.{} {}", cmd, dev)) == CmdSuccess;
+    return CreateFilesystem{}("vfat -F 32", dev);
+  }
+
+  static bool ext4 (const std::string_view dev)
+  {
+    return CreateFilesystem{}("ext4", dev);
+  }
+
+  static bool btrfs (const std::string_view dev)
+  {
+    // actually: n=max(16k, page_size)
+    return CreateFilesystem{}("btrfs -n 16k", dev);
+  }
+
+private:
+  bool operator()(const std::string_view mkfs, const std::string_view dev)
+  {
+    return execute_read(std::format("mkfs.{} {}", mkfs, dev)) == CmdSuccess;
   }
 };
 
-using CreateExt4Filesystem = CreateFilesystem<ext4>;
-using CreateVfat32Filesystem = CreateFilesystem<vfat32>;
 
+struct CreateBtrfsSubVolume : public ReadCommand
+{
+  bool operator()(const std::string_view path)
+  {
+    const auto stat = execute_read(std::format("btrfs subvolume create {}", path), [](const std::string_view m)
+    {
+      PLOGI << m;
+    });
+
+    if (stat != CmdSuccess)
+    {
+      PLOGE << "Failed to create btrfs subvolume";
+    }
+    return stat == CmdSuccess;
+  }
+};
 
 // partitions
 struct ClearPartitions : public ReadCommand
@@ -370,9 +398,10 @@ struct SetPartitionType : public ReadCommand
 // mount
 struct Mount : public ReadCommand
 {
-  bool operator()(const std::string_view dev, const std::string_view mount_point)
+  bool operator()(const std::string_view dev, const std::string_view path, const std::string_view opts = "")
   {
-    return execute_read(std::format("mount {} {}", dev, mount_point)) == CmdSuccess;
+    const auto opts_str = opts.empty() ? "" : std::format("-o {}", opts);
+    return execute_read(std::format("mount {} --mkdir {} {}", opts_str, dev, path)) == CmdSuccess;
   }
 };
 

@@ -40,8 +40,10 @@ struct DeviceFilesytemWidget : public WContainerWidget
 
     if (!filesystems.empty())
     {
+
       layout->addWidget(make_wt<Wt::WText>("Filesystem"));
       m_fs = layout->addWidget(make_wt<Wt::WComboBox>());
+      m_fs->changed().connect([=]{ validate(); });
 
       rng::for_each(filesystems, [this](const auto& fs) { m_fs->addItem(fs.data()); });
 
@@ -114,7 +116,7 @@ class MountsWidget : public WaliWidget
 
       layout->addWidget(make_wt<Wt::WText>("<h3>Root</h3>"));
 
-      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"ext4"}));
+      m_dev_fs = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, std::move(validate), StringViewVec{"ext4", "btrfs"}));
     }
 
     std::string get_device() const { return m_dev_fs->get_device(); }
@@ -137,7 +139,7 @@ class MountsWidget : public WaliWidget
       m_btn_to_root = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to root partition"));
 
       m_btn_to_new = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to new partition"));
-      m_devfs_to_new = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate, StringViewVec{"ext4"}));
+      m_devfs_to_new = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate, StringViewVec{"ext4", "btrfs"}));
 
       m_btn_to_existing = layout->addWidget(make_wt<Wt::WRadioButton>("Mount /home to existing partition"));
       m_devfs_to_existing = layout->addWidget(make_wt<DeviceFilesytemWidget>(parts, validate));

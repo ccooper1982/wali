@@ -185,12 +185,12 @@ void InstallWidget::create_log_widgets(WVBoxLayout * layout)
 
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FS)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_MOUNT)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACSTRAP, 25'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FSTAB)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_ROOT_ACC)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_BOOT_LOADER, 2'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_USER_ACC)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_SWAP)));
@@ -306,7 +306,6 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
   break;
 
   case InstallState::Fail:
-    PLOGE << "Stop requested: " << m_stop_src.stop_requested();
     status  = m_stop_src.stop_requested() ? "Cancelled" : "Failed: system is not bootable. Check logs.";
     css_class = "install_status_fail";
     allow_install = true;

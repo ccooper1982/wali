@@ -2,9 +2,11 @@
 #define WALI_INSTALL_H
 
 #include <Wt/WSignal.h>
+#include <concepts>
 #include <functional>
 #include <stop_token>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
@@ -59,16 +61,19 @@ private:
   // filesystems
   bool filesystems();
   bool fstab ();
+  bool create_root_filesystem();
   bool create_home_filesystem();
-  bool create_boot_filesystem(const std::string_view part_dev);
-  bool create_ext4_filesystem(const std::string_view part_dev);
-  void set_partition_type(const std::string_view part_dev, const std::string_view type);
+  bool create_boot_filesystem();
+  bool create_ext4_filesystem(const std::string_view dev);
+  bool create_btrfs_filesystem(const std::string_view dev);
+  bool create_btrfs_subvolume(const fs::path mount_point, const std::string_view name);
+  void set_partition_type(const std::string_view dev, const std::string_view type);
   bool wipe_fs(const std::string_view dev);
 
   // mounting
   bool mount();
   bool unmount();
-  bool do_mount(const std::string_view dev, const std::string_view path);
+  bool do_mount(const std::string_view dev, const std::string_view path, const std::string_view opts = "");
 
   // pacman
   bool pacstrap();
@@ -130,10 +135,25 @@ private:
     m_log(std::string{msg}, InstallLogLevel::Warning);
   }
 
+  // log warning if `ok` is false
+  void log_warning_if(const bool ok, const std::string_view msg)
+  {
+    if (!ok)
+      log_warning(msg);
+  }
+
   void log_error(const std::string_view msg)
   {
     PLOGE << msg;
     m_log(std::string{msg}, InstallLogLevel::Error);
+  }
+
+  bool log_error_if(const bool ok, const std::string_view msg)
+  {
+    if (!ok)
+      log_error (msg);
+
+    return ok;
   }
 
   void on_state(const InstallState state)

@@ -274,6 +274,13 @@ std::string DiskUtils::get_partition_uuid(const Tree& tree, const std::string_vi
 }
 
 
+std::string DiskUtils::get_partition_fs(const Tree& tree, const std::string_view dev)
+{
+  const auto opt = get_partition(tree, dev);
+  return opt ? opt->get().fs_type : "";
+}
+
+
 bool DiskUtils::is_mounted(const std::string_view path_or_dev, const bool is_dev)
 {
   bool mounted = false;

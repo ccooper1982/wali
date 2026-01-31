@@ -117,7 +117,7 @@ void MountsWidget::refresh_data()
     for(size_t i = 0 ; i < parts.size() ; ++i)
     {
       PLOGI << parts[i].dev << " = " << format_size(parts[i].size);
-      m_table->elementAt(r,0)->addNew<WText>(parts[i].dev);
+      m_table->elementAt(r,0)->addNew<WText>(std::format("  - {}", parts[i].dev));
       m_table->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
       m_table->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
       m_table->rowAt(r)->setStyleClass("partition");
@@ -166,18 +166,26 @@ void MountsWidget::validate_selection()
 
 void MountsWidget::set_data()
 {
-  const auto root_dev = m_root->get_device();
-  const auto root_fs = m_root->get_fs();
-  const auto home_dev = m_home->is_home_on_root() ? root_dev : m_home->get_device();
-  const auto home_fs = m_home->is_home_on_root() ? root_fs : m_home->get_fs();
-
   auto& data = m_data->mounts;
+  data.boot_loader = m_boot_loader->currentIndex() == 0 ? Bootloader::SystemdBoot : Bootloader::Grub;
   data.boot_dev = m_boot->get_device();
   data.boot_fs = m_boot->get_fs();
-  data.root_dev = root_dev;
-  data.root_fs = root_fs;
-  data.home_dev = home_dev;
-  data.home_fs = home_fs;
+  data.root_dev = m_root->get_device();
+  data.root_fs = m_root->get_fs();
+  data.home_dev = m_home->is_home_on_root() ? data.root_dev : m_home->get_device();
   data.home_target = m_home->get_mount_target();
-  data.boot_loader = m_boot_loader->currentIndex() == 0 ? Bootloader::SystemdBoot : Bootloader::Grub;
+
+  if (data.home_target == HomeMountTarget::Root)
+    data.home_fs = data.root_fs;
+  else if (data.home_target == HomeMountTarget::New)
+    data.home_fs = m_home->get_fs();
+  else
+    data.home_fs = DiskUtils::get_partition_fs(m_tree, data.home_dev);
+
+  PLOGW << "home_fs: " << data.home_fs;
+
+  if (data.root_fs == "btrfs" || data.home_fs == "btrfs")
+    m_data->packages.additional.emplace("btrfs-progs");
+  else
+    m_data->packages.additional.erase("btrfs-progs");
 }
