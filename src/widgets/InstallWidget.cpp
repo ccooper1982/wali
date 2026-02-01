@@ -185,16 +185,17 @@ void InstallWidget::create_log_widgets(WVBoxLayout * layout)
 
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FS)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_MOUNT)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACSTRAP, 25'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FSTAB)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_ROOT_ACC)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_BOOT_LOADER, 2'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_USER_ACC)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_DESKTOP, 50'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_SWAP)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 5'000)));
+  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 50'000)));
   m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
   layout->addStretch(1);
 }
@@ -206,7 +207,7 @@ void InstallWidget::update_data()
 }
 
 
-void InstallWidget::install ()
+void InstallWidget::install()
 {
   try
   {
@@ -236,7 +237,7 @@ void InstallWidget::install ()
                           },
                           m_data,
                           m_stop_src.get_token());
-                        });
+    });
   }
   catch (const std::exception& ex)
   {

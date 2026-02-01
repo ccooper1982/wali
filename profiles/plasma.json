@@ -1,0 +1,7 @@
+{
+  "name": "KDE Plasma",
+  "info": "Modern and well featured, customisation and support for basic tiling.",
+  "packages_required": ["plasma-meta"],
+  "packages_optional": [],
+  "services": []
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Niri",
+  "info": "Vertical scrolling tiling manager. Requires configuration.",
+  "packages_required": ["niri"],
+  "packages_optional": [
+    "alacritty",
+    "fuzzel",
+    "xwayland-satellite",
+    "xdg-desktop-portal-gnome",
+    "xdg-desktop-portal-gtk"
+  ],
+  "services": []
+}

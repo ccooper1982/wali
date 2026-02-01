@@ -42,6 +42,9 @@ struct MountData
 struct PackagesData
 {
   PackageSet additional;
+  PackageSet desktop;
+  PackageSet wm;
+  ServiceSet services;
 };
 
 struct NetworkData

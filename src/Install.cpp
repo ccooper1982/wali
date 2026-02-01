@@ -69,8 +69,8 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
                           exec_stage(&Install::mount,         STAGE_MOUNT) &&
-                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
+                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::fstab,         STAGE_FSTAB) &&
                           exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
                           exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
@@ -83,6 +83,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
                           exec_stage(&Install::video,         STAGE_VIDEO) &&
+                          exec_stage(&Install::desktop,       STAGE_DESKTOP) &&
                           exec_stage(&Install::network,       STAGE_NETWORK) &&
                           exec_stage(&Install::swap,          STAGE_SWAP) &&
                           exec_stage(&Install::packages,      STAGE_PACKAGES);
@@ -122,9 +123,6 @@ bool Install::filesystems()
   log_info(std::format("/     -> {} with {}", data.root_dev, data.root_fs));
   log_info(std::format("/boot -> {} with {}", data.boot_dev, data.boot_fs));
 
-  if (!(wipe_fs(data.boot_dev) && wipe_fs(data.root_dev)))
-    return false;
-
   bool volumes_created{true};
 
   const bool fs_created = create_boot_filesystem() && create_root_filesystem() && create_home_filesystem();
@@ -132,7 +130,7 @@ bool Install::filesystems()
   if (fs_created)
   {
     // need to mount devices to create subvolumes
-    bool mounted_home{true}, mounted_root{true};
+    bool mounted_home{true}, mounted_root{false};
 
     if (data.root_fs == "btrfs")
     {
@@ -165,15 +163,19 @@ bool Install::create_boot_filesystem()
 {
   const MountData& data = m_data->mounts;
 
-  log_info(std::format("Create vfat32 on {}", data.boot_dev));
+  wipe_fs(data.boot_dev);
 
   set_partition_type(data.boot_dev, PartTypeEfi);
+
+  log_info(std::format("Create vfat32 on {}", data.boot_dev));
   return CreateFilesystem::vfat32(data.boot_dev);
 }
 
 bool Install::create_root_filesystem()
 {
   const MountData& data = m_data->mounts;
+
+  wipe_fs(data.root_dev);
 
   set_partition_type(data.root_dev, PartTypeRoot);
 
@@ -188,8 +190,6 @@ bool Install::create_home_filesystem()
   bool home_valid{true};
 
   const MountData& data = m_data->mounts;
-  const auto home_dev = data.home_dev;
-  const auto home_fs = data.home_fs;
 
   if (data.home_target == HomeMountTarget::Existing)
     log_info(std::format("/home -> {}", data.home_dev));
@@ -197,6 +197,11 @@ bool Install::create_home_filesystem()
     log_info(std::format("/home -> {} with {}", data.root_dev, data.root_fs));
   else
   {
+    const auto home_dev = data.home_dev;
+    const auto home_fs = data.home_fs;
+
+    wipe_fs(home_dev);
+
     // new partition
     log_info(std::format("/home -> {} with {}", home_dev, home_fs));
 
@@ -697,6 +702,14 @@ bool Install::swap()
 }
 
 
+// desktop
+bool Install::desktop()
+{
+  log_info(std::format("Install {} packages", m_data->packages.desktop.size() + m_data->packages.wm.size()));
+  return install_packages(m_data->packages.wm) && install_packages(m_data->packages.desktop) && enable_service(m_data->packages.services);
+}
+
+
 // video
 bool Install::video()
 {
@@ -710,7 +723,7 @@ bool Install::video()
 
 
 // general
-bool Install::enable_service(const std::vector<std::string_view> services)
+bool Install::enable_service(const ServiceSet& services)
 {
   bool enabled_all{true};
 
