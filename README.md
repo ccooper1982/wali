@@ -3,12 +3,13 @@
 
 - In the live environment, `wali` runs a web server
 - Install Arch from another machine with a web UI
+- Only a 4MB download
 
 ![wali home](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)
 
 # Features
 - Create partitions
-- Copy the live `iwd` config to the installed system
+- Profiles: `niri` and `Plasma` with more on the way
 - Localise: locale, timezone and keymap
 - Video: Guidance on appropriate video driver
 - Packages: install additional packages
@@ -32,16 +33,17 @@
     - i.e. `http://192.168.1.2:8080/`
 
 # Arch Install Process
-Go through the menu options, configuring as required. Most
-sections are self explanatory.
+Go through the menu options, configuring as required. 
 
 - For a bootable system, all stages up to and including "Boot Loader" must succeed
 - If a subsequent stage fails, the system can _probably_ still boot (reported as Partial Success).
    
 ## Partitions
 - In the "Filesystems" page, you can click "Manage Partitions" to create partitions
+  - There is no UI progress indicator yet, except the buttons are disabled
 - All partitions on the selected device are deleted and new partitions are created
 - A new partition for home can be created (if not then, you will mount `/home` to the root partition)
+  - The home partition cannot be sized yet
 
 ## Mounts
 - `boot` and `root` are required, and must be separate partitions
@@ -55,11 +57,11 @@ sections are self explanatory.
 - A root password is required
 - A user account with password is required
 
-
 # Details
 - The web server is integrated into [`webtoolkit`](https://github.com/emweb/wt), a C++ web framework (the web equivalent of Qt)
 - The install script syncs the time then downloads and extracts `wali`
 - `wali` is linked statically to `wt`, as is `wt` to `boost`, so no additional dependencies are required
 
 # Build
+- C++23, `meson`
 - TODO

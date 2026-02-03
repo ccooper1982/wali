@@ -18,11 +18,10 @@ else
         rm -rd release
     fi
 
-    mkdir -p release/wali/wwwroot
-    mkdir -p release/wali/profiles
+    mkdir -p release/wali/wwwroot/profiles
 
     cp -r wwwroot release/wali
-    cp -r profiles/*.json release/wali/profiles
+    cp -r profiles/*.json release/wali/wwwroot/profiles
     cp build/wali scripts/start.sh scripts/install.sh release/wali
 
     cd release
