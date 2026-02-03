@@ -182,8 +182,6 @@ void MountsWidget::set_data()
   else
     data.home_fs = DiskUtils::get_partition_fs(m_tree, data.home_dev);
 
-  PLOGW << "home_fs: " << data.home_fs;
-
   if (data.root_fs == "btrfs" || data.home_fs == "btrfs")
     m_data->packages.additional.emplace("btrfs-progs");
   else

@@ -1,3 +1,5 @@
+#include "Wt/WPushButton.h"
+#include "Wt/WVBoxLayout.h"
 #include "wali/Install.hpp"
 #include <algorithm>
 #include <concepts>
@@ -26,13 +28,13 @@
 #include <wali/LogFormat.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/AccountsWidget.hpp>
+#include <wali/widgets/DesktopWidget.hpp>
 #include <wali/widgets/InstallWidget.hpp>
 #include <wali/widgets/LocaliselWidget.hpp>
 #include <wali/widgets/MountsWidget.hpp>
 #include <wali/widgets/MountsWidget.hpp>
 #include <wali/widgets/NetworkWidget.hpp>
 #include <wali/widgets/PackagesWidget.hpp>
-#include <wali/widgets/VideoWidget.hpp>
 #include <wali/widgets/WaliWidget.hpp>
 #include <wali/widgets/WidgetData.hpp>
 
@@ -97,7 +99,7 @@ private:
 inline static const constexpr std::string_view Names[] =
 {
   "Filesystems", "Network", "Accounts",
-  "Locale", "Video", "Packages"
+  "Locale", "Desktop", "Packages"
 };
 
 
@@ -122,7 +124,7 @@ class WaliApplication : public Wt::WApplication
       for (int c = 0 ; c < 3 ; ++c)
       {
         const auto index = c+(r*3);
-        const auto name = Names[index];
+        const auto& name = Names[index];
 
         auto btn = btns_layout->addWidget(make_wt<WPushButton>(name.data()), r, c);
         btn->setObjectName(name.data());
@@ -136,6 +138,7 @@ class WaliApplication : public Wt::WApplication
         });
       }
     }
+
 
     m_btn_install = btns_layout->addWidget(make_wt<WPushButton>("Install"), 2, 1);
     m_btn_install->resize(100, 40);
@@ -175,7 +178,7 @@ class WaliApplication : public Wt::WApplication
     add_page.operator()<NetworkWidget>();
     add_page.operator()<AccountWidget>();
     add_page.operator()<LocaliseWidget>();
-    add_page.operator()<VideoWidget>();
+    add_page.operator()<DesktopWidget>();
     add_page.operator()<PackagesWidget>();
     m_install_widget = add_page.operator()<InstallWidget>();
     m_install_widget->install_state().connect([this](InstallState st)

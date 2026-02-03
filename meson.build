@@ -83,6 +83,7 @@ sources = [
   'src/DiskUtils.cpp',
   'src/Install.cpp',
   'src/widgets/AccountsWidget.cpp',
+  'src/widgets/DesktopWidget.cpp',
   'src/widgets/InstallWidget.cpp',
   'src/widgets/LocaliseWidget.cpp',
   'src/widgets/NetworkWidget.cpp',

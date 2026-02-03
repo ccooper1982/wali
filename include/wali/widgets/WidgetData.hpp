@@ -44,6 +44,14 @@ struct PackagesData
   PackageSet additional;
 };
 
+struct DesktopData
+{
+  PackageSet desktop;
+  PackageSet dm;
+  ServiceSet services;
+  bool iwd{};
+};
+
 struct NetworkData
 {
   std::string hostname;
@@ -77,6 +85,7 @@ struct WidgetData
   AccountsData accounts;
   LocaliseData localise;
   PackagesData packages;
+  DesktopData desktop;
   NetworkData network;
   VideoData video;
   Summary summary;

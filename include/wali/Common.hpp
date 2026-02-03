@@ -23,6 +23,7 @@ inline static const fs::path FsTabPath{"/mnt/etc/fstab"};
 
 using StringViewVec = std::vector<std::string_view>;
 using PackageSet = std::set<std::string>;
+using ServiceSet = std::set<std::string>;
 
 inline static const constexpr auto STAGE_FS           = "Create Filesystems";
 inline static const constexpr auto STAGE_MOUNT        = "Mount";
@@ -33,6 +34,7 @@ inline static const constexpr auto STAGE_BOOT_LOADER  = "Bootloader";
 inline static const constexpr auto STAGE_USER_ACC     = "User Account";
 inline static const constexpr auto STAGE_LOCALISE     = "Localise";
 inline static const constexpr auto STAGE_VIDEO        = "Video";
+inline static const constexpr auto STAGE_DESKTOP      = "Desktop";
 inline static const constexpr auto STAGE_NETWORK      = "Network";
 inline static const constexpr auto STAGE_PACKAGES     = "Packages";
 inline static const constexpr auto STAGE_UNMOUNT      = "Unmount";

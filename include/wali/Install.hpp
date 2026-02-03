@@ -99,13 +99,17 @@ private:
   bool setup_iwd();
   bool setup_networkd();
 
+  // swap
   bool swap();
+
+  // desktop
+  bool desktop();
 
   // video
   bool video();
 
   // services
-  bool enable_service(const std::vector<std::string_view> services);
+  bool enable_service(const ServiceSet& services);
 
   // general
   static std::size_t count_files (const fs::path& dir, const std::vector<std::string_view> ext);
