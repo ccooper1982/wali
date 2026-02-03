@@ -24,14 +24,16 @@ static constexpr const auto KeyName = "name";
 static constexpr const auto KeyInfo = "info";
 static constexpr const auto KeyPackagesRequired = "packages_required";
 static constexpr const auto KeyPackagesOptional = "packages_optional";
+static constexpr const auto KeyServicesEnable   = "services_enable";
 
 
 static constexpr const auto NoneJson = R"({
   "name": "None",
   "info": "No desktop, tty only.",
-  "packages_required": [],
+  "iwd": true,
+  "packages_required": ["iwd"],
   "packages_optional": [],
-  "services": []
+  "services_enable": ["iwd.service", "systemd-networkd.service", "systemd-resolved.service"]
 })";
 
 
@@ -60,9 +62,9 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 
   auto wm_layout = layout->addLayout(make_wt<WHBoxLayout>());
   wm_layout->addWidget(make_wt<WLabel>("Login"));
-  m_wm = wm_layout->addWidget(make_wt<WComboBox>());
-  m_wm->addItem("sddm");
-  m_wm->changed().connect([this]{ m_data->packages.wm = PackageSet{{m_wm->currentText().toUTF8()}}; });
+  m_dm = wm_layout->addWidget(make_wt<WComboBox>());
+  m_dm->addItem("sddm");
+  m_dm->changed().connect([this]{ m_data->desktop.dm = PackageSet{{m_dm->currentText().toUTF8()}}; });
   wm_layout->addStretch(1);
 
   read_profiles();
@@ -147,21 +149,26 @@ void DesktopWidget::on_desktop_change()
 
   m_info->setText((std::string)profile.get(KeyInfo));
 
-  m_data->packages.desktop.clear();
-  m_data->packages.wm.clear();
+  m_data->desktop.desktop.clear();
+  m_data->desktop.dm.clear();
+  m_data->desktop.services.clear();
 
   for (const auto& value : (Json::Array)profile.get(KeyPackagesRequired))
-    m_data->packages.desktop.emplace((PackageSet::value_type)value);
+    m_data->desktop.desktop.emplace((PackageSet::value_type)value);
 
   for (const auto& value : (Json::Array)profile.get(KeyPackagesOptional))
-    m_data->packages.desktop.emplace((PackageSet::value_type)value);
+    m_data->desktop.desktop.emplace((PackageSet::value_type)value);
 
-  m_wm->setEnabled(m_desktops->currentIndex() != 0);
-  if (m_desktops->currentIndex() != 0)
-  {
-    m_data->packages.wm.emplace("sddm");
-    m_data->packages.services.emplace("sddm.service");
-  }
+  for (const auto& value : (Json::Array)profile.get(KeyServicesEnable))
+    m_data->desktop.services.emplace((PackageSet::value_type)value);
+
+  // only sddm at the moment
+  m_dm->setEnabled(m_desktops->currentIndex() != 0);
+  if (m_desktops->currentIndex() == 0)
+    m_data->desktop.services.erase("sddm.service");
   else
-    m_data->packages.services.erase("sddm.service");
+  {
+    m_data->desktop.dm.emplace("sddm");
+    m_data->desktop.services.emplace("sddm.service");
+  }
 }

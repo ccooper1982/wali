@@ -26,7 +26,7 @@ private:
   std::map<std::string, Wt::Json::Object> m_profiles;
   WText * m_info;
   WComboBox * m_desktops,
-            * m_wm;
+            * m_dm;
 };
 
 #endif

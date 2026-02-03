@@ -42,9 +42,14 @@ struct MountData
 struct PackagesData
 {
   PackageSet additional;
+};
+
+struct DesktopData
+{
   PackageSet desktop;
-  PackageSet wm;
+  PackageSet dm;
   ServiceSet services;
+  bool iwd{};
 };
 
 struct NetworkData
@@ -80,6 +85,7 @@ struct WidgetData
   AccountsData accounts;
   LocaliseData localise;
   PackagesData packages;
+  DesktopData desktop;
   NetworkData network;
   VideoData video;
   Summary summary;

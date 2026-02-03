@@ -618,7 +618,9 @@ bool Install::network()
   log_info("Set hostname");
   log_warning_if(ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string())), "Failed to create /etc/hostname");
 
-  if (copy_conf)
+  // some desktops (i.e. Plasma) packages contain network services,
+  // so even if user set copy conf, we override
+  if (m_data->desktop.iwd && copy_conf)
   {
     setup_iwd();
     setup_networkd();
@@ -705,8 +707,8 @@ bool Install::swap()
 // desktop
 bool Install::desktop()
 {
-  log_info(std::format("Install {} packages", m_data->packages.desktop.size() + m_data->packages.wm.size()));
-  return install_packages(m_data->packages.wm) && install_packages(m_data->packages.desktop) && enable_service(m_data->packages.services);
+  log_info(std::format("Install {} packages", m_data->desktop.desktop.size() + m_data->desktop.dm.size()));
+  return install_packages(m_data->desktop.dm) && install_packages(m_data->desktop.desktop) && enable_service(m_data->desktop.services);
 }
 
 
