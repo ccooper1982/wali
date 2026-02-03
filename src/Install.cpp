@@ -356,7 +356,7 @@ bool Install::fstab ()
   log_info(cmd_string);
 
   const auto stat = ReadCommand::execute_read(cmd_string);
-  log_error_if(stat != CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
+  log_error_if(stat == CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
 
   return stat == CmdSuccess;
 }

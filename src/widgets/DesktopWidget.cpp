@@ -22,6 +22,7 @@
 
 static constexpr const auto KeyName = "name";
 static constexpr const auto KeyInfo = "info";
+static constexpr const auto KeyIwd = "iwd";
 static constexpr const auto KeyPackagesRequired = "packages_required";
 static constexpr const auto KeyPackagesOptional = "packages_optional";
 static constexpr const auto KeyServicesEnable   = "services_enable";
@@ -149,6 +150,7 @@ void DesktopWidget::on_desktop_change()
 
   m_info->setText((std::string)profile.get(KeyInfo));
 
+  m_data->desktop.iwd = profile.get(KeyIwd);
   m_data->desktop.desktop.clear();
   m_data->desktop.dm.clear();
   m_data->desktop.services.clear();
@@ -164,9 +166,7 @@ void DesktopWidget::on_desktop_change()
 
   // only sddm at the moment
   m_dm->setEnabled(m_desktops->currentIndex() != 0);
-  if (m_desktops->currentIndex() == 0)
-    m_data->desktop.services.erase("sddm.service");
-  else
+  if (m_desktops->currentIndex() != 0)
   {
     m_data->desktop.dm.emplace("sddm");
     m_data->desktop.services.emplace("sddm.service");
