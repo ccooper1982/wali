@@ -4,7 +4,7 @@ set -eu
 # wali does this but lets ensure time is accurate before we start
 timedatectl
 
-VERSION=v0.9
+VERSION=v1.0
 INSTALL_DIR=/usr/local/bin/wali
 START_SH="start.sh <ip_address> [port]"
 
