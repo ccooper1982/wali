@@ -1,8 +1,19 @@
+#include "Wt/WLength.h"
 #include <wali/widgets/NetworkWidget.hpp>
 #include <Wt/WCheckBox.h>
 
+
+static constexpr auto text =  "<ul>"
+                                "<li><b>NTP:</b> Maintain accurate system time with Network Time Protocol</li>"
+                                "<li><b>Copy Wi-Fi Config:</b> useful when on WiFi and installing no desktop environment, "
+                                "or one which does not configure the WiFi.<br/><br/>If you don't know, leave enabled.</li>"
+                              "</ul>";
+
+
 NetworkWidget::NetworkWidget(WidgetDataPtr data) : WaliWidget(data, "Network")
 {
+  resize(600, WLength::Auto);
+
   auto layout = setLayout(make_wt<WVBoxLayout>());
 
   auto form_container = layout->addWidget(make_wt<WContainerWidget>());

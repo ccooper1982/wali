@@ -9,9 +9,6 @@
 
 class NetworkWidget : public WaliWidget
 {
-  static constexpr auto text = "<ul><li>If using Wi-Fi, copy the iwd config to have "
-                               "internet connectivity in the live system</li></ul>";
-
 public:
   NetworkWidget(WidgetDataPtr data);
 
