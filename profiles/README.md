@@ -2,6 +2,7 @@
 
 - The None profile is hardcoded
 - Otherwise, there is a `json` config file per profile
+- The minimal packages are installed, but always include internet connectivity and a terminal
 
 ## Config
 A profile has general form:
@@ -10,7 +11,8 @@ A profile has general form:
 {
   "name": "<name>",
   "info": "<brief description>",
-  "iwd": <install iwd, networkd and resolved>,
+  "iwd": <install iwd, networkd>,
+  "netmanager":<install NetworkManager>
   "packages_required": [<packages always installed>],
   "packages_optional": [<pacakges user can select (not implemented yet)>],
   "services_enable": [<services to enable>]
@@ -18,13 +20,19 @@ A profile has general form:
 ```
 ---
 
+> [!WARNING]
+> `iwd` and `netmanager` are mutally exclusive, they should not both `true`.
+
 ### iwd
 
 If `true`:
 - `iwd` is installed
-- `iwd`, `networkd` and `resolved` services are enabled
+- `iwd` and `networkd` are installed
 
-Some desktops handle network (i.e. Plasma) handle.
+### netmanager
+
+If `true`:
+- `NetworkManager` is installed
 
 ### packages_optional
 
