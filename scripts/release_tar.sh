@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=v1.0
+VERSION=1.1
 
 # default options should be ok, but be explicit
 meson configure -Dskip_validation=false -Ddisable_install=false -Dfake_data=false --buildtype=release build
