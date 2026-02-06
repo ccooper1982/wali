@@ -4,15 +4,17 @@ set -eu
 # wali does this but lets ensure time is accurate before we start
 timedatectl
 
-VERSION=1.1
+# NOTE version must be the same as the Git tag
+VERSION=v1.1
 INSTALL_DIR=/usr/local/bin/wali
 START_SH="start.sh <ip_address> [port]"
+FILENAME=wali-bin_$VERSION.tar.gz
 
 # Download tar from GitHub
-curl -OL https://github.com/ccooper1982/wali/releases/download/$VERSION/wali-bin_$VERSION.tar.gz
+curl -OL https://github.com/ccooper1982/wali/releases/download/$VERSION/$FILENAME
 
 # Extract
-tar -xf wali-bin_$VERSION.tar.gz -C /usr/local/bin
+tar -xf $FILENAME -C /usr/local/bin
 
 echo
 echo "--------------"
