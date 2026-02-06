@@ -23,6 +23,7 @@
 static constexpr const auto KeyName = "name";
 static constexpr const auto KeyInfo = "info";
 static constexpr const auto KeyIwd = "iwd";
+static constexpr const auto KeyNetManager = "netmanager";
 static constexpr const auto KeyPackagesRequired = "packages_required";
 static constexpr const auto KeyPackagesOptional = "packages_optional";
 static constexpr const auto KeyServicesEnable   = "services_enable";
@@ -32,9 +33,10 @@ static constexpr const auto NoneJson = R"({
   "name": "None",
   "info": "No desktop, tty only.",
   "iwd": true,
-  "packages_required": ["iwd"],
+  "netmanager":false,
+  "packages_required": [],
   "packages_optional": [],
-  "services_enable": ["iwd.service", "systemd-networkd.service", "systemd-resolved.service"]
+  "services_enable": []
 })";
 
 
@@ -85,7 +87,7 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 void DesktopWidget::read_profiles()
 {
   static const fs::path ProfileDir {"profiles"};
-  static const std::set<std::string> RequiredKeys {KeyName, KeyPackagesRequired, KeyInfo};
+  static const std::set<std::string> RequiredKeys {KeyName, KeyPackagesRequired, KeyInfo, KeyIwd, KeyNetManager};
 
   auto object_valid = [](const std::set<std::string>& keys)
   {
@@ -151,6 +153,8 @@ void DesktopWidget::on_desktop_change()
   m_info->setText((std::string)profile.get(KeyInfo));
 
   m_data->desktop.iwd = profile.get(KeyIwd);
+  m_data->desktop.netmanager = profile.get(KeyNetManager);
+
   m_data->desktop.desktop.clear();
   m_data->desktop.dm.clear();
   m_data->desktop.services.clear();

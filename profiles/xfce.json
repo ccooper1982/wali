@@ -1,0 +1,14 @@
+{
+  "name": "Xfce",
+  "info": "Lightweight and modular, based on GTK. Also a dedicated themes <a href=\"https://www.xfce-look.org/browse/\">website</a>.",
+  "iwd": false,
+  "netmanager": true,
+  "packages_required": [
+    "xfce4",
+    "xfce4-goodies",
+    "labwc",
+    "network-manager-applet"
+  ],
+  "packages_optional": [],
+  "services_enable": []
+}

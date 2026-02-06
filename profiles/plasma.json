@@ -2,15 +2,16 @@
   "name": "KDE Plasma",
   "info": "Modern and well featured, customisation and support for basic tiling.",
   "iwd": false,
+  "netmanager": true,
   "packages_required": [
     "plasma",
-    "networkmanager",
     "konsole",
     "dolphin",
     "kate",
     "kmix",
-    "xorg-server"
+    "xorg-server",
+    "network-manager-applet"
   ],
   "packages_optional": [""],
-  "services_enable": ["NetworkManager.service"]
+  "services_enable": []
 }

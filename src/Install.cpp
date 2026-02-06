@@ -79,6 +79,8 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     if (minimal)
     {
+      // TODO these stages can fail and we don't quit so they all return false,
+      //      so change them to return void
       on_state(InstallState::Bootable);
 
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
@@ -294,10 +296,10 @@ bool Install::pacstrap()
   static PackageSet packages =
   {
     "base",
-    "archlinux-keyring",
     "linux",
     "linux-firmware",
     "sudo",
+    "nano",
     "reflector",      // pacman mirrors list
     "gpm"             // laptop touchpad support
   };
@@ -618,16 +620,16 @@ bool Install::network()
   log_info("Set hostname");
   log_warning_if(ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string())), "Failed to create /etc/hostname");
 
-  // some desktops (i.e. Plasma) packages contain network services,
-  // so even if user set copy conf, we override
-  if (m_data->desktop.iwd && copy_conf)
-  {
+  enable_service({"systemd-resolved"});
+
+  if (m_data->desktop.iwd)
     setup_iwd();
-    setup_networkd();
-  }
+
+  if (m_data->desktop.netmanager)
+    setup_network_manager();
 
   if (ntp)
-    enable_service({"systemd-timesyncd.service"});
+    enable_service({"systemd-timesyncd"});
 
   return true;
 }
@@ -635,42 +637,50 @@ bool Install::network()
 bool Install::setup_iwd()
 {
   // iwd config: https://wiki.archlinux.org/title/Iwd#Network_configuration
-  static const fs::path LiveIwdConfigPath{"/var/lib/iwd"};
-  static const fs::path TargetIwdConfigPath{RootMnt / "var/lib/iwd"};
+  static const fs::path LiveIwdConfigPath{RootMnt / "etc/iwd/main.conf"};
+  static const auto IwdConfig = "[General]\nEnableNetworkConfiguration=true";
+  static const auto create_config = std::format("mkdir -p {} && echo -e \"{}\" > {}", LiveIwdConfigPath.parent_path().string(),
+                                                                                      IwdConfig,
+                                                                                      LiveIwdConfigPath.string());
 
   log_info("Install and enable iwd");
 
-  if (!(install_packages({"iwd"}) && enable_service({"iwd.service"})))
+  log_warning_if(install_packages({"iwd"}) && enable_service({"iwd", "systemd-networkd"}), "iwd package or service enable failed");
+  log_warning_if(ReadCommand::execute_read(create_config) == CmdSuccess, "Failed to create IWD config");
+
+  if (m_data->network.copy_config)
   {
-    log_warning("iwd package or service enable failed");
-    return false;
+    static const fs::path LiveIwdConnectionsPath{"/var/lib/iwd"};
+    static const fs::path TargetIwdConnectionsPath{RootMnt / "var/lib/iwd"};
+
+    log_info("Copy iwd config");
+
+    const auto src = LiveIwdConnectionsPath.string();
+    const auto dest = TargetIwdConnectionsPath.string();
+    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+
+    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy iwd configs");
   }
-
-  log_info("Copy iwd config");
-
-  const auto src = LiveIwdConfigPath.string();
-  const auto dest = TargetIwdConfigPath.string();
-  const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
-
-  log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy iwd configs");
 
   return true;
 }
 
-bool Install::setup_networkd()
+bool Install::setup_network_manager()
 {
   static const fs::path LiveConfigPath {"/etc/systemd/network"};
   static const fs::path TargetConfigPath {RootMnt / "etc/systemd/network"};
 
-  const auto src = LiveConfigPath.string();
-  const auto dest = TargetConfigPath.string();
-  const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+  if (m_data->network.copy_config)
+  {
+    const auto src = LiveConfigPath.string();
+    const auto dest = TargetConfigPath.string();
+    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
-  log_info("Copy networkd config");
+    log_info("Copy NetworkManager configs");
+    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
+  }
 
-  log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
-
-  return enable_service({"systemd-networkd.service", "systemd-resolved.service"});
+  return install_packages({"networkmanager"}) && enable_service({"NetworkManager"});
 }
 
 

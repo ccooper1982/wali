@@ -97,7 +97,7 @@ private:
   // network
   bool network();
   bool setup_iwd();
-  bool setup_networkd();
+  bool setup_network_manager();
 
   // swap
   bool swap();

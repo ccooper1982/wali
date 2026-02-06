@@ -50,9 +50,10 @@ struct DesktopData
   PackageSet dm;
   ServiceSet services;
   bool iwd{};
+  bool netmanager{};
 };
 
-struct NetworkData
+struct netmanagerata
 {
   std::string hostname;
   bool ntp;
@@ -86,7 +87,7 @@ struct WidgetData
   LocaliseData localise;
   PackagesData packages;
   DesktopData desktop;
-  NetworkData network;
+  netmanagerata network;
   VideoData video;
   Summary summary;
 };

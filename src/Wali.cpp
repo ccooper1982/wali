@@ -77,6 +77,7 @@ public:
   NavBar(WStackedWidget * stack)
   {
     m_link = addWidget(make_wt<WAnchor>(WLink{}, "&#8592; Back"));
+    m_link->setStyleClass("nav_back");
     m_link->clicked().connect([=, this]()
     {
       stack->setCurrentIndex(0);

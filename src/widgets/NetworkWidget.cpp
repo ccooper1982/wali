@@ -5,7 +5,7 @@
 
 static constexpr auto text =  "<ul>"
                                 "<li><b>NTP:</b> Maintain accurate system time with Network Time Protocol</li>"
-                                "<li><b>Copy Wi-Fi Config:</b> useful when on WiFi and installing no desktop environment, "
+                                "<li><b>Copy Wi-Fi Config:</b> useful when on WiFi and installing without a desktop environment, "
                                 "or one which does not configure the WiFi.<br/><br/>If you don't know, leave enabled.</li>"
                               "</ul>";
 
@@ -54,8 +54,3 @@ NetworkWidget::NetworkWidget(WidgetDataPtr data) : WaliWidget(data, "Network")
 
   set_valid(!m_data->network.hostname.empty());
 }
-
-// bool NetworkWidget::is_valid() const
-// {
-//   return !m_data.hostname.empty();
-// }

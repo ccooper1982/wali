@@ -2,6 +2,7 @@
   "name": "Hyprland",
   "info": "Popular tiling manager with endless ricing. Requires configuration.<br/>When you restart, you should add the following to the config:<br/> <code>exec-once = systemctl --user start hyprpolkitagent</code>",
   "iwd": true,
+  "netmanager": false,
   "packages_required": [
     "hyprland",
     "hyprpolkitagent",

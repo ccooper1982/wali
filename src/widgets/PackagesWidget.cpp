@@ -43,7 +43,7 @@ PackagesWidget::PackagesWidget(WidgetDataPtr data) : WaliWidget(data, "Packages"
   m_line_packages = layout_search->addWidget(make_wt<WLineEdit>(), 1);
   m_line_packages->setStyleClass("packages");
   m_line_packages->setAttributeValue("maxlength", "300");
-  m_line_packages->setPlaceholderText("nano git btop ...");
+  m_line_packages->setPlaceholderText("firefox git btop ...");
   m_line_packages->enterPressed().connect(this, &PackagesWidget::search);
 
   m_btn_search = layout_search->addWidget(make_wt<WPushButton>("Search"));

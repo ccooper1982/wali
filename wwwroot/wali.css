@@ -1,14 +1,28 @@
 a:link {
-    color: white;
+    color: #5c58e4;
     text-decoration: none;
 }
 a:visited {
-    color: white;
+    color: #5c58e4;
 }
 a:hover {
     color: lightblue;
 }
 a:active {
+    color: #5c58e4;
+}
+
+a.nav_back:link {
+    color: white;
+    text-decoration: none;
+}
+a.nav_back:visited {
+    color: white;
+}
+a.nav_back:hover {
+    color: lightblue;
+}
+a.nav_back:active {
     color: white;
 }
 
