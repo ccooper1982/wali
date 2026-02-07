@@ -210,6 +210,7 @@ public:
   {
     setTitle("wali");
     useStyleSheet("wali.css");
+    enableUpdates(true);
 
     auto layout = root()->setLayout(make_wt<WVBoxLayout>());
 
@@ -221,8 +222,6 @@ public:
     }
     else
     {
-      enableUpdates(true);
-
       data = std::make_shared<WidgetData>();
 
       root()->setMargin(0);
@@ -232,7 +231,7 @@ public:
       layout->setSpacing(0);
 
       auto header = layout->addWidget(make_wt<WContainerWidget>());
-      auto title = layout->addWidget(make_wt<WContainerWidget>(), 0, AlignmentFlag::Center);
+      auto nav = layout->addWidget(make_wt<WContainerWidget>(), 0, AlignmentFlag::Center);
       // auto waffle = layout->addWidget(make_wt<WText>(intro_waffle), 0, AlignmentFlag::Center);
       // waffle->setWidth(600);
 
@@ -241,13 +240,20 @@ public:
       layout->addStretch(2);
 
       header->setStyleClass("home_north");
-      header->addWidget(make_wt<WText>("Web Arch Linux Installer"));
+      auto header_layout = header->setLayout(make_wt<WVBoxLayout>());
+      header_layout->setSpacing(0);
+      header_layout->setContentsMargins(0,0,0,0);
 
-      title->setStyleClass("nav_bar");
-      title->setHeight(50);
-      // title->setPadding(20, Side::Bottom);
+      auto txt_title = header_layout->addWidget(make_wt<WText>("Web Arch Linux Installer"));
+      auto txt_version = header_layout->addWidget(make_wt<WText>(std::format("v{}", WALI_VERSION)), 1);
 
-      m_nav_bar = title->addWidget(make_wt<NavBar>(stack));
+      txt_title->setStyleClass("bar_title");
+      txt_version->setStyleClass("bar_version");
+
+      nav->setStyleClass("nav_bar");
+      nav->setHeight(50);
+
+      m_nav_bar = nav->addWidget(make_wt<NavBar>(stack));
 
       stack->setMargin(0);
       stack->setPadding(0);

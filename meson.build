@@ -1,7 +1,7 @@
 project(
   'wali',
   'cpp',
-  version: '0.9',
+  version: '1.1',
   meson_version: '>= 1.1', # for meson.options
   default_options: ['cpp_std=c++23'],
 ) # TODO warning_level/werror
@@ -66,6 +66,8 @@ if (get_option('fake_data'))
   add_project_arguments('-DWALI_FAKE_DATA', language: 'cpp')
 endif
 
+add_project_arguments('-DWALI_VERSION="' + meson.project_version() + '"', language: 'cpp')
+
 ### other deps ###
 
 # plog logging library
@@ -92,6 +94,8 @@ sources = [
   'src/widgets/PartitionsWidget.cpp',
   'src/widgets/VideoWidget.cpp',
 ]
+
+# meson.add_dist_script('scripts/release_tar.sh', meson.project_version())
 
 executable(
   meson.project_name(),
