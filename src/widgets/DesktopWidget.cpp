@@ -122,8 +122,13 @@ void DesktopWidget::read_profiles()
   if (const auto name = read_file("None", NoneJson); name)
     m_desktops->addItem(*name);
 
-
   const auto path = WApplication::instance()->docRoot() / ProfileDir;
+
+  if (!fs::exists(path))
+  {
+    PLOGE << "Profile path does not exist: " << path.string();
+    return;
+  }
 
   for(const auto& entry : fs::directory_iterator{path} | view::filter([](const fs::directory_entry& e){ return e.path().extension() == ".json"; }))
   {
