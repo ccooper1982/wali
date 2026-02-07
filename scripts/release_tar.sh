@@ -15,9 +15,7 @@ meson compile -C build
 if [ $? -ne 0 ]; then
     exit 1
 else
-    if [ -d release ]; then
-        rm -rd release
-    fi
+    rm -rfd release
 
     mkdir -p release/wali/wwwroot/profiles
 
@@ -25,7 +23,5 @@ else
     cp -r profiles/*.json release/wali/wwwroot/profiles
     cp build/wali scripts/start.sh scripts/install.sh release/wali
 
-    cd release
-    tar -czf wali-bin_$VERSION.tar.gz wali
-    cd -
+    tar -czf release/wali-bin_$VERSION.tar.gz release/wali
 fi
