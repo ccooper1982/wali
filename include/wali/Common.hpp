@@ -41,6 +41,22 @@ inline static const constexpr auto STAGE_UNMOUNT      = "Unmount";
 inline static const constexpr auto STAGE_SWAP         = "Swap";
 
 
+
+// TODO user defined literal
+
+static const constexpr int64_t B_MB = 1024*1024;
+static const constexpr int64_t B_GB = 1024*1024*1024;
+static const constexpr int64_t MB_GB = 1024;
+
+static constexpr inline int64_t b_to_gb(const int64_t n) { return n / B_GB; }
+static constexpr inline int64_t mb_to_b(const int64_t n) { return n * B_MB; }
+static constexpr inline int64_t gb_to_b(const int64_t n) { return n * B_GB; }
+static constexpr inline int64_t gb_to_mb(const int64_t n) { return n * MB_GB; }
+
+static const int64_t BootSizeMin = mb_to_b(512);
+static const int64_t RootSizeMin = gb_to_b(5);
+
+
 enum class GpuVendor
 {
   Unknown,

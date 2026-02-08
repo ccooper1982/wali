@@ -7,7 +7,6 @@
 #include <Wt/WGlobal.h>
 #include <Wt/WLayout.h>
 #include <Wt/WSignal.h>
-#include <cstdlib>
 #include <wali/DiskUtils.hpp>
 #include <wali/widgets/Common.hpp>
 #include <wali/widgets/WaliWidget.hpp>

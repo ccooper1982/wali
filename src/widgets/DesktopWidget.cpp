@@ -3,6 +3,7 @@
 #include "Wt/Json/Parser.h"
 #include "Wt/Json/Serializer.h"
 #include "Wt/WApplication.h"
+#include "wali/DiskUtils.hpp"
 #include <Wt/WCheckBox.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WHBoxLayout.h>
@@ -53,7 +54,9 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
   layout->addWidget(make_wt<WText>("<h3>Video Drivers</h3>"));
   layout->addWidget(make_wt<VideoWidget>(m_data));
 
+  // desktop
   layout->addWidget(make_wt<WText>("<h3>Desktop</h3>"));
+  layout->addWidget(make_wt<WText>("All desktops, except None, require the root partition is at least 12Gb."));
 
   // desktop combo
   auto de_layout = layout->addLayout(make_wt<WHBoxLayout>());
@@ -74,10 +77,8 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 
   layout->addSpacing(20);
 
-  // require config
   m_info = layout->addWidget(make_wt<WText>());
 
-  // optional packages
   layout->addStretch(1);
 
   on_desktop_change();
@@ -163,6 +164,7 @@ void DesktopWidget::on_desktop_change()
   m_data->desktop.desktop.clear();
   m_data->desktop.dm.clear();
   m_data->desktop.services.clear();
+  //m_warning->setText("");
 
   for (const auto& value : (Json::Array)profile.get(KeyPackagesRequired))
     m_data->desktop.desktop.emplace((PackageSet::value_type)value);
@@ -173,11 +175,19 @@ void DesktopWidget::on_desktop_change()
   for (const auto& value : (Json::Array)profile.get(KeyServicesEnable))
     m_data->desktop.services.emplace((PackageSet::value_type)value);
 
-  // only sddm at the moment
   m_dm->setEnabled(m_desktops->currentIndex() != 0);
+
   if (m_desktops->currentIndex() != 0)
   {
     m_data->desktop.dm.emplace("sddm");
     m_data->desktop.services.emplace("sddm.service");
+
+    // if (const auto size = DiskUtils::get_disk_size(m_data->mounts.root_dev); size)
+    // {
+    //   PLOGI << "Root dev size: " << *size;
+
+    //   if (size < gb_to_b(12))
+    //     m_warning->setText("<span style='color: red;'>This profile requires the root partition is at least 12Gb.</span>");
+    // }
   }
 }
