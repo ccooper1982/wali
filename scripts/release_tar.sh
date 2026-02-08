@@ -23,5 +23,7 @@ else
     cp -r profiles/*.json release/wali/wwwroot/profiles
     cp build/wali scripts/start.sh scripts/install.sh release/wali
 
-    tar -czf release/wali-bin_$VERSION.tar.gz release/wali
+    cd release
+    tar -czf wali-bin_$VERSION.tar.gz wali
+    cd -
 fi
