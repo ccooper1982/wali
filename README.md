@@ -3,8 +3,9 @@
 
 - In the live environment, `wali` runs a web server
 - Install Arch from another machine with a web UI
-- Only a 4MB download
+- 4MB download, 10MB extracted, with no dependencies
 - A [video](https://www.youtube.com/watch?v=tHF04ex9AMg) of v1.2
+  - Note: the mouse pointer doesn't show in the video
 
 <!--[![wali install preview](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)](https://www.youtube.com/watch?v=tHF04ex9AMg)-->
 
