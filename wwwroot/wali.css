@@ -38,19 +38,19 @@ body {
 }
 
 h2 {
-    background-color: #193f5d;
-    padding: 5px;
+    border-bottom: 2px solid #193f5d;
+    padding-bottom: 3px;
 }
 
 h3 {
-    background-color: #193f5d;
-    padding: 5px;
+    border-bottom: 2px solid #416c91;
+    padding-bottom: 3px;
 }
 
 div.home_north {
     background-color: #152e45;
     color: white;
-    height: 100px;
+    height: 80px;
     /*font-size: 24px;*/
     display: flex;
     justify-content: center;

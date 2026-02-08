@@ -190,18 +190,17 @@ class WaliApplication : public Wt::WApplication
     return stack;
   }
 
+  // A WaliWidget has a data_valid() event, which when triggered, will call on_validity().
   void on_validity(const bool valid)
   {
     #ifndef WALI_SKIP_VALIDATION
       const auto have_invalid = rng::any_of(m_stack->children(), [](const WWidget * w)
       {
-        if (const auto wali_widget = dynamic_cast<const WaliWidget *>(w); wali_widget)
-          return !wali_widget->is_data_valid();
-        else
-          return false;
+        const auto wali_widget = dynamic_cast<const WaliWidget *>(w);
+        return wali_widget ? !wali_widget->is_data_valid() : false;
       });
-
-      m_btn_install->setEnabled(!have_invalid);
+      // only valid if the caller is valid and no other widgets are invalid
+      m_btn_install->setEnabled(valid && !have_invalid);
     #endif
   }
 
@@ -251,7 +250,7 @@ public:
       txt_version->setStyleClass("bar_version");
 
       nav->setStyleClass("nav_bar");
-      nav->setHeight(50);
+      nav->setHeight(30);
 
       m_nav_bar = nav->addWidget(make_wt<NavBar>(stack));
 

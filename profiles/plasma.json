@@ -1,6 +1,6 @@
 {
   "name": "KDE Plasma",
-  "info": "Modern and well featured, customisation and support for basic tiling.",
+  "info": "Modern and well featured, customisation and basic support for tiling.",
   "iwd": false,
   "netmanager": true,
   "packages_required": [

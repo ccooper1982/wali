@@ -3,7 +3,6 @@
 #include "Wt/Json/Parser.h"
 #include "Wt/Json/Serializer.h"
 #include "Wt/WApplication.h"
-#include "wali/DiskUtils.hpp"
 #include <Wt/WCheckBox.h>
 #include <Wt/WComboBox.h>
 #include <Wt/WHBoxLayout.h>
@@ -17,7 +16,6 @@
 #include <sstream>
 #include <string_view>
 #include <wali/widgets/DesktopWidget.hpp>
-#include <wali/widgets/VideoWidget.hpp>
 #include <wali/Common.hpp>
 
 
@@ -47,12 +45,13 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
   resize(600, WLength::Auto);
 
   auto layout = setLayout(make_wt<WVBoxLayout>());
-  layout->setContentsMargins(5,0,5,0);
+  layout->setContentsMargins(10,0,10,0);
   layout->setSpacing(10);
 
   // video drivers
   layout->addWidget(make_wt<WText>("<h3>Video Drivers</h3>"));
-  layout->addWidget(make_wt<VideoWidget>(m_data));
+  m_video_widget = layout->addWidget(make_wt<VideoWidget>(m_data));
+  m_video_widget->data_valid().connect([this](const bool valid){ set_valid(valid); });
 
   // desktop
   layout->addWidget(make_wt<WText>("<h3>Desktop</h3>"));

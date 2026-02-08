@@ -60,6 +60,12 @@ static constexpr const auto intel_waffle = R"(
   See Intel GPU <a href="https://en.wikipedia.org/wiki/List_of_Intel_graphics_processing_units">families</a>.
 )";
 
+static constexpr const auto vm_waffle = R"(
+  <b>Virtual Machine</b>
+  <ul>
+    <li>Installs <code>xf86-video-vmware</code></li>
+  </ul>
+)";
 
 static const PackageSet AmdGpuPackages = {"mesa", "vulkan-radeon", "xf86-video-amdgpu"};
 static const PackageSet AtiPackages = {"mesa-amber", "xf86-video-ati"};
@@ -71,6 +77,7 @@ static const PackageSet NvidiaOpenPackages = {"nvidia-open", "nvidia-utils"};
 static const PackageSet IntelGen8Packages = {"mesa", "vulkan-intel", "xf86-video-intel", "intel-media-driver"};
 static const PackageSet IntelPreGen8Packages = {"mesa", "vulkan-intel", "xf86-video-intel", "libva-media-driver"};
 
+static const PackageSet VmPackages = {"xf86-video-vmware"};
 
 static const std::map<std::string, PackageSet> AmdDriverMap =
 {
@@ -90,6 +97,11 @@ static const std::map<std::string, PackageSet> IntelDriverMap =
   {"Gen 3 - Gen 7.5", IntelPreGen8Packages}
 };
 
+static const std::map<std::string, PackageSet> VmDriverMap =
+{
+  {"VM", VmPackages}
+};
+
 
 VideoWidget::VideoWidget(WidgetDataPtr data) : WaliWidget(data, "Video")
 {
@@ -99,22 +111,25 @@ VideoWidget::VideoWidget(WidgetDataPtr data) : WaliWidget(data, "Video")
   layout_company->setSpacing(20);
 
   auto layout_none = layout_company->addLayout(make_wt<WVBoxLayout>());
+  auto layout_vm = layout_company->addLayout(make_wt<WVBoxLayout>());
   auto layout_amd = layout_company->addLayout(make_wt<WVBoxLayout>());
   auto layout_nvidia = layout_company->addLayout(make_wt<WVBoxLayout>());
   auto layout_intel = layout_company->addLayout(make_wt<WVBoxLayout>());
 
-  m_group_company = std::make_shared<WButtonGroup>();
-  m_group_company->addButton(layout_none->addWidget(make_wt<WRadioButton>("None")));
-  m_group_company->addButton(layout_amd->addWidget(make_wt<WRadioButton>("AMD")));
-  m_group_company->addButton(layout_nvidia->addWidget(make_wt<WRadioButton>("Nvidia")));
-  m_group_company->addButton(layout_intel->addWidget(make_wt<WRadioButton>("Intel")));
-  m_group_company->setSelectedButtonIndex(0);
-  m_group_company->checkedChanged().connect(this, [this](WRadioButton * btn)
+  m_group_vendor = std::make_shared<WButtonGroup>();
+  m_group_vendor->addButton(layout_none->addWidget(make_wt<WRadioButton>("None")));
+  m_group_vendor->addButton(layout_vm->addWidget(make_wt<WRadioButton>("VM")));
+  m_group_vendor->addButton(layout_amd->addWidget(make_wt<WRadioButton>("AMD")));
+  m_group_vendor->addButton(layout_nvidia->addWidget(make_wt<WRadioButton>("Nvidia")));
+  m_group_vendor->addButton(layout_intel->addWidget(make_wt<WRadioButton>("Intel")));
+  m_group_vendor->setSelectedButtonIndex(0);
+  m_group_vendor->checkedChanged().connect(this, [this](WRadioButton * btn)
   {
     set_selected_driver(btn);
   });
 
   layout_none->addStretch(1);
+  layout_vm->addStretch(1);
 
   m_amd_driver = layout_amd->addWidget(make_wt<WComboBox>());
   m_amd_driver->changed().connect([this](){ set_valid(true); });
@@ -160,29 +175,33 @@ void VideoWidget::set_default_driver()
 {
   switch (GetGpuVendor{}())
   {
+    case GpuVendor::Vm:
+      m_group_vendor->setSelectedButtonIndex(1);
+    break;
+
     case GpuVendor::Amd:
-      m_group_company->setSelectedButtonIndex(1);
+      m_group_vendor->setSelectedButtonIndex(2);
     break;
 
     case GpuVendor::Nvidia:
-      m_group_company->setSelectedButtonIndex(2);
+      m_group_vendor->setSelectedButtonIndex(3);
     break;
 
     case GpuVendor::Intel:
-      m_group_company->setSelectedButtonIndex(3);
+      m_group_vendor->setSelectedButtonIndex(4);
     break;
 
     default:
-      m_group_company->setSelectedButtonIndex(0);
+      m_group_vendor->setSelectedButtonIndex(0);
     break;
   }
 
-  set_selected_driver(m_group_company->checkedButton());
+  set_selected_driver(m_group_vendor->checkedButton());
 }
 
 void VideoWidget::set_waffle()
 {
-  const auto& selected = m_group_company->checkedButton()->text().toUTF8();
+  const auto& selected = m_group_vendor->checkedButton()->text().toUTF8();
 
   std::string_view waffle{none_waffle};
 
@@ -192,6 +211,8 @@ void VideoWidget::set_waffle()
     waffle = nvidia_waffle;
   else if (selected == "Intel")
     waffle = intel_waffle;
+  else if (selected == "VM")
+    waffle = vm_waffle;
 
   m_waffle->setText(waffle.data());
 }
@@ -223,7 +244,7 @@ void VideoWidget::set_selected_driver(WRadioButton * btn)
 
 void VideoWidget::set_data()
 {
-  const auto& selected = m_group_company->checkedButton()->text().toUTF8();
+  const auto& selected = m_group_vendor->checkedButton()->text().toUTF8();
 
   WString name;
 
@@ -242,6 +263,8 @@ void VideoWidget::set_data()
     name = m_intel_driver->currentText();
     m_data->video.drivers = IntelDriverMap.at(name.toUTF8());
   }
+  else if (selected == "VM")
+    m_data->video.drivers = VmDriverMap.at("VM");
   else
   {
     PLOGE << "VideoWidget::get_data() should not be here";
@@ -252,13 +275,14 @@ void VideoWidget::set_data()
 
 bool VideoWidget::check_validity() const
 {
-  if (const auto index = m_group_company->selectedButtonIndex(); index == 0)
+  // None and VM don't have options
+  if (const auto index = m_group_vendor->selectedButtonIndex(); index == 0 || index == 1)
     return true;
-  else if (index == 1)
-    return !m_amd_driver->currentText().empty();
   else if (index == 2)
-    return !m_nvidia_driver->currentText().empty();
+    return !m_amd_driver->currentText().empty();
   else if (index == 3)
+    return !m_nvidia_driver->currentText().empty();
+  else if (index == 4)
     return !m_intel_driver->currentText().empty();
   else
   {

@@ -17,7 +17,7 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
   layout->setContentsMargins(0,9,0,9);
-  layout->setSpacing(10);
+  layout->setSpacing(15);
 
   m_partitions = std::make_shared<Partitions>();
 

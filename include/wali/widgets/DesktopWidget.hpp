@@ -11,7 +11,9 @@
 #include <Wt/WRadioButton.h>
 #include <Wt/WVBoxLayout.h>
 #include <wali/widgets/Common.hpp>
+#include <wali/widgets/VideoWidget.hpp>
 #include <wali/widgets/WaliWidget.hpp>
+
 
 class DesktopWidget : public WaliWidget
 {
@@ -28,6 +30,7 @@ private:
   // WText * m_warning;
   WComboBox * m_desktops,
             * m_dm;
+  VideoWidget * m_video_widget;
 };
 
 #endif

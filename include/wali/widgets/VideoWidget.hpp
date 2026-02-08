@@ -25,7 +25,7 @@ private:
   void set_data();
 
 private:
-  std::shared_ptr<WButtonGroup> m_group_company;
+  std::shared_ptr<WButtonGroup> m_group_vendor;
   WComboBox * m_amd_driver,
             * m_nvidia_driver,
             * m_intel_driver;
