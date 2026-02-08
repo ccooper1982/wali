@@ -5,7 +5,7 @@
 - Install Arch from another machine with a web UI
 - Only a 4MB download
 
-[![wali install preview]()](https://www.youtube.com/watch?v=tHF04ex9AMg)
+[![wali install preview](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)](https://www.youtube.com/watch?v=tHF04ex9AMg)
 
 # Features
 - Create partitions
