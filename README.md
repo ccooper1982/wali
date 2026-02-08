@@ -4,16 +4,17 @@
 - In the live environment, `wali` runs a web server
 - Install Arch from another machine with a web UI
 - Only a 4MB download
+- A [video](https://www.youtube.com/watch?v=tHF04ex9AMg) of v1.2
 
-[![wali install preview](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)](https://www.youtube.com/watch?v=tHF04ex9AMg)
+<!--[![wali install preview](https://github.com/ccooper1982/wali/blob/8fc128cd3bfd70783d3bb024c7e23c7d2d42d660/wali.png?raw=true)](https://www.youtube.com/watch?v=tHF04ex9AMg)-->
+
 
 # Features
-- Create partitions
-- Profiles: `niri` and `Plasma` with more on the way
-- Localise: locale, timezone and keymap
+- Create partitions and `ext4` or `btrfs` filesystems
+- Profiles: `niri`, `xfce`, `Hyprland` and `Plasma`
 - Video: Guidance on appropriate video driver
 - Packages: install additional packages
-- Install: stdout displayed in browser
+- Install: output displayed in browser
 
 # Install
 
