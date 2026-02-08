@@ -299,6 +299,7 @@ bool Install::pacstrap()
     "linux",
     "linux-firmware",
     "sudo",
+    "which",          // used in user_shell()
     "nano",
     "reflector",      // pacman mirrors list
     "gpm"             // laptop touchpad support
@@ -407,6 +408,8 @@ bool Install::user_account()
   if (user_sudo && !add_to_sudoers(user))
     log_warning("Failed to allow user to sudo");
 
+  user_shell();
+
   return true;
 }
 
@@ -444,6 +447,24 @@ bool Install::add_to_sudoers (const std::string_view user)
   return true;
 }
 
+void Install::user_shell()
+{
+  const auto& shell = m_data->accounts.user_shell;
+  const auto& username = m_data->accounts.user_username;
+
+  log_info(std::format("Set user shell: {}", shell));
+
+  if (shell == "sh" || install_packages({shell}))
+  {
+    std::string path;
+    const bool have_path = Chroot{}(std::format("which {}", shell), [&](const std::string_view m){ path = m; });
+
+    if (have_path && !path.empty())
+      log_warning_if(Chroot{}(std::format("chsh -s {} {}", path, username)) == CmdSuccess, "Failed to set user shell");
+    else
+      log_warning("Failed to get path of installed shell");
+  }
+}
 
 
 // boot loader

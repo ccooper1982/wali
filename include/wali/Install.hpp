@@ -85,6 +85,7 @@ private:
   bool user_account();
   bool set_password(const std::string_view user, const std::string_view pass);
   bool add_to_sudoers (const std::string_view username);
+  void user_shell();
 
   // bootloader
   bool boot_loader();

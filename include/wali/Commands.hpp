@@ -150,18 +150,10 @@ struct Chroot : public ReadCommand
 {
   virtual bool operator()(const std::string_view cmd)
   {
-    const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
-
-    // caller doesn't want output, so write to stdout
-    const auto stat = execute_read(chroot_cmd, [](const std::string_view m)
-    {
-      PLOGI << m;
-    });
-
-    return stat == CmdSuccess;
+    return operator()(cmd, [](const std::string_view m) { PLOGI << m; });
   }
 
-  virtual bool operator()(const std::string_view cmd, OutputHandler&& handler)
+  virtual bool operator()(const std::string_view cmd, OutputHandler handler)
   {
     const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
     return execute_read(chroot_cmd, std::move(handler)) == CmdSuccess;
@@ -170,7 +162,6 @@ struct Chroot : public ReadCommand
 
 struct ChrootWrite : public WriteCommand
 {
-  // bool operator()(const std::string_view cmd, const std::string_view input)
   bool operator()(const std::string_view input)
   {
     // const std::string script = std::format("(cat<<EOF | arch-chroot {}\n{};\nexit $?;\nEOF)", RootMnt.string(), cmd);

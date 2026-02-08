@@ -20,10 +20,11 @@ private:
   void update_data();
 
 private:
-  Wt::WLineEdit * m_root_password,
+  WLineEdit * m_root_password,
                 * m_user_username,
                 * m_user_password;
-  Wt::WCheckBox * m_user_sudo;
+  WCheckBox * m_user_sudo;
+  WComboBox * m_user_shell;
   MessageWidget * m_messages;
 };
 

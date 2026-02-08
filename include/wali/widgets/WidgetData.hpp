@@ -23,6 +23,7 @@ struct AccountsData
   std::string root_pass;
   std::string user_username;
   std::string user_pass;
+  std::string user_shell;
   bool user_sudo{true};
 };
 

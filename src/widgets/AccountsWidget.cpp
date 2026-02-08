@@ -1,3 +1,4 @@
+#include <Wt/WComboBox.h>
 #include <wali/widgets/AccountsWidget.hpp>
 
 
@@ -23,6 +24,12 @@ AccountWidget::AccountWidget(WidgetDataPtr data) : WaliWidget(data, "Accounts")
   m_user_username->setMaxLength(32);
   m_user_password->setMaxLength(32);
 
+  m_user_shell = add_form_pair<WComboBox>(cont_layout, "Shell", 100);
+  m_user_shell->changed().connect(this, &AccountWidget::update_data);
+  m_user_shell->addItem("zsh");
+  m_user_shell->addItem("fish");
+  m_user_shell->addItem("sh");
+
   m_user_sudo = add_form_pair<WCheckBox>(cont_layout, "Sudo", 100);
   m_user_sudo->setCheckState(CheckState::Checked);
   m_user_sudo->changed().connect([this]
@@ -46,6 +53,7 @@ void AccountWidget::update_data()
   m_data->accounts.root_pass = m_root_password->text().toUTF8();
   m_data->accounts.user_username = m_user_username->text().toUTF8();
   m_data->accounts.user_pass = m_user_password->text().toUTF8();
+  m_data->accounts.user_shell = m_user_shell->currentText().toUTF8();
   m_data->accounts.user_sudo = m_user_sudo->isChecked();
 
   set_valid(check_validity());
