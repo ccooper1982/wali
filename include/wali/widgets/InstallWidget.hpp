@@ -3,6 +3,7 @@
 
 
 #include <Wt/WApplication.h>
+#include <Wt/WComboBox.h>
 #include <Wt/WGlobal.h>
 #include <Wt/WHBoxLayout.h>
 #include <Wt/WMenu.h>
@@ -116,6 +117,7 @@ private:
               * m_cancel_btn;
   // WSplitButton * m_savelog_btn;
   WText * m_install_status;
+  // WComboBox * m_log_cb;
   std::future<void> m_install_future;
   Signal<InstallState> m_on_install_state;
 

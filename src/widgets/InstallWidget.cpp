@@ -1,5 +1,6 @@
 
 #include <Wt/WApplication.h>
+#include <Wt/WComboBox.h>
 #include <algorithm>
 #include <functional>
 #include <sstream>
@@ -123,11 +124,7 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   });
 
   m_cancel_btn->disable();
-  m_cancel_btn->clicked().connect([this]
-  {
-    cancel();
-  });
-
+  m_cancel_btn->clicked().connect([this] { cancel(); });
 
   m_reboot_btn->enable();
   m_reboot_btn->clicked().connect([] { Reboot{}(); });
@@ -157,9 +154,10 @@ InstallWidget::InstallWidget(WidgetDataPtr data) : WaliWidget(data, "Install")
   m_summary->hide();
 
   auto logs_cont = layout->addWidget(make_wt<WContainerWidget>(),  1, AlignmentFlag::Center);
+  auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
+
   logs_cont->setWidth(600);
 
-  auto log_layout = logs_cont->setLayout(make_wt<WVBoxLayout>());
   create_log_widgets(log_layout);
 
   layout->addStretch(1);
@@ -178,25 +176,20 @@ void InstallWidget::cancel()
 
 void InstallWidget::create_log_widgets(WVBoxLayout * layout)
 {
-  auto create_log = [](const std::string_view name, const std::size_t size = 100)
+  for (const auto& name : Stages)
   {
-    return make_wt<StageLog>(name, true, size);
-  };
+    std::size_t size = 100;
 
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FS)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_MOUNT)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACSTRAP, 25'000)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_LOCALISE)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_FSTAB)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_ROOT_ACC)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_BOOT_LOADER, 2'000)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_USER_ACC)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_VIDEO)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_DESKTOP, 50'000)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_NETWORK)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_SWAP)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_PACKAGES, 50'000)));
-  m_stage_logs.push_back(layout->addWidget(create_log(STAGE_UNMOUNT)));
+    if (name == STAGE_PACSTRAP)
+      size = 25'000;
+    else if (name == STAGE_BOOT_LOADER)
+      size = 2'000;
+    else if (name == STAGE_DESKTOP || name == STAGE_PACKAGES)
+      size = 50'000;
+
+    m_stage_logs.push_back(layout->addWidget(make_wt<StageLog>(name, true, size)));
+  }
+
   layout->addStretch(1);
 }
 

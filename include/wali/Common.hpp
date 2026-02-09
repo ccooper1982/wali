@@ -41,6 +41,23 @@ inline static const constexpr auto STAGE_UNMOUNT      = "Unmount";
 inline static const constexpr auto STAGE_SWAP         = "Swap";
 
 
+inline static constexpr std::array<const char *, 14> Stages = {
+  STAGE_FS,
+  STAGE_MOUNT,
+  STAGE_PACSTRAP,
+  STAGE_LOCALISE,
+  STAGE_FSTAB,
+  STAGE_ROOT_ACC,
+  STAGE_BOOT_LOADER,
+  STAGE_USER_ACC,
+  STAGE_VIDEO,
+  STAGE_DESKTOP,
+  STAGE_NETWORK,
+  STAGE_SWAP,
+  STAGE_PACKAGES,
+  STAGE_UNMOUNT
+};
+
 
 // TODO user defined literal
 
