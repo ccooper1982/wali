@@ -28,7 +28,8 @@ WidgetT* add_form_pair (WVBoxLayout * parent_layout, const std::string_view labe
   auto label = layout->addWidget(make_wt<WLabel>(label_text.data()));
   auto widget = layout->addWidget(make_wt<WidgetT>(widget_args...));
 
-  label->setWidth(label_width);
+  if (label_width)
+    label->setWidth(label_width);
   label->setBuddy(widget);
   label->setStyleClass("form_label");
 

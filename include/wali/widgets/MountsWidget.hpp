@@ -224,6 +224,7 @@ public:
 
 private:
   void refresh_data();
+  void select_disk(const std::string& disk);
 
 private:
   BootPartitionWidget * m_boot;
@@ -235,6 +236,7 @@ private:
   Tree m_tree;
   std::shared_ptr<Partitions> m_partitions;
   WTable * m_table;
+  WComboBox * m_disk;
 };
 
 #endif

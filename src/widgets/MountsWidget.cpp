@@ -1,5 +1,6 @@
 
 #include "wali/DiskUtils.hpp"
+#include "wali/widgets/Common.hpp"
 #include "wali/widgets/WaliWidget.hpp"
 #include <Wt/WApplication.h>
 #include <Wt/WCheckBox.h>
@@ -16,10 +17,12 @@
 MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 {
   auto layout = setLayout(make_wt<WVBoxLayout>());
-  layout->setContentsMargins(0,9,0,9);
   layout->setSpacing(15);
 
   m_partitions = std::make_shared<Partitions>();
+
+  m_disk = add_form_pair<WComboBox>(layout, "Disk", 0);
+  m_disk->changed().connect([this]{ select_disk(m_disk->currentText().toUTF8()); });
 
   m_table = layout->addWidget(make_wt<WTable>());
   m_table->setStyleClass("table_partitions");
@@ -83,6 +86,9 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 
   refresh_data();
 
+  if (m_disk->count())
+    select_disk(m_disk->currentText().toUTF8());
+
   layout->addStretch(1);
 }
 
@@ -90,48 +96,57 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 void MountsWidget::refresh_data()
 {
   auto valid_disk = [](const TreePair& pair){ return !pair.second.empty() && pair.first.is_gpt; } ;
-  auto valid_partition = [](const Partition& part) { return !part.is_mounted; };
 
   m_tree = DiskUtils::probe();
   m_partitions->clear();
   m_table->clear();
+  m_disk->clear();
 
   m_table->setHeaderCount(1);
-  m_table->elementAt(0, 0)->addNew<Wt::WText>("Device");
+  m_table->elementAt(0, 0)->addNew<Wt::WText>("Partition");
   m_table->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
   m_table->elementAt(0, 2)->addNew<Wt::WText>("Size");
 
+  //size_t r{1}; // 1 because of the header row
 
-  size_t r{1}; // 1 because of the header row
+  for (const auto& [disk, parts] : m_tree | std::views::filter(valid_disk))
+    m_disk->addItem(disk.dev);
 
-  for (const auto& [parent, parts] : m_tree | std::views::filter(valid_disk))
+  validate_selection();
+
+  WApplication::instance()->triggerUpdate();
+}
+
+
+void MountsWidget::select_disk(const std::string& disk)
+{
+  if (!m_tree.contains(disk))
   {
-    m_partitions->append_range(parts | std::views::filter(valid_partition));
+    PLOGE << "Disk tree does not contain: " << disk;
+    return;
+  }
 
-    m_table->elementAt(r,0)->addNew<WText>(parent.dev);
-    m_table->elementAt(r,0)->setColumnSpan(3);
-    m_table->rowAt(r)->setStyleClass("partitions_parent");
+  auto valid_partition = [](const Partition& part) { return !part.is_mounted; };
 
-    ++r;
+  m_partitions->clear();
+  m_table->clear();
 
-    for(size_t i = 0 ; i < parts.size() ; ++i)
-    {
-      PLOGI << parts[i].dev << " = " << format_size(parts[i].size);
-      m_table->elementAt(r,0)->addNew<WText>(std::format("  - {}", parts[i].dev));
-      m_table->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
-      m_table->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
-      m_table->rowAt(r)->setStyleClass("partition");
-      ++r;
-    }
+  const auto& parts = m_tree.at(disk);
+  m_partitions->append_range(parts | std::views::filter(valid_partition));
+
+  // r=1 because of header row
+  for(size_t r = 1, i = 0 ; r < parts.size() ; ++r)
+  {
+    m_table->elementAt(r,0)->addNew<WText>(parts[i].dev);
+    m_table->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
+    m_table->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
+    m_table->rowAt(r)->setStyleClass("partition");
+    ++i;
   }
 
   m_boot->refresh_partitions();
   m_root->refresh_partitions();
   m_home->refresh_partitions();
-
-  validate_selection();
-
-  WApplication::instance()->triggerUpdate();
 }
 
 
