@@ -102,15 +102,11 @@ void MountsWidget::refresh_data()
   m_table->clear();
   m_disk->clear();
 
-  m_table->setHeaderCount(1);
-  m_table->elementAt(0, 0)->addNew<Wt::WText>("Partition");
-  m_table->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
-  m_table->elementAt(0, 2)->addNew<Wt::WText>("Size");
-
-  //size_t r{1}; // 1 because of the header row
-
   for (const auto& [disk, parts] : m_tree | std::views::filter(valid_disk))
     m_disk->addItem(disk.dev);
+
+  if (m_disk->count())
+    select_disk(m_disk->currentText().toUTF8());
 
   validate_selection();
 
@@ -131,17 +127,22 @@ void MountsWidget::select_disk(const std::string& disk)
   m_partitions->clear();
   m_table->clear();
 
+  m_table->setHeaderCount(1);
+  m_table->elementAt(0, 0)->addNew<Wt::WText>("Partition");
+  m_table->elementAt(0, 1)->addNew<Wt::WText>("Filesystem");
+  m_table->elementAt(0, 2)->addNew<Wt::WText>("Size");
+
   const auto& parts = m_tree.at(disk);
   m_partitions->append_range(parts | std::views::filter(valid_partition));
 
   // r=1 because of header row
-  for(size_t r = 1, i = 0 ; r < parts.size() ; ++r)
+  for(size_t r = 1, i = 0 ; i < parts.size() ; ++i)
   {
     m_table->elementAt(r,0)->addNew<WText>(parts[i].dev);
     m_table->elementAt(r,1)->addNew<WText>(parts[i].fs_type);
     m_table->elementAt(r,2)->addNew<WText>(format_size(parts[i].size));
     m_table->rowAt(r)->setStyleClass("partition");
-    ++i;
+    ++r;
   }
 
   m_boot->refresh_partitions();
