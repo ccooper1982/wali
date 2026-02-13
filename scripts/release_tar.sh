@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # NOTE version must be the same as the Git tag
-VERSION=v1.2
+VERSION=v1.21
 
 # default options should be ok, but be explicit
 meson configure -Dskip_validation=false -Ddisable_install=false -Dfake_data=false --buildtype=release build

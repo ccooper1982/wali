@@ -5,7 +5,7 @@ set -eu
 timedatectl
 
 # NOTE version must be the same as the Git tag
-VERSION=v1.2
+VERSION=v1.21
 INSTALL_DIR=/root/wali
 START_SH="start.sh <ip_address> [port]"
 FILENAME=wali-bin_$VERSION.tar.gz
