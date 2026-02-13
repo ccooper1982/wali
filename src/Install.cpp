@@ -62,7 +62,6 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
   try
   {
-    // TODO swap, user shell
     on_state(InstallState::Running);
 
     m_tree = DiskUtils::probe();

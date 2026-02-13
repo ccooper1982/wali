@@ -160,15 +160,17 @@ struct Chroot : public ReadCommand
   }
 };
 
-struct ChrootWrite : public WriteCommand
+struct ChrootWrite : public ReadCommand
 {
   bool operator()(const std::string_view input)
   {
-    // const std::string script = std::format("(cat<<EOF | arch-chroot {}\n{};\nexit $?;\nEOF)", RootMnt.string(), cmd);
-    // PLOGE << script;
-    // return execute(script) == CmdSuccess;
+    // use process substituion because:
+    //  - with: `(command1) | (command2)`
+    //  - the webserver would not shutdown with ctrc+c, because command2 did not exit, even if command1 had done
+    //  - So instead, call /bin/bash within chroot so it treats the `input` as a schell script (without an actual script file)
 
-    return execute(std::format("arch-chroot {}", RootMnt.string()), input) == CmdSuccess;
+    const auto cmd = std::format("arch-chroot {} /bin/bash < <(echo \"{}\")", RootMnt.string(), input);
+    return execute_read(cmd, [](const std::string_view m) { PLOGI << m; }) == CmdSuccess;
   }
 };
 

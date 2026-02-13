@@ -1,9 +1,9 @@
 #include "Wt/WPushButton.h"
 #include "Wt/WVBoxLayout.h"
+#include "wali/Common.hpp"
 #include "wali/Install.hpp"
 #include <algorithm>
 #include <concepts>
-#include <ranges>
 #include <string>
 #include <string_view>
 
@@ -204,6 +204,24 @@ class WaliApplication : public Wt::WApplication
     #endif
   }
 
+
+  void fake_data()
+  {
+    data->mounts.boot_dev = "/dev/sda1";
+    data->mounts.root_dev = "/dev/sda2";
+    data->mounts.boot_fs = "vfat";
+    data->mounts.root_fs = "ext4";
+    data->mounts.home_target = HomeMountTarget::Root;
+    data->accounts.user_username = "fake";
+    data->accounts.user_pass = "nessie";
+    data->accounts.user_shell = "zsh";
+    data->accounts.user_sudo = true;
+    data->desktop.iwd = true;
+    data->desktop.netmanager = false;
+    data->desktop.dm = PackageSet{"sddm"};
+    // data->desktop.desktop = PackageSet{"niri"};
+  }
+
 public:
   WaliApplication(const Wt::WEnvironment& env) : WApplication(env)
   {
@@ -262,13 +280,7 @@ public:
       });
 
       #ifdef WALI_FAKE_DATA
-        data->mounts.boot_dev = "/dev/sda1";
-        data->mounts.root_dev = "/dev/sda2";
-        data->mounts.boot_fs = "vfat";
-        data->mounts.root_fs = "ext4";
-        data->mounts.home_target = HomeMountTarget::Root;
-        data->accounts.user_username = "fake";
-        data->accounts.user_pass = "nessie";
+        fake_data();
 
         #ifdef WALI_SKIP_VALIDATION
           m_btn_install->setEnabled(true);
@@ -286,74 +298,15 @@ private:
 };
 
 
-static std::unique_ptr<WApplication> create_app(const WEnvironment& env)
-{
-  return std::make_unique<WaliApplication>(env);
-}
-
-
-// TODO quite sure there should be a way to get this from WServer / WEnvironment _prior_
-//      to create_app() being called
-static std::pair<std::string_view, std::string_view> get_server_host(const int argc, char ** argv)
-{
-  using namespace std::string_view_literals;
-
-  std::vector<std::string_view> args(argv, argv+argc);
-
-  const auto it_address = rng::find(args, "--http-address"sv);
-  const auto it_port = rng::find(args, "--http-port"sv);
-
-  // +1 because the value is after the switch
-  if (it_address == rng::end(args) || it_port == rng::end(args) ||
-      it_address+1 == rng::end(args) || it_port+1 == rng::end(args))
-    return {};
-  else
-    return {*(it_address+1), *(it_port+1)};
-}
-
-
 int main(int argc, char **argv)
 {
   init_logger();
 
   PLOGI << "Starting webtoolkit";
 
-  try
+  return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
   {
-    WServer server(argc, argv);
-
-    server.addEntryPoint(Wt::EntryPointType::Application, &create_app);
-
-    if (server.start())
-    {
-      const auto [host, port] = get_server_host(argc, argv);
-
-      PLOGI << "Web server running on " << host << ':' << port;
-
-      const int signal = WServer::waitForShutdown();
-
-      PLOGW << "Shutdown: " << signal;
-
-      server.stop();
-    }
-  }
-  catch (Wt::WServer::Exception& wex)
-  {
-    PLOGE << "Wt exception: " << wex.what();
-    return 1;
-  }
-  catch (std::exception &e)
-  {
-    PLOGE << "exception: " << e.what();
-    return 1;
-  }
-
-  return 0;
-
-  // TODO Reinstate this when shutdown issue solved
-  // return Wt::WRun(argc, argv, [](const Wt::WEnvironment& env)
-  // {
-  //   PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme(), env.hostName());
-  //   return std::make_unique<WaliApplication>(env);
-  // });
+    PLOGI << "Web server running on " << std::format("{}://{}", env.urlScheme(), env.hostName());
+    return std::make_unique<WaliApplication>(env);
+  });
 }
