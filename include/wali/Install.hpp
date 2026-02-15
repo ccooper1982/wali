@@ -173,6 +173,7 @@ private:
   OnLog m_log;
   WidgetDataPtr m_data;
   Tree m_tree;
+  std::stop_token m_stop_token;
 };
 
 #endif

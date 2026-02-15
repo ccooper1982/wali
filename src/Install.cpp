@@ -28,14 +28,15 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
   m_install_state = handlers.complete;
   m_log = handlers.log;
   m_data = data;
+  m_stop_token = token;
 
-  auto exec_stage = [this, token](std::function<bool(Install&)> f, const std::string_view stage) mutable
+  auto exec_stage = [this](std::function<bool(Install&)> f, const std::string_view stage) mutable
   {
     StageStatus state(StageStatus::Complete);
 
     try
     {
-      if (token.stop_requested())
+      if (m_stop_token.stop_requested())
       {
         log_error("Stop requested");
         return false;
@@ -78,8 +79,8 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     if (minimal)
     {
-      // TODO these stages can fail and we don't quit so they all return false,
-      //      so change them to return void
+      // TODO these stages can fail but can fail, so return value is used to determine
+      //      if a stage succeeds
       on_state(InstallState::Bootable);
 
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
@@ -99,7 +100,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
   }
 
   // if cancelled, we can't be sure of the state
-  state = token.stop_requested() ? InstallState::Fail : state;
+  state = m_stop_token.stop_requested() ? InstallState::Fail : state;
 
   if (state != InstallState::Fail)
   {
@@ -110,7 +111,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
   }
 
-  // we always want to do this, ignoring any errors
+  // always do this, ignoring any errors
   exec_stage(&Install::unmount, STAGE_UNMOUNT);
 
   on_state(state);
@@ -157,7 +158,7 @@ bool Install::filesystems()
 bool Install::wipe_fs(const std::string_view dev)
 {
   log_info(std::format("Wipe filesystem on {}", dev));
-  return ReadCommand::execute_read(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
+  return ReadCommand::execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
 }
 
 bool Install::create_boot_filesystem()
@@ -311,7 +312,7 @@ bool Install::pacstrap()
   cmd_string << "pacstrap -K " <<  RootMnt.string() << ' ';
   cmd_string << flatten(packages);
 
-  const int stat = ReadCommand::execute_read(cmd_string.str(), [this](const std::string_view m)
+  const int stat = ReadCommand::execute(cmd_string.str(), "pacman", m_stop_token, [this](const std::string_view m)
   {
     log_info(m);
   });
@@ -357,7 +358,7 @@ bool Install::fstab ()
 
   log_info(cmd_string);
 
-  const auto stat = ReadCommand::execute_read(cmd_string);
+  const auto stat = ReadCommand::execute(cmd_string);
   log_error_if(stat == CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
 
   return stat == CmdSuccess;
@@ -614,7 +615,7 @@ bool Install::localise()
     log_info("Set timezone");
     if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
       log_warning("Failed to set locale timezone");
-    else if (log_info("Syncing clock"); ReadCommand::execute_read("hwclock --systohc") != CmdSuccess)
+    else if (log_info("Syncing clock"); ReadCommand::execute("hwclock --systohc") != CmdSuccess)
       log_warning("Failed to sync hardware clock");
   }
 
@@ -666,7 +667,7 @@ bool Install::setup_iwd()
   log_info("Install and enable iwd");
 
   log_warning_if(install_packages({"iwd"}) && enable_service({"iwd", "systemd-networkd"}), "iwd package or service enable failed");
-  log_warning_if(ReadCommand::execute_read(create_config) == CmdSuccess, "Failed to create IWD config");
+  log_warning_if(ReadCommand::execute(create_config) == CmdSuccess, "Failed to create IWD config");
 
   if (m_data->network.copy_config)
   {
@@ -679,7 +680,7 @@ bool Install::setup_iwd()
     const auto dest = TargetIwdConnectionsPath.string();
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
-    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy iwd configs");
+    log_warning_if(ReadCommand::execute(cmd) == CmdSuccess, "Failed to copy iwd configs");
   }
 
   return true;
@@ -697,7 +698,7 @@ bool Install::setup_network_manager()
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
     log_info("Copy NetworkManager configs");
-    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
+    log_warning_if(ReadCommand::execute(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
   }
 
   return install_packages({"networkmanager"}) && enable_service({"NetworkManager"});
