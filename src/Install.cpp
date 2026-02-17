@@ -245,7 +245,7 @@ void Install::set_partition_type(const std::string_view dev, const std::string_v
 
   log_info(std::format("Set partition type {} for {}", type, dev));
 
-  log_warning_if(SetPartitionType{}(parent_dev, part_num, type), std::format("Set partition type failed on {}", dev));
+  log_warning_if(!SetPartitionType{}(parent_dev, part_num, type), std::format("Set partition type failed on {}", dev));
 }
 
 // mount
@@ -337,12 +337,8 @@ bool Install::install_packages(const PackageSet& packages)
   std::stringstream ss;
   ss << "pacman -S --noconfirm " << flatten(packages);
 
-  const auto ok = Chroot{}(ss.str(), [this](const std::string_view m)
-  {
-    log_info(m);
-  });
-
-  log_error_if(ok, "pacman failed to install package(s)");
+  const auto ok = Chroot{}(ss.str(), [this](const std::string_view m){ log_info(m);});
+  log_error_if(!ok, "pacman failed to install package(s)");
 
   return ok;
 }
@@ -459,7 +455,7 @@ void Install::user_shell()
     const bool have_path = Chroot{}(std::format("which {}", shell), [&](const std::string_view m){ path = m; });
 
     if (have_path && !path.empty())
-      log_warning_if(Chroot{}(std::format("chsh -s {} {}", path, username)) == CmdSuccess, "Failed to set user shell");
+      log_warning_if(!Chroot{}(std::format("chsh -s {} {}", path, username)), "Failed to set user shell");
     else
       log_warning("Failed to get path of installed shell");
   }
@@ -571,7 +567,8 @@ bool Install::boot_loader_sysdboot()
     entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " " << root_flags << " rw\n";
     entry_stream.close();
 
-    ok = log_error_if(Chroot{}("bootctl install"), "bootctl failed to parse config");
+    ok = Chroot{}("bootctl install");
+    log_error_if(!ok, "bootctl failed to parse config");
   }
 
   return ok;
@@ -638,7 +635,7 @@ bool Install::network()
   const auto [hostname, ntp, copy_conf] = m_data->network;
 
   log_info("Set hostname");
-  log_warning_if(ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string())), "Failed to create /etc/hostname");
+  log_warning_if(!ChrootWrite{}(std::format("echo \"{}\" > {}", hostname, HostnamePath.string())), "Failed to create /etc/hostname");
 
   enable_service({"systemd-resolved"});
 
@@ -658,7 +655,7 @@ bool Install::network()
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
     log_info("Copy systemd-network config");
-    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
+    log_warning_if(ReadCommand::execute_read(cmd) != CmdSuccess, "Failed to copy systemd-network configs");
   }
 
   if (ntp)
@@ -678,8 +675,9 @@ bool Install::setup_iwd()
 
   log_info("Install and enable iwd");
 
-  log_warning_if(install_packages({"iwd"}) && enable_service({"iwd", "systemd-networkd"}), "iwd package or service enable failed");
-  log_warning_if(ReadCommand::execute_read(create_config) == CmdSuccess, "Failed to create IWD config");
+  const auto setup = install_packages({"iwd"}) && enable_service({"iwd", "systemd-networkd"});
+  log_warning_if(!setup, "iwd package or service enable failed");
+  log_warning_if(ReadCommand::execute_read(create_config) != CmdSuccess, "Failed to create IWD config");
 
   if (m_data->network.copy_config)
   {
@@ -692,7 +690,7 @@ bool Install::setup_iwd()
     const auto dest = TargetIwdConnectionsPath.string();
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
-    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy iwd configs");
+    log_warning_if(ReadCommand::execute_read(cmd) != CmdSuccess, "Failed to copy iwd configs");
   }
 
   return true;
@@ -764,8 +762,7 @@ bool Install::enable_service(const ServiceSet& services)
     log_info(std::format("Enable service {}", svc));
 
     const auto enabled = Chroot{}(std::format("systemctl enable {}", svc));
-    if (!enabled)
-      log_error(std::format("Failed to enable service: {}", svc));
+    log_error_if(!enabled, std::format("Failed to enable service: {}", svc));
 
     enabled_all &= enabled;
   }

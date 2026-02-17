@@ -141,9 +141,9 @@ private:
   }
 
   // log warning if `ok` is false
-  void log_warning_if(const bool ok, const std::string_view msg)
+  void log_warning_if(const bool err, const std::string_view msg)
   {
-    if (!ok)
+    if (err)
       log_warning(msg);
   }
 
@@ -153,12 +153,10 @@ private:
     m_log(std::string{msg}, InstallLogLevel::Error);
   }
 
-  bool log_error_if(const bool ok, const std::string_view msg)
+  void log_error_if(const bool err, const std::string_view msg)
   {
-    if (!ok)
+    if (err)
       log_error (msg);
-
-    return ok;
   }
 
   void on_state(const InstallState state)
