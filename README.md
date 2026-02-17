@@ -64,6 +64,21 @@ Go through the menu options, configuring as required.
 - The install script syncs the time then downloads and extracts `wali`
 - `wali` is linked statically to `wt`, as is `wt` to `boost`, so no additional dependencies are required
 
+
 # Build
-- C++23, `meson`
-- TODO
+- C++23 compatible compiler, tested on GCC 15.x and clang 21.1.x
+
+## Prepare
+Assuming using `clang`:
+- `sudo pacman -Sy clang pkg-config boost cmake meson linux-headers`
+
+## Configure
+Download `wt` and `plog` then configure:
+- `meson setup build`
+
+## Compile
+Build `wt` then `wali`:
+- `meson compile -C build`
+
+The `wali` executable is `build/wali`.
+
