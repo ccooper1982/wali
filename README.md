@@ -45,11 +45,10 @@ Go through the menu options, configuring as required.
   - There is no UI progress indicator yet, except the buttons are disabled
 - All partitions on the selected device are deleted and new partitions are created
 - A new partition for home can be created (if not then, you will mount `/home` to the root partition)
-  - The home partition cannot be sized yet
+- The home partition cannot be sized yet, it's either "Do nothing" or "Use remaining space"
 
 ## Mounts
 - `boot` and `root` are required, and must be separate partitions
-- `root` can only be `ext4` (`btrfs` coming soon)
 - `home` can be mounted to:
     - Root partition (default)
     - New partition: wipes the filesystem then creates a new filesystem
