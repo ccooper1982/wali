@@ -648,6 +648,19 @@ bool Install::network()
   if (m_data->desktop.netmanager)
     setup_network_manager();
 
+  if (m_data->network.copy_config)
+  {
+    static const fs::path LiveConfigPath {"/etc/systemd/network"};
+    static const fs::path TargetConfigPath {RootMnt / "etc/systemd/network"};
+
+    const auto src = LiveConfigPath.string();
+    const auto dest = TargetConfigPath.string();
+    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
+
+    log_info("Copy systemd-network config");
+    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
+  }
+
   if (ntp)
     enable_service({"systemd-timesyncd"});
 
@@ -687,19 +700,6 @@ bool Install::setup_iwd()
 
 bool Install::setup_network_manager()
 {
-  static const fs::path LiveConfigPath {"/etc/systemd/network"};
-  static const fs::path TargetConfigPath {RootMnt / "etc/systemd/network"};
-
-  if (m_data->network.copy_config)
-  {
-    const auto src = LiveConfigPath.string();
-    const auto dest = TargetConfigPath.string();
-    const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
-
-    log_info("Copy NetworkManager configs");
-    log_warning_if(ReadCommand::execute_read(cmd) == CmdSuccess, "Failed to copy systemd-network configs");
-  }
-
   return install_packages({"networkmanager"}) && enable_service({"NetworkManager"});
 }
 
