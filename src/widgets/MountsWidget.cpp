@@ -95,7 +95,7 @@ MountsWidget::MountsWidget(WidgetDataPtr data) : WaliWidget(data, "Mounts")
 
 void MountsWidget::refresh_data()
 {
-  auto valid_disk = [](const TreePair& pair){ return !pair.second.empty() && pair.first.is_gpt; } ;
+  auto valid_disk = [](const TreePair& pair){ return pair.first.is_gpt; } ;
 
   m_tree = DiskUtils::probe();
   m_partitions->clear();

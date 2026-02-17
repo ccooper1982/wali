@@ -88,6 +88,8 @@ Tree DiskUtils::do_probe()
     Disk disk{target};
     probe_disk(disk);
 
+    PLOGI << "Found block device (disk): " << target;
+
     tree[disk] = Partitions{};
     seq_path_map[seq] = disk.dev;
   }
@@ -109,6 +111,9 @@ Tree DiskUtils::do_probe()
   {
     rng::sort(parts, std::less{}, &Partition::dev);
   });
+
+  for (const auto& [disk,parts] : tree)
+    PLOGI << "Disk: " << disk.dev << " has " << parts.size() << " partitions";
 
   return tree;
 }
@@ -145,7 +150,7 @@ void DiskUtils::probe_disk(Disk& disk)
 
 bool DiskUtils::probe_partition(Partition& partition)
 {
-  static const unsigned SectorsPerPartSize = 512;
+  static const unsigned SectorsPerPartSize = 512; // TODO assumption
 
   Probe probe (partition.dev);
 
