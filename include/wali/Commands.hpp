@@ -1,18 +1,13 @@
 #ifndef WALI_COMMANDS_H
 #define WALI_COMMANDS_H
 
-#include <algorithm>
-#include <cctype>
+#include <cstring>
 #include <cstdint>
-#include <cwctype>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <functional>
-#include <ios>
 #include <optional>
-#include <ranges>
-#include <sstream>
 #include <string>
 #include <string_view>
 
