@@ -1,7 +1,7 @@
 project(
   'wali',
   'cpp',
-  version: '1.2',
+  version: '1.23',
   meson_version: '>= 1.1', # for meson.options
   default_options: ['cpp_std=c++23'],
 ) # TODO warning_level/werror
