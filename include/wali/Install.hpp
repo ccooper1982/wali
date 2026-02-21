@@ -2,11 +2,9 @@
 #define WALI_INSTALL_H
 
 #include <Wt/WSignal.h>
-#include <concepts>
 #include <functional>
 #include <stop_token>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>

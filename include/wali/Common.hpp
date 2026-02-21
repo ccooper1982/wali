@@ -27,6 +27,7 @@ using ServiceSet = std::set<std::string>;
 
 inline static const constexpr auto STAGE_FS           = "Create Filesystems";
 inline static const constexpr auto STAGE_MOUNT        = "Mount";
+inline static const constexpr auto STAGE_VCONSOLE     = "Console Keymap";
 inline static const constexpr auto STAGE_PACSTRAP     = "Pacstrap";
 inline static const constexpr auto STAGE_FSTAB        = "Generate Filesystem Table";
 inline static const constexpr auto STAGE_ROOT_ACC     = "Root Account";
@@ -45,13 +46,13 @@ inline static constexpr std::array<const char *, 14> Stages = {
   STAGE_FS,
   STAGE_MOUNT,
   STAGE_PACSTRAP,
-  STAGE_LOCALISE,
   STAGE_FSTAB,
   STAGE_ROOT_ACC,
   STAGE_BOOT_LOADER,
   STAGE_USER_ACC,
   STAGE_VIDEO,
   STAGE_DESKTOP,
+  STAGE_LOCALISE,
   STAGE_NETWORK,
   STAGE_SWAP,
   STAGE_PACKAGES,

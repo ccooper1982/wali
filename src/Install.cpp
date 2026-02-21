@@ -69,7 +69,6 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
                           exec_stage(&Install::mount,         STAGE_MOUNT) &&
                           exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::fstab,         STAGE_FSTAB) &&
                           exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
                           exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
@@ -85,6 +84,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
                           exec_stage(&Install::video,         STAGE_VIDEO) &&
                           exec_stage(&Install::desktop,       STAGE_DESKTOP) &&
+                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::network,       STAGE_NETWORK) &&
                           exec_stage(&Install::swap,          STAGE_SWAP) &&
                           exec_stage(&Install::packages,      STAGE_PACKAGES);
@@ -540,18 +540,17 @@ bool Install::boot_loader_sysdboot()
   fs::create_directory (LoaderConfig.parent_path());
   fs::create_directory (EntriesFile.parent_path());
 
+  if (std::ofstream loader_stream{LoaderConfig}; !loader_stream)
   {
-    if (std::ofstream loader_stream{LoaderConfig}; !loader_stream)
-    {
-      log_error("Failed to open loader config");
-      return false;
-    }
-    else if (loader_stream << LoaderConfigContent; !loader_stream)
-    {
-      log_error("Failed to write to loader config");
-      return false;
-    }
+    log_error("Failed to open loader config");
+    return false;
   }
+  else if (loader_stream << LoaderConfigContent; !loader_stream)
+  {
+    log_error("Failed to write to loader config");
+    return false;
+  }
+
 
   log_info("Create entry file");
 
@@ -567,8 +566,7 @@ bool Install::boot_loader_sysdboot()
     entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " " << root_flags << " rw\n";
     entry_stream.close();
 
-    ok = Chroot{}("bootctl install");
-    log_error_if(!ok, "bootctl failed to parse config");
+    log_error_if(!Chroot{}("bootctl install"), "bootctl failed to parse config");
   }
 
   return ok;
@@ -594,14 +592,14 @@ bool Install::localise()
       log_warning(std::format("Failed to update {}", LocaleGen.string()));
     else
     {
-      if (log_info("Create locales"); !Chroot{}("locale-gen"))
+      if (log_info("Generate locales"); !Chroot{}("locale-gen"))
         log_warning("locale-gen failed");
       else
       {
-        log_info("Setting locales");
+        log_info("Set locale");
 
-        if (!ChrootWrite{}(std::format("echo \"LANG={}\" >> {}", locale, LocaleConf.string())))
-          log_warning(std::format("Failed to update {}", LocaleConf.string()));
+        const auto set_locale = ChrootWrite{}(std::format("echo \"LANG={}\" >> {}", locale, LocaleConf.string()));
+        log_warning_if(!set_locale, std::format("Failed to update {}", LocaleConf.string()));
       }
     }
   }
@@ -618,13 +616,12 @@ bool Install::localise()
   if (!keymap.empty())
   {
     log_info("Set vconsole keymap");
-    if (!ChrootWrite{}(std::format("echo \"KEYMAP={}\" >> {}", keymap, TerminalConf.string())))
-      log_warning(std::format("Failed to update {}", TerminalConf.string()));
+    const auto set = ChrootWrite{}(std::format("echo \"KEYMAP={}\" >> {}", keymap, TerminalConf.string()));
+    log_warning_if(!set, std::format("Failed to update {}", TerminalConf.string()));
   }
 
   return true;
 }
-
 
 
 // network
