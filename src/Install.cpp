@@ -70,7 +70,6 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
                           exec_stage(&Install::mount,         STAGE_MOUNT) &&
                           exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::fstab,         STAGE_FSTAB) &&
                           exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
                           exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
@@ -86,6 +85,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
       const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
                           exec_stage(&Install::video,         STAGE_VIDEO) &&
                           exec_stage(&Install::desktop,       STAGE_DESKTOP) &&
+                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
                           exec_stage(&Install::network,       STAGE_NETWORK) &&
                           exec_stage(&Install::swap,          STAGE_SWAP) &&
                           exec_stage(&Install::packages,      STAGE_PACKAGES);

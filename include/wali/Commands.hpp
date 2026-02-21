@@ -95,13 +95,22 @@ struct ReadCommand : public Command
 
   void interrupt()
   {
-    // TODO just popen(std::format("pkill {}", m_executable), "r")
-    if (m_pid > 1)
+    // if (m_pid > 1)
+    // {
+    //   PLOGW << "Killing " << m_pid;
+    //   if (const auto st = kill(m_pid, SIGKILL); st != CmdSuccess)
+    //   {
+    //     PLOGE << "Kill failed: " << ::strerror(st);
+    //   }
+    // }
+    if (!m_executable.empty())
     {
-      PLOGW << "Killing " << m_pid;
-      if (const auto st = kill(m_pid, SIGKILL); st != CmdSuccess)
+      if (auto fd = ::popen(std::format("pkill {}", m_executable).c_str(), "r") ; fd)
       {
-        PLOGE << "Kill failed: " << ::strerror(st);
+        if (::pclose(fd) != 0)
+        {
+          PLOGE << "Failed to kill: " << m_executable;
+        }
       }
     }
   }
@@ -113,52 +122,52 @@ private:
     m_executable = exec;
   }
 
-  void get_pid()
-  {
-    PLOGE << "get_pid() looking for process: " << m_executable;
+  // void get_pid()
+  // {
+  //   PLOGE << "get_pid() looking for process: " << m_executable;
 
-    auto pidof = [this] -> bool
-    {
-      PLOGW << "Opening pidof";
+  //   auto pidof = [this] -> bool
+  //   {
+  //     PLOGW << "Opening pidof";
 
-      if (auto fd = ::popen(std::format("pidof {}", m_executable).c_str(), "r") ; fd)
-      {
-        char buff[13];
-        char * pid = std::fgets(buff, sizeof(buff), fd);
+  //     if (auto fd = ::popen(std::format("pidof {}", m_executable).c_str(), "r") ; fd)
+  //     {
+  //       char buff[13];
+  //       char * pid = std::fgets(buff, sizeof(buff), fd);
 
-        if (pid == nullptr)
-          PLOGW << "pid nullptr";
-        else if (strlen(pid))
-          PLOGW << "pid = " << pid;
-        else
-          PLOGW << "pid empty";
+  //       if (pid == nullptr)
+  //         PLOGW << "pid nullptr";
+  //       else if (strlen(pid))
+  //         PLOGW << "pid = " << pid;
+  //       else
+  //         PLOGW << "pid empty";
 
-        // if (char * pid = std::fgets(buff, sizeof(buff), fd); pid != nullptr && strlen(pid))
-        if (pid != nullptr && strlen(pid))
-        {
-          PLOGW << "Actually found the lad";
-          m_pid = std::strtol(buff, nullptr, 10);
-        }
-        ::pclose(fd);
+  //       // if (char * pid = std::fgets(buff, sizeof(buff), fd); pid != nullptr && strlen(pid))
+  //       if (pid != nullptr && strlen(pid))
+  //       {
+  //         PLOGW << "Actually found the lad";
+  //         m_pid = std::strtol(buff, nullptr, 10);
+  //       }
+  //       ::pclose(fd);
 
-        return m_pid != -1;
-      }
+  //       return m_pid != -1;
+  //     }
 
-      return false;
-    };
+  //     return false;
+  //   };
 
-    static const int MaxAttempts = 10;
+  //   static const int MaxAttempts = 10;
 
-    for (int i = 0 ; !pidof() && i < MaxAttempts ; ++i)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds{100});
-    }
+  //   for (int i = 0 ; !pidof() && i < MaxAttempts ; ++i)
+  //   {
+  //     std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  //   }
 
-    if (m_pid == -1)
-    {
-      PLOGE << "Failed to get PID for " << m_executable;
-    }
-  }
+  //   if (m_pid == -1)
+  //   {
+  //     PLOGE << "Failed to get PID for " << m_executable;
+  //   }
+  // }
 
   // open pipe to cmd and call handler function for each line or when buffer is full.
   // - if handler can be nullptr, no point is reported
@@ -183,8 +192,8 @@ private:
     bool interrupted{};
 
     // don't get PID unless command can be interrupted
-    if (tkn.stop_possible())
-      get_pid();
+    // if (tkn.stop_possible())
+    //   get_pid();
 
     for (char c ; ((c = fgetc(m_fd)) != EOF) ; )
     {
