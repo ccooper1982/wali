@@ -8,12 +8,12 @@
 #include <fstream>
 #include <functional>
 #include <optional>
+#include <stop_token>
 #include <string>
 #include <string_view>
-
 #include <plog/Log.h>
-
 #include <wali/Common.hpp>
+
 
 using OutputHandler = std::function<void(const std::string_view)>;
 
@@ -53,44 +53,80 @@ class ReadCommand : public Command
 {
 public:
 
-  static int execute_read_line (const std::string_view cmd, OutputHandler&& handler)
+static int execute(const std::string_view cmd)
   {
-    ReadCommand rc;
-    return execute_read(cmd, std::move(handler), 1);
+    return execute(cmd, nullptr, -1);
   }
 
-  static int execute_read(const std::string_view cmd)
-  {
-    return execute_read(cmd, nullptr);
-  }
-
-  static int execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
+  static int execute (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
   {
     ReadCommand rc;
-    return rc.do_execute_read(cmd, std::move(handler), max_lines);
+    return rc.do_execute(cmd, std::move(handler), max_lines);
   }
+
+  // static int execute (const std::string_view cmd, std::string_view exec, std::stop_token tkn, OutputHandler&& handler)
+  // {
+  //   auto get_exec_name = [&]()
+  //   {
+  //     const auto delim = cmd.find(' ');
+  //     return delim == std::string_view::npos ? cmd : cmd.substr(0, delim);
+  //   };
+
+  //   ReadCommand rc;
+  //   rc.set_executable(exec.empty() ? get_exec_name() : exec);
+  //   return rc.do_execute(cmd, std::move(handler), -1, tkn);
+  // }
+
+  // void interrupt()
+  // {
+  //   if (!m_executable.empty())
+  //   {
+  //     if (auto fd = ::popen(std::format("pkill {}", m_executable).c_str(), "r") ; fd)
+  //     {
+  //       if (::pclose(fd) != 0)
+  //       {
+  //         PLOGE << "Failed to kill: " << m_executable;
+  //       }
+  //     }
+  //   }
+  // }
 
 private:
-  int do_execute_read (const std::string_view cmd, OutputHandler&& handler, const int max_lines = -1)
+
+  void set_executable(const std::string_view exec)
   {
-    if (cmd.empty())
-      return CmdSuccess;
+    m_executable = exec;
+  }
 
-    int stat{CmdFail};
-
-    // redirect stderr to stdout (pacstrap, and perhaps others, output errors to stderr)
-    if (m_fd = ::popen(std::format("{} 2>&1", cmd).data(), "r"); m_fd)
+  int do_execute (const std::string_view cmd, OutputHandler&& handler, const int max_lines/*, std::stop_token tkn = std::stop_token{}*/)
     {
+      if (cmd.empty())
+        return CmdSuccess;
+      else if (m_fd = ::popen(std::format("{} 2>&1", cmd).data(), "r"); !m_fd)
+      {
+        PLOGE << "Failed to open pipe to: " << cmd;
+        return CmdFail;
+      }
+
+      int stat{CmdFail};
+
       char buff[4096];
       int n_lines{0};
       size_t n_chars{0};
+      // bool interrupted{};
 
-      for (char c ; ((c = fgetc(m_fd)) != EOF) && n_chars < sizeof(buff); )
+      for (char c ; ((c = fgetc(m_fd)) != EOF) ; )
       {
+        // if (interrupted = tkn.stop_possible() && tkn.stop_requested(); interrupted)
+        // {
+        //   PLOGW << "Command read interrupted";
+        //   break;
+        // }
+
         if (!handler)
           continue;
 
-        if (c == '\n')
+        if (c == '\n' || n_chars == sizeof(buff))
         {
           handler(std::string_view {buff, n_chars});
 
@@ -100,10 +136,13 @@ private:
           n_chars = 0;
         }
         else
-        {
           buff[n_chars++] = c;
-        }
       }
+
+      // if (interrupted)
+      //   interrupt();
+      // else if (handler && n_chars)
+      //   handler(std::string_view {buff, n_chars});
 
       if (handler && n_chars)
         handler(std::string_view {buff, n_chars});
@@ -112,12 +151,15 @@ private:
 
       if (stat != CmdSuccess)
       {
-        PLOGE << "Command '" << cmd << "' failed: " << ::strerror(stat);
+        PLOGE << "Command '" << cmd << "' exited with: " << ::strerror(stat);
       }
+
+      return stat;
     }
 
-    return stat;
-  }
+
+private:
+  std::string m_executable;
 };
 
 // Opens a pipe to cmd then writes input to the process.
@@ -151,7 +193,7 @@ struct Chroot : public ReadCommand
   virtual bool operator()(const std::string_view cmd, OutputHandler handler)
   {
     const auto chroot_cmd = std::format("arch-chroot {} {}", RootMnt.string(), cmd);
-    return execute_read(chroot_cmd, std::move(handler)) == CmdSuccess;
+    return execute(chroot_cmd, std::move(handler)) == CmdSuccess;
   }
 };
 
@@ -165,7 +207,7 @@ struct ChrootWrite : public ReadCommand
     //  - So instead, call /bin/bash within chroot so it treats the `input` as a schell script (without an actual script file)
 
     const auto cmd = std::format("arch-chroot {} /bin/bash < <(echo \"{}\")", RootMnt.string(), input);
-    return execute_read(cmd, [](const std::string_view m) { PLOGI << m; }) == CmdSuccess;
+    return execute(cmd, [](const std::string_view m) { PLOGI << m; }) == CmdSuccess;
   }
 };
 
@@ -177,7 +219,7 @@ struct GetTimeZones : public ReadCommand
     std::vector<std::string> zones;
     zones.reserve(600); // "timedatectl list-timezones | wc -l" returns 598
 
-    const auto stat = execute_read("timedatectl list-timezones", [&](const std::string_view line)
+    const auto stat = execute("timedatectl list-timezones", [&](const std::string_view line)
     {
       if (!line.empty())
         zones.emplace_back(line);
@@ -231,7 +273,7 @@ struct GetKeyMaps : public ReadCommand
   {
     std::vector<std::string> keys;
 
-    const auto stat = execute_read("localectl list-keymaps",[&](const std::string_view line)
+    const auto stat = execute("localectl list-keymaps",[&](const std::string_view line)
     {
       if (!line.empty())
         keys.emplace_back(line);
@@ -246,7 +288,7 @@ struct Reboot : public ReadCommand
 {
   bool operator()()
   {
-    return execute_read("reboot -i --no-wall") == CmdSuccess;
+    return execute("reboot -i --no-wall") == CmdSuccess;
   }
 };
 
@@ -258,7 +300,7 @@ struct GetGpuVendor : public ReadCommand
 
   GpuVendor operator()()
   {
-    const auto stat = execute_read("lspci | grep -E 'VGA|Display'", [&](const std::string_view m)
+    const auto stat = execute("lspci | grep -E 'VGA|Display'", [&](const std::string_view m)
     {
       if (!m.empty())
       {
@@ -308,7 +350,7 @@ struct CreateFilesystem : public ReadCommand
 private:
   bool operator()(const std::string_view mkfs, const std::string_view dev)
   {
-    return execute_read(std::format("mkfs.{} {}", mkfs, dev)) == CmdSuccess;
+    return execute(std::format("mkfs.{} {}", mkfs, dev)) == CmdSuccess;
   }
 };
 
@@ -317,7 +359,7 @@ struct CreateBtrfsSubVolume : public ReadCommand
 {
   bool operator()(const std::string_view path)
   {
-    const auto stat = execute_read(std::format("btrfs subvolume create {}", path), [](const std::string_view m)
+    const auto stat = execute(std::format("btrfs subvolume create {}", path), [](const std::string_view m)
     {
       PLOGI << m;
     });
@@ -335,7 +377,7 @@ struct ClearPartitions : public ReadCommand
 {
   bool operator()(const std::string_view dev)
   {
-    const auto ok = execute_read(std::format("sgdisk --clear {}", dev)) == CmdSuccess;
+    const auto ok = execute(std::format("sgdisk --clear {}", dev)) == CmdSuccess;
     if (!ok)
     {
       PLOGE << "Failed to delete partitions: " << dev;
@@ -351,7 +393,7 @@ struct CreatePartitionTable : public ReadCommand
     ClearPartitions{}(disk);
 
     // this forces the label creation, whilst sgdisk --label does not
-    return execute_read(std::format("echo 'label: gpt' | sfdisk {}", disk), std::move(handler)) == CmdSuccess;
+    return execute(std::format("echo 'label: gpt' | sfdisk {}", disk), std::move(handler)) == CmdSuccess;
   }
 };
 
@@ -360,7 +402,7 @@ struct CreatePartition : public ReadCommand
   bool operator()(const std::string_view disk, const std::uint16_t part_num, const std::int64_t size_mb, OutputHandler handler)
   {
     // <part_num>:start:<part_size>  (where start is default=first available sector)
-    return execute_read(std::format("sgdisk -n {}:-:+{}MiB {}", part_num, size_mb, disk), std::move(handler)) == CmdSuccess;
+    return execute(std::format("sgdisk -n {}:-:+{}MiB {}", part_num, size_mb, disk), std::move(handler)) == CmdSuccess;
   }
 
   bool operator()(const std::string_view disk, const std::uint16_t part_num, OutputHandler handler)
@@ -370,7 +412,7 @@ struct CreatePartition : public ReadCommand
     // <part_num>:start:<part_size>
     //  start is default (first available sector)
     //  part_size is default (remaining space)
-    return execute_read(std::format("sgdisk -n {}:-:- {}", part_num, disk), std::move(handler)) == CmdSuccess;
+    return execute(std::format("sgdisk -n {}:-:- {}", part_num, disk), std::move(handler)) == CmdSuccess;
   }
 };
 
@@ -379,7 +421,7 @@ struct SetPartitionType : public ReadCommand
 {
   bool operator()(const std::string_view dev, const std::uint16_t part_num, const std::string_view type)
   {
-    return execute_read(std::format("sgdisk -t {}:{} {}", part_num, type, dev)) == CmdSuccess;
+    return execute(std::format("sgdisk -t {}:{} {}", part_num, type, dev)) == CmdSuccess;
   }
 };
 
@@ -389,7 +431,7 @@ struct Mount : public ReadCommand
   bool operator()(const std::string_view dev, const std::string_view path, const std::string_view opts = "")
   {
     const auto opts_str = opts.empty() ? "" : std::format("-o {}", opts);
-    return execute_read(std::format("mount {} --mkdir {} {}", opts_str, dev, path)) == CmdSuccess;
+    return execute(std::format("mount {} --mkdir {} {}", opts_str, dev, path)) == CmdSuccess;
   }
 };
 
@@ -397,7 +439,7 @@ struct Unmount : public ReadCommand
 {
   bool operator()(const std::string_view mount_point, const bool recursive)
   {
-    return execute_read(std::format("umount {} {}", recursive ? "-R" : "", mount_point)) == CmdSuccess;
+    return execute(std::format("umount {} {}", recursive ? "-R" : "", mount_point)) == CmdSuccess;
   }
 };
 
@@ -430,7 +472,7 @@ struct GetCpuVendor : public ReadCommand
   {
     CpuVendor vendor = CpuVendor::None;
 
-    const auto stat = execute_read_line("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
+    const auto stat = execute("cat /proc/cpuinfo | grep \"^model name\"", [&vendor](const std::string_view line)
     {
       if (line.find("AMD") != std::string::npos)
         vendor = CpuVendor::Amd;
@@ -448,7 +490,7 @@ struct ProgramExists : public ReadCommand
   bool operator()(const std::string_view program)
   {
     bool exists{false};
-    const auto stat = execute_read(std::format("command -v {}", program),[&exists](const std::string_view line)
+    const auto stat = execute(std::format("command -v {}", program),[&exists](const std::string_view line)
     {
       exists = !line.empty() ;
     });

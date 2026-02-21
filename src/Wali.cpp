@@ -57,7 +57,7 @@ static void init_logger ()
 static bool sync_system_clock()
 {
   ReadCommand cmd;
-  return cmd.execute_read("timedatectl") == CmdSuccess;
+  return cmd.execute("timedatectl") == CmdSuccess;
 }
 
 static std::string startup_checks()

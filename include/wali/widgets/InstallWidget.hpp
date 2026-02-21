@@ -124,7 +124,6 @@ private:
   std::size_t m_log{};
   std::vector<StageLog*> m_stage_logs;
   SummaryWidget * m_summary;
-  std::stop_source m_stop_src;
 };
 
 #endif

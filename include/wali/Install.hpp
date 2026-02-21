@@ -1,11 +1,12 @@
 #ifndef WALI_INSTALL_H
 #define WALI_INSTALL_H
 
-#include <Wt/WSignal.h>
+#include <atomic>
+#include <condition_variable>
 #include <functional>
-#include <stop_token>
 #include <string_view>
 #include <utility>
+#include <Wt/WSignal.h>
 #include <wali/Common.hpp>
 #include <wali/DiskUtils.hpp>
 #include <wali/widgets/WidgetData.hpp>
@@ -15,6 +16,7 @@ enum class InstallState
 {
   None,
   Fail,
+  Cancelled,
   Running,
   Bootable,   // bootable system
   Partial,    // system is bootable, but optional stage failed
@@ -52,9 +54,18 @@ class Install final
 {
 public:
 
-  void install(InstallHandlers handlers, WidgetDataPtr data, std::stop_token token);
+  void install(InstallHandlers handlers, WidgetDataPtr data);
+  void stop()
+  {
+    m_state = InstallState::Cancelled;
+    m_cv.notify_one();
+  }
 
 private:
+
+  void exec_stages();
+  bool exec(std::function<bool(Install&)> f, const std::string_view name);
+  void kill();
 
   // filesystems
   bool filesystems();
@@ -169,6 +180,9 @@ private:
   OnLog m_log;
   WidgetDataPtr m_data;
   Tree m_tree;
+  std::atomic<InstallState> m_state{InstallState::None};
+  std::condition_variable m_cv;
+  std::string m_process;
 };
 
 #endif

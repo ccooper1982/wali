@@ -4,13 +4,16 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <mutex>
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <sys/mount.h>
 #include <system_error>
 #include <wali/Commands.hpp>
@@ -19,46 +22,60 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_token token)
+namespace chrono = std::chrono;
+
+
+bool Install::exec(std::function<bool(Install&)> f, const std::string_view name)
 {
-  namespace chrono = std::chrono;
-  using clock = chrono::steady_clock;
+  StageStatus state = StageStatus::Fail;
 
-  m_stage_change = handlers.stage_change;
-  m_install_state = handlers.complete;
-  m_log = handlers.log;
-  m_data = data;
-
-  auto exec_stage = [this, token](std::function<bool(Install&)> f, const std::string_view stage) mutable
+  try
   {
-    StageStatus state(StageStatus::Complete);
-
-    try
+    if (m_state != InstallState::Cancelled)
     {
-      if (token.stop_requested())
-      {
-        log_error("Stop requested");
-        return false;
-      }
-      else
-      {
-        log_stage_start(stage);
-        state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
-        log_stage_end(stage, state);
-      }
-    }
-    catch (const std::exception& ex)
-    {
-      PLOGE << "exec_stage exception: " << ex.what();
-      log_stage_end(stage, StageStatus::Fail);
-      m_install_state(InstallState::Fail);
-    }
+      m_process.clear();
 
-    return state == StageStatus::Complete;
+      log_stage_start(name);
+      state = f(std::ref(*this)) ? StageStatus::Complete : StageStatus::Fail;
+      log_stage_end(name, state);
+    }
+  }
+  catch (const std::exception& ex)
+  {
+    PLOGE << "exec exception: " << ex.what();
+    log_stage_end(name, StageStatus::Fail);
+    m_install_state(InstallState::Fail);
+  }
+
+  return state == StageStatus::Complete;
+}
+
+
+void Install::exec_stages()
+{
+  auto exec_minimal = [this]
+  {
+    return  exec(&Install::filesystems,   STAGE_FS) &&
+            exec(&Install::mount,         STAGE_MOUNT) &&
+            exec(&Install::pacstrap,      STAGE_PACSTRAP) &&
+            exec(&Install::fstab,         STAGE_FSTAB) &&
+            exec(&Install::root_account,  STAGE_ROOT_ACC) &&
+            exec(&Install::boot_loader,   STAGE_BOOT_LOADER);
   };
 
-  InstallState state = InstallState::Fail;
-  auto start = clock::now();
+  auto exec_extra = [this]
+  {
+    return  exec(&Install::user_account,  STAGE_USER_ACC) &&
+            exec(&Install::video,         STAGE_VIDEO) &&
+            exec(&Install::desktop,       STAGE_DESKTOP) &&
+            exec(&Install::localise,      STAGE_LOCALISE) &&
+            exec(&Install::network,       STAGE_NETWORK) &&
+            exec(&Install::swap,          STAGE_SWAP) &&
+            exec(&Install::packages,      STAGE_PACKAGES);
+  };
+
+
+  m_state = InstallState::Running;
 
   try
   {
@@ -66,42 +83,77 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
 
     m_tree = DiskUtils::probe();
 
-    const bool minimal =  exec_stage(&Install::filesystems,   STAGE_FS) &&
-                          exec_stage(&Install::mount,         STAGE_MOUNT) &&
-                          exec_stage(&Install::pacstrap,      STAGE_PACSTRAP) &&
-                          exec_stage(&Install::fstab,         STAGE_FSTAB) &&
-                          exec_stage(&Install::root_account,  STAGE_ROOT_ACC) &&
-                          exec_stage(&Install::boot_loader,   STAGE_BOOT_LOADER);
-
-    state = minimal ? InstallState::Partial : InstallState::Fail;
-
-    if (minimal)
+    if (const bool minimal = exec_minimal(); m_state != InstallState::Cancelled)
     {
-      // TODO these stages can fail and we don't quit so they all return false,
-      //      so change them to return void
-      on_state(InstallState::Bootable);
+      m_state = minimal ? InstallState::Partial : InstallState::Fail;
 
-      const bool extra =  exec_stage(&Install::user_account,  STAGE_USER_ACC) &&
-                          exec_stage(&Install::video,         STAGE_VIDEO) &&
-                          exec_stage(&Install::desktop,       STAGE_DESKTOP) &&
-                          exec_stage(&Install::localise,      STAGE_LOCALISE) &&
-                          exec_stage(&Install::network,       STAGE_NETWORK) &&
-                          exec_stage(&Install::swap,          STAGE_SWAP) &&
-                          exec_stage(&Install::packages,      STAGE_PACKAGES);
+      if (minimal)
+      {
+        // TODO these stages can fail and we don't quit so they all return false,
+        //      so change them to return void
+        on_state(InstallState::Bootable);
 
-      state = extra ? InstallState::Complete : InstallState::Partial;
+        if (const bool extra = exec_extra(); m_state != InstallState::Cancelled)
+          m_state = extra ? InstallState::Complete : InstallState::Partial;
+      }
     }
   }
   catch (const std::exception& ex)
   {
     log_error(std::format("Unknown error: {}", ex.what()));
-    state = InstallState::Fail;
+    m_state = InstallState::Fail;
   }
 
-  // if cancelled, we can't be sure of the state
-  state = token.stop_requested() ? InstallState::Fail : state;
+  m_cv.notify_one();
+}
 
-  if (state != InstallState::Fail)
+void Install::kill()
+{
+  // not all stages can be killed because they are so quick it isn't worth the effort setting the
+  // process, calling killall etc. Instead, exec() will return false
+  if (m_process.empty())
+    return;
+
+  if (auto fd = ::popen(std::format("killall -s SIGKILL -- {}", m_process).c_str(), "r") ; fd && ::pclose(fd) != 0)
+  {
+    PLOGE << "Failed to kill: " << m_process;
+  }
+}
+
+void Install::install(InstallHandlers handlers, WidgetDataPtr data)
+{
+  using clock = chrono::steady_clock;
+
+  m_stage_change = handlers.stage_change;
+  m_install_state = handlers.complete;
+  m_log = handlers.log;
+  m_data = data;
+  m_state = InstallState::None;
+
+  auto start = clock::now();
+
+  try
+  {
+    auto thread = std::jthread([this]{ return exec_stages(); });
+
+    std::mutex mux;
+    std::unique_lock lck{mux};
+
+    m_cv.wait(lck, [this]
+    {
+      return m_state == InstallState::Cancelled || m_state == InstallState::Complete || m_state == InstallState::Fail;
+    });
+
+    if (m_state == InstallState::Cancelled)
+      kill();
+  }
+  catch (const std::exception& ex)
+  {
+    log_error(std::format("Unknown error: {}", ex.what()));
+    m_state = InstallState::Fail;
+  }
+
+  if (!(m_state == InstallState::Fail || m_state == InstallState::Cancelled))
   {
     const auto [size, used] = GetDevSpace{}(m_data->mounts.root_dev);
     m_data->summary.root_size = size;
@@ -110,13 +162,13 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data, std::stop_to
     m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
   }
 
-  // we always want to do this, ignoring any errors
-  exec_stage(&Install::unmount, STAGE_UNMOUNT);
+  // always do this, ignoring any errors
+  exec(&Install::unmount, STAGE_UNMOUNT);
 
-  on_state(state);
+  on_state(m_state);
 }
 
-
+// filesystem
 bool Install::filesystems()
 {
   const MountData& data = m_data->mounts;
@@ -157,7 +209,7 @@ bool Install::filesystems()
 bool Install::wipe_fs(const std::string_view dev)
 {
   log_info(std::format("Wipe filesystem on {}", dev));
-  return ReadCommand::execute_read(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
+  return ReadCommand::execute(std::format ("wipefs -a -f {}", dev)) == CmdSuccess;
 }
 
 bool Install::create_boot_filesystem()
@@ -311,7 +363,9 @@ bool Install::pacstrap()
   cmd_string << "pacstrap -K " <<  RootMnt.string() << ' ';
   cmd_string << flatten(packages);
 
-  const int stat = ReadCommand::execute_read(cmd_string.str(), [this](const std::string_view m)
+  m_process = "pacman";
+
+  const int stat = ReadCommand::execute(cmd_string.str(), [this](const std::string_view m)
   {
     log_info(m);
   });
@@ -353,8 +407,8 @@ bool Install::fstab ()
 
   log_info(cmd_string);
 
-  const auto stat = ReadCommand::execute_read(cmd_string);
-  log_error_if(stat == CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
+  const auto stat = ReadCommand::execute(cmd_string);
+  log_error_if(stat != CmdSuccess, std::format("genfstab failed: {}", ::strerror(stat)));
 
   return stat == CmdSuccess;
 }
@@ -566,7 +620,8 @@ bool Install::boot_loader_sysdboot()
     entry_stream << EntryContent <<  "options root=UUID=" << root_uuid << " " << root_flags << " rw\n";
     entry_stream.close();
 
-    log_error_if(!Chroot{}("bootctl install"), "bootctl failed to parse config");
+    ok = Chroot{}("bootctl install");
+    log_error_if(!ok, "bootctl failed to parse config");
   }
 
   return ok;
@@ -609,7 +664,7 @@ bool Install::localise()
     log_info("Set timezone");
     if (!Chroot{}(std::format("ln -sf {} /etc/localtime", (TimezonePath / zone).string())))
       log_warning("Failed to set locale timezone");
-    else if (log_info("Syncing clock"); ReadCommand::execute_read("hwclock --systohc") != CmdSuccess)
+    else if (log_info("Syncing clock"); ReadCommand::execute("hwclock --systohc") != CmdSuccess)
       log_warning("Failed to sync hardware clock");
   }
 
@@ -652,7 +707,7 @@ bool Install::network()
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
     log_info("Copy systemd-network config");
-    log_warning_if(ReadCommand::execute_read(cmd) != CmdSuccess, "Failed to copy systemd-network configs");
+    log_warning_if(ReadCommand::execute(cmd) != CmdSuccess, "Failed to copy systemd-network configs");
   }
 
   if (ntp)
@@ -674,7 +729,7 @@ bool Install::setup_iwd()
 
   const auto setup = install_packages({"iwd"}) && enable_service({"iwd", "systemd-networkd"});
   log_warning_if(!setup, "iwd package or service enable failed");
-  log_warning_if(ReadCommand::execute_read(create_config) != CmdSuccess, "Failed to create IWD config");
+  log_warning_if(ReadCommand::execute(create_config) != CmdSuccess, "Failed to create IWD config");
 
   if (m_data->network.copy_config)
   {
@@ -687,7 +742,7 @@ bool Install::setup_iwd()
     const auto dest = TargetIwdConnectionsPath.string();
     const auto cmd = std::format("mkdir -p {} && cp -rf {}/* {}", dest, src, dest);
 
-    log_warning_if(ReadCommand::execute_read(cmd) != CmdSuccess, "Failed to copy iwd configs");
+    log_warning_if(ReadCommand::execute(cmd) != CmdSuccess, "Failed to copy iwd configs");
   }
 
   return true;
@@ -702,7 +757,10 @@ bool Install::setup_network_manager()
 // sawp
 bool Install::swap()
 {
-  static const fs::path ZramConfig {RootMnt / "etc/systemd/zram-generator.conf"};
+  static const fs::path ZramConfigPath {RootMnt / "etc/systemd/zram-generator.conf"};
+  static const auto ZramConfig ="[zram0]\n"
+                                "zram-size = min(ram / 4, 4096)\n" // 25% of ram or 4GB
+                                "compression-algorithm = zstd\n";
 
   if (!m_data->mounts.zram)
     return true;
@@ -715,15 +773,14 @@ bool Install::swap()
   log_info("Create zram config");
 
   {
-    std::ofstream cfg_file{ZramConfig, std::ios_base::out | std::ios_base::trunc};
-    cfg_file << "[zram0]\n";
-    cfg_file << "zram-size = min(ram / 4, 4096)\n"; // 25% of ram or 4GB
-    cfg_file << "compression-algorithm = zstd\n";   // sensible
+    std::ofstream cfg_file{ZramConfigPath, std::ios_base::out | std::ios_base::trunc};
+    cfg_file << ZramConfig;
   }
 
-  log_error_if(fs::exists(ZramConfig) && fs::file_size(ZramConfig), "Failed to create zram config");
-
-  enable_service({"systemd-zram-setup@zram0.service"});
+  if (fs::exists(ZramConfigPath) && fs::file_size(ZramConfigPath))
+    enable_service({"systemd-zram-setup@zram0.service"});
+  else
+    log_error("Failed to create zram config");
 
   return true;
 }

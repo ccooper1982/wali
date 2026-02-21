@@ -170,7 +170,7 @@ void InstallWidget::cancel()
 {
   m_cancel_btn->disable();
   m_install_status->setText("Cancelling...");
-  m_stop_src.request_stop();
+  m_install.stop();
 }
 
 
@@ -228,8 +228,7 @@ void InstallWidget::install()
                             .log = log,
                             .complete = complete
                           },
-                          m_data,
-                          m_stop_src.get_token());
+                          m_data);
     });
   }
   catch (const std::exception& ex)
@@ -299,8 +298,14 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
     css_class = "install_status_running";
   break;
 
+  case InstallState::Cancelled:
+    status  = "Cancelled";
+    css_class = "install_status_fail";
+    allow_install = true;
+  break;
+
   case InstallState::Fail:
-    status  = m_stop_src.stop_requested() ? "Cancelled" : "Failed: system is not bootable. Check logs.";
+    status  = "Failed: system is not bootable. Check logs.";
     css_class = "install_status_fail";
     allow_install = true;
   break;
@@ -336,20 +341,15 @@ void InstallWidget::on_install_status(const InstallState state, const std::strin
 
     m_install_btn->setEnabled(allow_install);
 
+    const auto finished = state == InstallState::Complete || state == InstallState::Fail || state == InstallState::Cancelled;
+    m_cancel_btn->setDisabled(finished);
+    // m_savelog_btn->setDisabled(finished == false);
+
     if (state == InstallState::Complete)
     {
       update_data();
       m_summary->show();
     }
-    else if (state == InstallState::Fail && m_stop_src.stop_requested())
-    {
-      m_install_status->setText("Cancelled");
-      m_stop_src = std::stop_source{};
-    }
-
-    const auto finished = state == InstallState::Complete || state == InstallState::Fail;
-    m_cancel_btn->setDisabled(finished);
-    // m_savelog_btn->setDisabled(finished == false);
 
     WApplication::instance()->triggerUpdate();
   });
