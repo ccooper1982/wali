@@ -8,7 +8,6 @@
 #include <fstream>
 #include <functional>
 #include <optional>
-#include <stop_token>
 #include <string>
 #include <string_view>
 #include <plog/Log.h>
@@ -64,33 +63,6 @@ static int execute(const std::string_view cmd)
     return rc.do_execute(cmd, std::move(handler), max_lines);
   }
 
-  // static int execute (const std::string_view cmd, std::string_view exec, std::stop_token tkn, OutputHandler&& handler)
-  // {
-  //   auto get_exec_name = [&]()
-  //   {
-  //     const auto delim = cmd.find(' ');
-  //     return delim == std::string_view::npos ? cmd : cmd.substr(0, delim);
-  //   };
-
-  //   ReadCommand rc;
-  //   rc.set_executable(exec.empty() ? get_exec_name() : exec);
-  //   return rc.do_execute(cmd, std::move(handler), -1, tkn);
-  // }
-
-  // void interrupt()
-  // {
-  //   if (!m_executable.empty())
-  //   {
-  //     if (auto fd = ::popen(std::format("pkill {}", m_executable).c_str(), "r") ; fd)
-  //     {
-  //       if (::pclose(fd) != 0)
-  //       {
-  //         PLOGE << "Failed to kill: " << m_executable;
-  //       }
-  //     }
-  //   }
-  // }
-
 private:
 
   void set_executable(const std::string_view exec)
@@ -99,64 +71,50 @@ private:
   }
 
   int do_execute (const std::string_view cmd, OutputHandler&& handler, const int max_lines/*, std::stop_token tkn = std::stop_token{}*/)
+  {
+    if (cmd.empty())
+      return CmdSuccess;
+    else if (m_fd = ::popen(std::format("{} 2>&1", cmd).data(), "r"); !m_fd)
     {
-      if (cmd.empty())
-        return CmdSuccess;
-      else if (m_fd = ::popen(std::format("{} 2>&1", cmd).data(), "r"); !m_fd)
-      {
-        PLOGE << "Failed to open pipe to: " << cmd;
-        return CmdFail;
-      }
-
-      int stat{CmdFail};
-
-      char buff[4096];
-      int n_lines{0};
-      size_t n_chars{0};
-      // bool interrupted{};
-
-      for (char c ; ((c = fgetc(m_fd)) != EOF) ; )
-      {
-        // if (interrupted = tkn.stop_possible() && tkn.stop_requested(); interrupted)
-        // {
-        //   PLOGW << "Command read interrupted";
-        //   break;
-        // }
-
-        if (!handler)
-          continue;
-
-        if (c == '\n' || n_chars == sizeof(buff))
-        {
-          handler(std::string_view {buff, n_chars});
-
-          if (++n_lines == max_lines)
-            break;
-
-          n_chars = 0;
-        }
-        else
-          buff[n_chars++] = c;
-      }
-
-      // if (interrupted)
-      //   interrupt();
-      // else if (handler && n_chars)
-      //   handler(std::string_view {buff, n_chars});
-
-      if (handler && n_chars)
-        handler(std::string_view {buff, n_chars});
-
-      stat = close();
-
-      if (stat != CmdSuccess)
-      {
-        PLOGE << "Command '" << cmd << "' exited with: " << ::strerror(stat);
-      }
-
-      return stat;
+      PLOGE << "Failed to open pipe to: " << cmd;
+      return CmdFail;
     }
 
+    int stat{CmdFail};
+    char buff[4096];
+    int n_lines{0};
+    size_t n_chars{0};
+
+    for (char c ; ((c = fgetc(m_fd)) != EOF) ; )
+    {
+      if (!handler)
+        continue;
+
+      if (c == '\n' || n_chars == sizeof(buff))
+      {
+        handler(std::string_view {buff, n_chars});
+
+        if (++n_lines == max_lines)
+          break;
+
+        n_chars = 0;
+      }
+      else
+        buff[n_chars++] = c;
+    }
+
+    if (handler && n_chars)
+      handler(std::string_view {buff, n_chars});
+
+    stat = close();
+
+    if (stat != CmdSuccess)
+    {
+      PLOGE << "Command '" << cmd << "' exited with: " << ::strerror(stat);
+    }
+
+    return stat;
+  }
 
 private:
   std::string m_executable;
@@ -295,31 +253,39 @@ struct Reboot : public ReadCommand
 
 struct GetGpuVendor : public ReadCommand
 {
-  GpuVendor vendor{GpuVendor::Unknown};
-  unsigned short n_amd{0}, n_nvidia{0}, n_vm{0}, n_intel{0};
-
   GpuVendor operator()()
   {
+    GpuVendor vendor{GpuVendor::Unknown};
+    unsigned short amd{0}, nvidia{0}, vm{0}, intel{0}, total{0};
+
     const auto stat = execute("lspci | grep -E 'VGA|Display'", [&](const std::string_view m)
     {
       if (!m.empty())
       {
-        n_amd += ::strcasestr(m.data(), "amd") ? 1 : 0;
-        n_nvidia += ::strcasestr(m.data(), "nvidia") ? 1 : 0;
-        n_vm += ::strcasestr(m.data(), "vmware") ? 1 : 0;
-        n_intel += ::strcasestr(m.data(), "intel") ? 1 : 0;
+        amd += ::strcasestr(m.data(), "amd") ? 1 : 0;
+        nvidia += ::strcasestr(m.data(), "nvidia") ? 1 : 0;
+        vm += ::strcasestr(m.data(), "vmware") ? 1 : 0;
+        intel += ::strcasestr(m.data(), "intel") ? 1 : 0;
+        ++total;
       }
     });
 
-    if (stat == CmdSuccess && n_amd + n_nvidia + n_vm + n_intel == 1)
+    if (stat == CmdSuccess && total)
     {
-      if (n_amd)
+      // there maybe integrated and dedicated from same or different vendors,
+      // and I don't think the order of results can be relied on
+      auto is_vendor = [=](const int count)
+      {
+        return count && total == count;
+      };
+
+      if (is_vendor(amd))
         vendor = GpuVendor::Amd;
-      else if (n_nvidia)
+      else if (is_vendor(nvidia))
         vendor = GpuVendor::Nvidia;
-      else if (n_intel)
+      else if (is_vendor(intel))
         vendor = GpuVendor::Intel;
-      else
+      else if (is_vendor(vm))
         vendor = GpuVendor::Vm;
     }
 
@@ -327,8 +293,8 @@ struct GetGpuVendor : public ReadCommand
   }
 };
 
-// filesystems
 
+// filesystems
 struct CreateFilesystem : public ReadCommand
 {
   static bool vfat32 (const std::string_view dev)
