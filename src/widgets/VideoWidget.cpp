@@ -125,22 +125,22 @@ VideoWidget::VideoWidget(WidgetDataPtr data) : WaliWidget(data, "Video")
   m_group_vendor->setSelectedButtonIndex(0);
   m_group_vendor->checkedChanged().connect(this, [this](WRadioButton * btn)
   {
-    set_selected_driver(btn);
+    on_vendor_change(btn);
   });
 
   layout_none->addStretch(1);
   layout_vm->addStretch(1);
 
   m_amd_driver = layout_amd->addWidget(make_wt<WComboBox>());
-  m_amd_driver->changed().connect([this](){ set_valid(true); });
+  m_amd_driver->changed().connect([this](){ on_driver_change(m_amd_driver); });
   layout_amd->addStretch(1);
 
   m_nvidia_driver = layout_nvidia->addWidget(make_wt<WComboBox>());
-  m_nvidia_driver->changed().connect([this](){ set_valid(true); });
+  m_nvidia_driver->changed().connect([this](){ on_driver_change(m_nvidia_driver); });
   layout_nvidia->addStretch(1);
 
   m_intel_driver = layout_intel->addWidget(make_wt<WComboBox>());
-  m_intel_driver->changed().connect([this](){ set_valid(true); });
+  m_intel_driver->changed().connect([this](){ on_driver_change(m_intel_driver); });
   layout_intel->addStretch(1);
 
   m_amd_driver->setNoSelectionEnabled(true);
@@ -196,7 +196,7 @@ void VideoWidget::set_default_driver()
     break;
   }
 
-  set_selected_driver(m_group_vendor->checkedButton());
+  on_vendor_change(m_group_vendor->checkedButton());
 }
 
 void VideoWidget::set_waffle()
@@ -217,13 +217,14 @@ void VideoWidget::set_waffle()
   m_waffle->setText(waffle.data());
 }
 
-void VideoWidget::set_selected_driver(WRadioButton * btn)
+void VideoWidget::on_vendor_change(WRadioButton * btn)
 {
   WApplication::instance()->deferRendering();
 
   m_amd_driver->disable();
   m_nvidia_driver->disable(),
   m_intel_driver->disable();
+  m_data->video.drivers.clear();
 
   const auto& selected = btn->text().toUTF8();
 
@@ -236,15 +237,23 @@ void VideoWidget::set_selected_driver(WRadioButton * btn)
 
   set_waffle();
 
-  set_valid(check_validity());
+  if (set_valid(check_validity()))
+    set_data();
 
   WApplication::instance()->resumeRendering();
 }
 
+void VideoWidget::on_driver_change(WComboBox * btn)
+{
+  if (set_valid(check_validity()))
+    set_data();
+}
 
 void VideoWidget::set_data()
 {
   const auto& selected = m_group_vendor->checkedButton()->text().toUTF8();
+
+  m_data->video.drivers.clear();
 
   WString name;
 
@@ -265,11 +274,8 @@ void VideoWidget::set_data()
   }
   else if (selected == "VM")
     m_data->video.drivers = VmDriverMap.at("VM");
-  else
-  {
-    PLOGE << "VideoWidget::get_data() should not be here";
-    m_data->video.drivers.clear();
-  }
+
+  PLOGI << "Video packages: " << m_data->video.drivers;
 }
 
 

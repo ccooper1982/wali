@@ -19,7 +19,8 @@ public:
 private:
   void init_combos();
   void set_default_driver();
-  void set_selected_driver(WRadioButton * btn);
+  void on_vendor_change(WRadioButton * btn);
+  void on_driver_change(WComboBox * btn);
   void set_waffle();
   bool check_validity() const;
   void set_data();

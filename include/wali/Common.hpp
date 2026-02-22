@@ -1,6 +1,7 @@
 #ifndef WALI_COMMON_H
 #define WALI_COMMON_H
 
+#include <chrono>
 #include <concepts>
 #include <filesystem>
 #include <math.h>
@@ -13,6 +14,9 @@
 namespace fs = std::filesystem;
 namespace rng = std::ranges;
 namespace view = std::views;
+namespace chrono = std::chrono;
+
+using WaliClock = chrono::steady_clock;
 
 
 inline static const fs::path InstallLogPath {"/var/log/ali/install.log"};

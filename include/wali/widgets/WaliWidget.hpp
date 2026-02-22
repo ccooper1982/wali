@@ -25,10 +25,11 @@ public:
   bool is_data_valid() const { return m_valid; }
 
 protected:
-  void set_valid (const bool valid = true)
+  bool set_valid (const bool valid = true)
   {
     m_valid = valid;
     data_valid()(valid);
+    return is_data_valid();
   }
 
   void set_invalid () { set_valid(false); }

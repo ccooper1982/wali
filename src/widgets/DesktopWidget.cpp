@@ -55,7 +55,7 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 
   // desktop
   layout->addWidget(make_wt<WText>("<h3>Desktop</h3>"));
-  layout->addWidget(make_wt<WText>("Recommended root partition size for non-tty desktops is 24GB."));
+  layout->addWidget(make_wt<WText>("Desktops, except None, ensure your root partition is at least 24GB."));
   layout->addSpacing(15);
 
   // desktop combo

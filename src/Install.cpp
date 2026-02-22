@@ -22,9 +22,6 @@
 #include <wali/widgets/WidgetData.hpp>
 
 
-namespace chrono = std::chrono;
-
-
 bool Install::exec(std::function<bool(Install&)> f, const std::string_view name)
 {
   StageStatus state = StageStatus::Fail;
@@ -109,16 +106,27 @@ void Install::exec_stages()
 
 void Install::kill()
 {
+  static const auto MaxDuration = chrono::seconds{5};
+
   // not all stages can be killed because they are so quick it isn't worth the effort setting the
   // process, calling killall etc. Instead, exec() will return false
   if (m_process.empty())
     return;
 
   log_info(std::format("Kill {}", m_process));
-  if (auto fd = ::popen(std::format("killall -s SIGKILL -- {}", m_process).c_str(), "r") ; fd && ::pclose(fd) != CmdSuccess)
+
+  bool killed{};
+
+  const auto force_end = WaliClock::now() + MaxDuration;
+  while (WaliClock::now() < force_end && !killed)
   {
-    PLOGE << "Failed to kill: " << m_process;
+    if (auto fd = ::popen(std::format("killall -s SIGKILL -- {}", m_process).c_str(), "r") ; fd)
+      killed = ::pclose(fd) == CmdSuccess;
+
+    std::this_thread::sleep_for(chrono::milliseconds(500));
   }
+
+  PLOGE_IF(!killed) << "Failed to kill " << m_process;
 }
 
 void Install::cleanup()
@@ -130,15 +138,13 @@ void Install::cleanup()
 
 void Install::install(InstallHandlers handlers, WidgetDataPtr data)
 {
-  using clock = chrono::steady_clock;
-
   m_stage_change = handlers.stage_change;
   m_install_state = handlers.complete;
   m_log = handlers.log;
   m_data = data;
   m_state = InstallState::None;
 
-  auto start = clock::now();
+  auto start = WaliClock::now();
 
   try
   {
@@ -167,7 +173,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
     m_data->summary.root_size = size;
     m_data->summary.root_used = used;
     m_data->summary.package_count = CountPackages{}(m_data->mounts.root_dev);
-    m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
+    m_data->summary.duration = chrono::duration_cast<chrono::seconds>(WaliClock::now() - start);
   }
 
   cleanup();
@@ -370,6 +376,7 @@ bool Install::pacstrap()
   cmd_string << "pacstrap -K " <<  RootMnt.string() << ' ';
   cmd_string << flatten(packages);
 
+  // pacstrap is actually a script, ultimately calling pacman
   m_process = "pacman";
 
   const int stat = ReadCommand::execute(cmd_string.str(), [this](const std::string_view m)
@@ -394,6 +401,8 @@ bool Install::install_packages(const PackageSet& packages)
 {
   if (packages.empty())
     return true;
+
+  log_info(std::format("Packages: {}", packages.size()));
 
   std::stringstream ss;
   ss << "pacman -S --noconfirm " << flatten(packages);
@@ -761,7 +770,7 @@ bool Install::setup_network_manager()
 }
 
 
-// sawp
+// swap
 bool Install::swap()
 {
   static const fs::path ZramConfigPath {RootMnt / "etc/systemd/zram-generator.conf"};
