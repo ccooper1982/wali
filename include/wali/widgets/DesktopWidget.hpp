@@ -3,6 +3,7 @@
 
 #include "Wt/Json/Object.h"
 #include "Wt/Json/Value.h"
+#include "Wt/WCheckBox.h"
 #include <wali/Common.hpp>
 #include <wali/widgets/WidgetData.hpp>
 #include <Wt/WComboBox.h>
@@ -23,6 +24,7 @@ public:
 private:
   void read_profiles();
   void on_desktop_change();
+  void on_bluetooth_change();
 
 private:
   std::map<std::string, Wt::Json::Object> m_profiles;
@@ -31,6 +33,7 @@ private:
   WComboBox * m_desktops,
             * m_dm;
   VideoWidget * m_video_widget;
+  WCheckBox * m_blueooth;
 };
 
 #endif

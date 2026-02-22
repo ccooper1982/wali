@@ -60,7 +60,6 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 
   // desktop combo
   auto de_layout = layout->addLayout(make_wt<WHBoxLayout>());
-
   de_layout->addWidget(make_wt<WLabel>("Desktop"));
   m_desktops = de_layout->addWidget(make_wt<WComboBox>());
   m_desktops->changed().connect([this]{ on_desktop_change(); });
@@ -73,6 +72,13 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
   m_dm->changed().connect([this]{ m_data->desktop.dm = PackageSet{{m_dm->currentText().toUTF8()}}; });
   wm_layout->addStretch(1);
 
+  auto bt_layout = layout->addLayout(make_wt<WHBoxLayout>());
+  bt_layout->addWidget(make_wt<WLabel>("Bluetooth"));
+  m_blueooth = bt_layout->addWidget(make_wt<WCheckBox>());
+  m_blueooth->changed().connect([this]{ on_bluetooth_change(); });
+  m_blueooth->setChecked(true);
+  bt_layout->addStretch(1);
+
   read_profiles();
 
   layout->addSpacing(20);
@@ -82,6 +88,7 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
   layout->addStretch(1);
 
   on_desktop_change();
+  on_bluetooth_change();
 }
 
 
@@ -164,7 +171,6 @@ void DesktopWidget::on_desktop_change()
   m_data->desktop.desktop.clear();
   m_data->desktop.dm.clear();
   m_data->desktop.services.clear();
-  //m_warning->setText("");
 
   for (const auto& value : (Json::Array)profile.get(KeyPackagesRequired))
     m_data->desktop.desktop.emplace((PackageSet::value_type)value);
@@ -181,13 +187,33 @@ void DesktopWidget::on_desktop_change()
   {
     m_data->desktop.dm.emplace("sddm");
     m_data->desktop.services.emplace("sddm.service");
-
-    // if (const auto size = DiskUtils::get_disk_size(m_data->mounts.root_dev); size)
-    // {
-    //   PLOGI << "Root dev size: " << *size;
-
-    //   if (size < gb_to_b(12))
-    //     m_warning->setText("<span style='color: red;'>This profile requires the root partition is at least 12Gb.</span>");
-    // }
   }
+
+  // ensure bluetooth packages/services are set
+  on_bluetooth_change();
+}
+
+
+void DesktopWidget::on_bluetooth_change()
+{
+  static const std::string Packages[] = {"bluez", "bluez-utils"};
+  static const std::string Services[] = {"bluetooth"};
+
+  if (m_blueooth->isChecked())
+  {
+    m_data->desktop.desktop.insert_range(Packages);
+    m_data->desktop.services.insert_range(Services);
+  }
+  else
+  {
+    rng::for_each(Packages, [&, this](const std::string& name) {
+      m_data->desktop.desktop.erase(name);
+    });
+    rng::for_each(Services, [&, this](const std::string& name) {
+      m_data->desktop.services.erase(name);
+    });
+  }
+
+  PLOGI << "Desktop packages: " << m_data->desktop.desktop;
+  PLOGI << "Desktop services: " << m_data->desktop.services;
 }
