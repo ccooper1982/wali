@@ -114,10 +114,18 @@ void Install::kill()
   if (m_process.empty())
     return;
 
-  if (auto fd = ::popen(std::format("killall -s SIGKILL -- {}", m_process).c_str(), "r") ; fd && ::pclose(fd) != 0)
+  log_info(std::format("Kill {}", m_process));
+  if (auto fd = ::popen(std::format("killall -s SIGKILL -- {}", m_process).c_str(), "r") ; fd && ::pclose(fd) != CmdSuccess)
   {
     PLOGE << "Failed to kill: " << m_process;
   }
+}
+
+void Install::cleanup()
+{
+  log_stage_start(STAGE_UNMOUNT);
+  const auto unmounted = unmount() ? StageStatus::Complete : StageStatus::Fail;
+  log_stage_end(STAGE_UNMOUNT, unmounted);
 }
 
 void Install::install(InstallHandlers handlers, WidgetDataPtr data)
@@ -153,7 +161,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
     m_state = InstallState::Fail;
   }
 
-  if (!(m_state == InstallState::Fail || m_state == InstallState::Cancelled))
+  if (m_state != InstallState::Fail && m_state != InstallState::Cancelled)
   {
     const auto [size, used] = GetDevSpace{}(m_data->mounts.root_dev);
     m_data->summary.root_size = size;
@@ -162,8 +170,7 @@ void Install::install(InstallHandlers handlers, WidgetDataPtr data)
     m_data->summary.duration = chrono::duration_cast<chrono::seconds>(clock::now() - start);
   }
 
-  // always do this, ignoring any errors
-  exec(&Install::unmount, STAGE_UNMOUNT);
+  cleanup();
 
   on_state(m_state);
 }

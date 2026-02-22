@@ -66,6 +66,7 @@ private:
   void exec_stages();
   bool exec(std::function<bool(Install&)> f, const std::string_view name);
   void kill();
+  void cleanup();
 
   // filesystems
   bool filesystems();
