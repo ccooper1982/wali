@@ -39,6 +39,13 @@ static constexpr const auto NoneJson = R"({
 })";
 
 
+static constexpr const auto DesktopWaffle = R"(
+  <li>
+    <ul>When selecting a desktop except None, ensure your root partition is at least 24GB</ul>
+    <ul>If unsure, or this is your first Linux install, go with KDE Plasma</ul>
+  </li>
+)";
+
 
 DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 {
@@ -55,7 +62,7 @@ DesktopWidget::DesktopWidget(WidgetDataPtr data) : WaliWidget(data, "Desktop")
 
   // desktop
   layout->addWidget(make_wt<WText>("<h3>Desktop</h3>"));
-  layout->addWidget(make_wt<WText>("Desktops, except None, ensure your root partition is at least 24GB."));
+  layout->addWidget(make_wt<WText>(DesktopWaffle));
   layout->addSpacing(15);
 
   // desktop combo
